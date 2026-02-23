@@ -52,6 +52,29 @@ const DEFAULT_CATEGORIES: ExpenseCategory[] = [
   { id: '10', name: 'Others', icon: 'ellipsis-horizontal', color: COLORS.textMuted, enabled: true },
 ];
 
+const ICON_OPTIONS = [
+  { name: 'restaurant', label: 'Food' },
+  { name: 'car', label: 'Car' },
+  { name: 'play-circle', label: 'Entertainment' },
+  { name: 'bag', label: 'Shopping' },
+  { name: 'flash', label: 'Utilities' },
+  { name: 'medkit', label: 'Healthcare' },
+  { name: 'school', label: 'Education' },
+  { name: 'airplane', label: 'Travel' },
+  { name: 'refresh', label: 'Subscription' },
+  { name: 'home', label: 'Home' },
+  { name: 'barbell', label: 'Fitness' },
+  { name: 'book', label: 'Books' },
+  { name: 'heart', label: 'Health' },
+  { name: 'gift', label: 'Gifts' },
+  { name: 'camera', label: 'Photography' },
+  { name: 'musical-notes', label: 'Music' },
+  { name: 'gamepad', label: 'Games' },
+  { name: 'pizza', label: 'Pizza' },
+  { name: 'beer', label: 'Drinks' },
+  { name: 'person-add', label: 'Social' },
+];
+
 export default function CategoriesScreen() {
   const router = useRouter();
   const [categories, setCategories] = useState<ExpenseCategory[]>(DEFAULT_CATEGORIES);
@@ -59,6 +82,7 @@ export default function CategoriesScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [selectedIconColor, setSelectedIconColor] = useState(COLORS.violet);
+  const [selectedIcon, setSelectedIcon] = useState('bookmark');
 
   useEffect(() => {
     loadCategories();
@@ -67,11 +91,31 @@ export default function CategoriesScreen() {
   const loadCategories = async () => {
     try {
       const response = await apiService.user.getMe();
-      if (response.data?.success && response.data.data.expenseCategories) {
-        setCategories(response.data.data.expenseCategories);
+      if (response.data?.success && response.data.data.expenseCategories?.length > 0) {
+        // If we have categories from server, use them
+        // But ensure all defaults are included
+        const serverCats = response.data.data.expenseCategories;
+        const defaultIds = DEFAULT_CATEGORIES.map(c => c.id);
+        
+        // Keep defaults from DEFAULT_CATEGORIES (in case user changed their enabled status on server)
+        const defaultsFromServer = serverCats.filter((c: ExpenseCategory) => defaultIds.includes(c.id));
+        const customFromServer = serverCats.filter((c: ExpenseCategory) => c.isCustom);
+        
+        // If we don't have all defaults from server, add missing ones
+        const missingDefaults = DEFAULT_CATEGORIES.filter(
+          d => !defaultsFromServer.find(s => s.id === d.id)
+        );
+        
+        const merged = [...missingDefaults, ...defaultsFromServer, ...customFromServer];
+        setCategories(merged);
+      } else {
+        // No categories on server, use defaults
+        setCategories(DEFAULT_CATEGORIES);
       }
     } catch (error) {
       console.error('Error loading categories:', error);
+      // Keep defaults if load fails
+      setCategories(DEFAULT_CATEGORIES);
     }
   };
 
@@ -92,16 +136,19 @@ export default function CategoriesScreen() {
     const newCategory: ExpenseCategory = {
       id: Date.now().toString(),
       name: newCategoryName,
-      icon: 'bookmark',
+      icon: selectedIcon,
       color: selectedIconColor,
       enabled: true,
       isCustom: true,
     };
 
     setCategories((prev) => [...prev, newCategory]);
+    const catName = newCategoryName;
     setNewCategoryName('');
+    setSelectedIcon('bookmark');
+    setSelectedIconColor(COLORS.violet);
     setShowAddModal(false);
-    Alert.alert('Success', `Category "${newCategoryName}" added`);
+    Alert.alert('Success', `Category "${catName}" added`);
   };
 
   const deleteCategory = (id: string) => {
@@ -124,10 +171,17 @@ export default function CategoriesScreen() {
         return;
       }
 
-      await apiService.profile.updateCategories(categories);
-      Alert.alert('Success', 'Categories updated successfully');
-      router.back();
+      // Send all categories to backend for save
+      const response = await apiService.profile.updateCategories(categories);
+      
+      if (response.data?.success) {
+        Alert.alert('Success', 'Categories updated successfully');
+        router.back();
+      } else {
+        Alert.alert('Error', response.data?.message || 'Failed to update categories');
+      }
     } catch (error: any) {
+      console.error('Save error:', error);
       Alert.alert('Error', error.response?.data?.message || 'Failed to update categories');
     } finally {
       setLoading(false);
@@ -282,6 +336,37 @@ export default function CategoriesScreen() {
               value={newCategoryName}
               onChangeText={setNewCategoryName}
             />
+
+            <Text style={styles.modalSubtitle}>Select Icon:</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.iconScroller}
+            >
+              {ICON_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.name}
+                  style={[
+                    styles.iconOption,
+                    selectedIcon === option.name && styles.iconOptionSelected,
+                  ]}
+                  onPress={() => setSelectedIcon(option.name)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.iconOptionCircle,
+                    { backgroundColor: selectedIcon === option.name ? selectedIconColor : `${selectedIconColor}20` }
+                  ]}>
+                    <Ionicons
+                      name={option.name as any}
+                      size={24}
+                      color={selectedIcon === option.name ? 'white' : selectedIconColor}
+                    />
+                  </View>
+                  <Text style={styles.iconLabel}>{option.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
             <Text style={styles.modalSubtitle}>Select Color:</Text>
             <View style={styles.colorPicker}>
@@ -528,6 +613,33 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_600SemiBold',
     color: COLORS.textPrimary,
     marginBottom: 12,
+  },
+  iconScroller: {
+    marginBottom: 16,
+  },
+  iconOption: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  iconOptionSelected: {
+    opacity: 1,
+  },
+  iconOptionCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  iconLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontFamily: 'DMSans_400Regular',
+    textAlign: 'center',
+    maxWidth: 60,
   },
   colorPicker: {
     flexDirection: 'row',
