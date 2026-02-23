@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartSplit — UI Design System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void:#080810;--bg-surface:#0F0F1A;--bg-card:#14141F;--bg-elevated:#1A1A2B;
+    --bg-glass:rgba(255,255,255,0.04);--bg-glass-hover:rgba(255,255,255,0.07);
+    --violet:#7C5CFC;--violet-light:#9B7FFF;--violet-dim:rgba(124,92,252,0.15);
+    --mint:#00E5B0;--mint-light:#33FFCC;--mint-dim:rgba(0,229,176,0.12);
+    --coral:#FF5F7E;--coral-dim:rgba(255,95,126,0.12);
+    --amber:#FFB547;--amber-dim:rgba(255,181,71,0.12);
+    --sky:#38BDF8;--sky-dim:rgba(56,189,248,0.12);
+    --text-primary:#F0F0FF;--text-secondary:#8888AA;--text-muted:#55556A;--text-inverse:#080810;
+    --grad-violet:linear-gradient(135deg,#7C5CFC,#B06EFF);
+    --grad-mint:linear-gradient(135deg,#00E5B0,#00C4FF);
+    --grad-coral:linear-gradient(135deg,#FF5F7E,#FF8C42);
+    --border:rgba(255,255,255,0.06);--border-violet:rgba(124,92,252,0.3);--border-mint:rgba(0,229,176,0.25);
+    --shadow-violet:0 8px 32px rgba(124,92,252,0.25);--shadow-card:0 4px 24px rgba(0,0,0,0.4);
+    --shadow-glow:0 0 60px rgba(124,92,252,0.12);
+    --r-sm:8px;--r-md:14px;--r-lg:20px;--r-xl:28px;--r-full:999px;
+    --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg-void);color:var(--text-primary);font-family:var(--font-body);font-size:15px;line-height:1.6;overflow-x:hidden}
+  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg-surface)}::-webkit-scrollbar-thumb{background:var(--violet-dim);border-radius:3px}
+  .container{max-width:1200px;margin:0 auto;padding:0 24px}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.5}50%{transform:translate(-50%,-50%) scale(1.2);opacity:.8}}
+  @keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  @keyframes shimmer{from{background-position:-200% center}to{background-position:200% center}}
+  @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(124,92,252,.4)}70%{box-shadow:0 0 0 16px rgba(124,92,252,0)}100%{box-shadow:0 0 0 0 rgba(124,92,252,0)}}
+  @keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-20px)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes slideAnim{from{transform:translateX(-20px);opacity:.3}to{transform:translateX(20px);opacity:1}}
+
+  /* NAV */
+  .nav{position:sticky;top:0;z-index:100;background:rgba(8,8,16,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px}
+  .nav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:4px;height:56px;overflow-x:auto}
+  .nav-logo{font-family:var(--font-display);font-weight:800;font-size:18px;margin-right:16px;white-space:nowrap}
+  .nav-link{padding:6px 14px;border-radius:var(--r-full);font-size:13px;font-weight:500;white-space:nowrap;color:var(--text-muted);text-decoration:none;transition:all .2s;flex-shrink:0}
+  .nav-link:hover{color:var(--text-primary);background:var(--bg-glass)}
+
+  /* HERO */
+  .hero{position:relative;padding:80px 0 60px;text-align:center;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(124,92,252,.15) 0%,transparent 70%);pointer-events:none}
+  .hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--violet-dim);border:1px solid var(--border-violet);color:var(--violet-light);padding:6px 16px;border-radius:var(--r-full);font-size:13px;font-weight:500;margin-bottom:24px;animation:fadeUp .6s ease both}
+  .hero h1{font-family:var(--font-display);font-size:clamp(36px,5vw,64px);font-weight:800;line-height:1.1;letter-spacing:-.02em;background:linear-gradient(135deg,var(--text-primary) 40%,var(--violet-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:fadeUp .6s .1s ease both}
+  .hero p{color:var(--text-secondary);font-size:18px;margin-top:16px;animation:fadeUp .6s .2s ease both}
+
+  /* SECTION */
+  .section{padding:60px 0;border-top:1px solid var(--border)}
+  .section-label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-light);margin-bottom:8px}
+  .section-title{font-family:var(--font-display);font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+  .section-sub{color:var(--text-secondary);margin-bottom:40px}
+
+  /* PALETTE */
+  .palette-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
+  .color-chip{border-radius:var(--r-md);overflow:hidden;border:1px solid var(--border)}
+  .color-swatch{height:80px}
+  .color-info{padding:12px;background:var(--bg-card)}
+  .color-name{font-size:13px;font-weight:600;margin-bottom:2px}
+  .color-hex{font-size:11px;color:var(--text-secondary);font-family:monospace}
+  .color-use{font-size:11px;color:var(--text-muted);margin-top:4px}
+
+  /* TYPOGRAPHY */
+  .type-samples{display:flex;flex-direction:column;gap:24px}
+  .type-row{display:flex;align-items:baseline;gap:24px;padding:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md)}
+  .type-meta{min-width:140px}
+  .type-meta-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+  .type-meta-spec{font-size:12px;color:var(--text-secondary);margin-top:4px;font-family:monospace}
+  .t-h1{font-family:var(--font-display);font-size:32px;font-weight:800;letter-spacing:-.02em}
+  .t-h2{font-family:var(--font-display);font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .t-h3{font-family:var(--font-display);font-size:18px;font-weight:600}
+  .t-body{font-family:var(--font-body);font-size:15px;font-weight:400;color:var(--text-secondary)}
+  .t-caption{font-family:var(--font-body);font-size:12px;font-weight:400;color:var(--text-muted)}
+  .t-label{font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-light)}
+  .t-amount{font-family:var(--font-display);font-size:36px;font-weight:800}
+  .t-amount.positive{color:var(--mint)}.t-amount.negative{color:var(--coral)}
+
+  /* SCREENS GRID */
+  .screens-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:32px}
+  .phone-frame{width:260px;margin:0 auto;background:var(--bg-void);border:2px solid rgba(255,255,255,.1);border-radius:40px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.6),var(--shadow-glow);position:relative}
+  .phone-notch{width:100px;height:26px;background:var(--bg-void);border-radius:0 0 16px 16px;margin:0 auto;position:relative;z-index:10}
+  .phone-screen{background:var(--bg-surface);min-height:480px;position:relative;overflow:hidden}
+  .screen-label{text-align:center;margin-top:16px;font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text-secondary)}
+  .screen-tag{text-align:center;margin-top:4px;font-size:11px;color:var(--text-muted)}
+
+  /* SPLASH */
+  .splash-screen{background:var(--bg-void);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:480px;padding:32px;position:relative}
+  .splash-screen::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;background:radial-gradient(circle,rgba(124,92,252,.3) 0%,transparent 70%);border-radius:50%;animation:pulse 3s infinite}
+  .splash-logo{width:70px;height:70px;background:var(--grad-violet);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:20px;position:relative;z-index:1;box-shadow:var(--shadow-violet);animation:logoFloat 3s ease-in-out infinite}
+  .splash-title{font-family:var(--font-display);font-size:26px;font-weight:800;background:var(--grad-violet);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;position:relative;z-index:1}
+  .splash-sub{font-size:12px;color:var(--text-muted);position:relative;z-index:1}
+  .splash-dots{display:flex;gap:6px;margin-top:48px;position:relative;z-index:1}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);opacity:.3}.dot.active{opacity:1;width:20px;border-radius:3px}
+
+  /* LOGIN */
+  .login-screen{background:var(--bg-surface);padding:24px 20px;min-height:480px}
+  .login-title{font-family:var(--font-display);font-size:22px;font-weight:800;margin-top:16px;margin-bottom:4px}
+  .login-sub{font-size:12px;color:var(--text-secondary);margin-bottom:24px}
+  .mock-input{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;margin-bottom:10px}
+  .mock-input-label{font-size:10px;color:var(--text-muted);margin-bottom:2px}
+  .mock-input-val{font-size:13px;color:var(--text-secondary)}
+  .mock-input.focused{border-color:var(--violet);box-shadow:0 0 0 3px var(--violet-dim)}
+  .mock-btn{width:100%;padding:14px;background:var(--grad-violet);border-radius:var(--r-md);text-align:center;font-weight:700;font-size:14px;margin-top:8px;cursor:pointer;box-shadow:var(--shadow-violet);font-family:var(--font-display)}
+  .mock-btn.secondary{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);box-shadow:none;font-weight:500}
+  .divider{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--text-muted);font-size:11px}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+  .social-row{display:flex;gap:8px}
+  .social-btn{flex:1;padding:10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);text-align:center;font-size:18px}
+
+  /* DASHBOARD */
+  .dash-screen{background:var(--bg-surface);min-height:480px;overflow:hidden}
+  .dash-header{padding:16px 16px 0;display:flex;justify-content:space-between;align-items:center}
+  .dash-greeting{font-size:11px;color:var(--text-muted)}.dash-name{font-family:var(--font-display);font-size:18px;font-weight:700}
+  .bell-btn{width:36px;height:36px;background:var(--bg-elevated);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;border:1px solid var(--border)}
+  .notif-badge{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--coral);border-radius:50%;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-surface)}
+  .balance-cards{display:flex;gap:8px;padding:14px 16px}
+  .bal-card{flex:1;padding:12px;border-radius:var(--r-md)}
+  .bal-card.owe{background:linear-gradient(135deg,rgba(255,95,126,.2),rgba(255,95,126,.05));border:1px solid rgba(255,95,126,.2)}
+  .bal-card.get{background:linear-gradient(135deg,rgba(0,229,176,.2),rgba(0,229,176,.05));border:1px solid rgba(0,229,176,.2)}
+  .bal-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+  .bal-amount{font-family:var(--font-display);font-size:17px;font-weight:800;margin-top:2px}
+  .bal-card.owe .bal-amount{color:var(--coral)}.bal-card.get .bal-amount{color:var(--mint)}
+  .quick-actions{display:flex;gap:8px;padding:0 16px 12px}
+  .qa-btn{flex:1;padding:8px 4px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;text-align:center;font-size:9px;color:var(--text-secondary)}
+  .qa-btn .qa-icon{font-size:16px;display:block;margin-bottom:3px}
+  .activity-section{padding:0 16px}
+  .activity-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .activity-title{font-family:var(--font-display);font-size:13px;font-weight:700}.see-all{font-size:10px;color:var(--violet-light)}
+  .activity-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .activity-avatar{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .activity-info{flex:1}.activity-name{font-size:12px;font-weight:600}.activity-desc{font-size:10px;color:var(--text-muted)}
+  .activity-amount{font-family:var(--font-display);font-size:13px;font-weight:700}
+  .activity-amount.neg{color:var(--coral)}.activity-amount.pos{color:var(--mint)}
+
+  /* GROUP */
+  .group-screen{background:var(--bg-surface);min-height:480px}
+  .group-header{padding:16px;background:linear-gradient(180deg,rgba(124,92,252,.15),transparent)}
+  .group-emoji{font-size:32px;margin-bottom:6px}.group-name{font-family:var(--font-display);font-size:20px;font-weight:800}
+  .group-meta{font-size:11px;color:var(--text-muted)}
+  .group-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 16px}
+  .gtab{padding:10px 12px;font-size:11px;font-weight:600;color:var(--text-muted);position:relative}
+  .gtab.active{color:var(--violet-light)}.gtab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--violet)}
+  .expense-list{padding:12px 16px}
+  .exp-item{display:flex;gap:10px;align-items:center;padding:10px;margin-bottom:8px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border)}
+  .exp-icon{width:36px;height:36px;border-radius:10px;background:var(--violet-dim);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .exp-info{flex:1}.exp-name{font-size:12px;font-weight:600}.exp-who{font-size:10px;color:var(--text-muted)}
+  .exp-amount{font-family:var(--font-display);font-size:14px;font-weight:700}
+
+  /* ADD EXPENSE */
+  .add-screen{background:var(--bg-surface);min-height:480px;padding:20px 16px}
+  .add-title{font-family:var(--font-display);font-size:18px;font-weight:800;margin-bottom:4px}
+  .amount-display{text-align:center;padding:24px 0 16px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .amount-currency{font-size:20px;color:var(--text-muted);vertical-align:top;margin-top:8px;display:inline-block}
+  .amount-number{font-family:var(--font-display);font-size:44px;font-weight:800;display:inline;background:var(--grad-violet);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .cat-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .pill{padding:5px 10px;border-radius:var(--r-full);font-size:10px;font-weight:600;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-secondary)}
+  .pill.active{background:var(--violet-dim);border-color:var(--border-violet);color:var(--violet-light)}
+  .split-preview{background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);padding:12px;margin-top:12px}
+  .split-title{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  .split-person{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px}
+  .split-person:last-child{border-bottom:none}
+  .split-name{display:flex;gap:6px;align-items:center}
+  .mini-avatar{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700}
+
+  /* ANALYTICS */
+  .analytics-screen{background:var(--bg-surface);min-height:480px;padding:16px}
+  .analytics-title{font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:14px}
+  .donut-container{display:flex;justify-content:center;align-items:center;padding:16px 0;position:relative}
+  .donut-svg{width:120px;height:120px}
+  .donut-center{position:absolute;text-align:center}
+  .donut-total{font-family:var(--font-display);font-size:16px;font-weight:800}
+  .donut-label{font-size:9px;color:var(--text-muted)}
+  .cat-legend{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .legend-item{display:flex;align-items:center;gap:8px}
+  .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .legend-name{font-size:11px;flex:1}.legend-pct{font-size:11px;font-weight:700}.legend-amt{font-size:10px;color:var(--text-muted)}
+
+  /* FRIENDS */
+  .friends-screen{background:var(--bg-surface);min-height:480px;padding:16px}
+  .friends-title{font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:4px}
+  .search-bar{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;display:flex;align-items:center;gap:8px;margin:12px 0;font-size:12px;color:var(--text-muted)}
+  .friend-item{display:flex;align-items:center;gap:10px;padding:12px;margin-bottom:8px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border)}
+  .friend-avatar{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+  .friend-info{flex:1}.friend-name{font-size:13px;font-weight:600}.friend-last{font-size:10px;color:var(--text-muted)}
+  .friend-balance{text-align:right}.friend-bal-amount{font-family:var(--font-display);font-size:13px;font-weight:700}
+  .friend-bal-label{font-size:9px;color:var(--text-muted)}
+  .settle-mini-btn{margin-top:4px;padding:3px 8px;background:var(--mint-dim);border:1px solid var(--border-mint);border-radius:var(--r-full);font-size:9px;color:var(--mint);font-weight:600;display:inline-block}
+
+  /* PROFILE */
+  .profile-screen{background:var(--bg-surface);min-height:480px}
+  .profile-header{padding:24px 16px 16px;background:linear-gradient(180deg,rgba(124,92,252,.1),transparent);text-align:center}
+  .profile-avatar-wrap{position:relative;display:inline-block;margin-bottom:12px}
+  .profile-avatar{width:70px;height:70px;border-radius:22px;background:var(--grad-violet);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;box-shadow:var(--shadow-violet)}
+  .profile-edit-btn{position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px}
+  .profile-name{font-family:var(--font-display);font-size:18px;font-weight:800}
+  .profile-email{font-size:11px;color:var(--text-muted);margin-top:2px}
+  .stats-row{display:flex;border:1px solid var(--border);border-radius:var(--r-md);margin:12px 16px;overflow:hidden}
+  .stat-box{flex:1;padding:12px 8px;text-align:center;background:var(--bg-elevated)}
+  .stat-box:not(:last-child){border-right:1px solid var(--border)}
+  .stat-val{font-family:var(--font-display);font-size:16px;font-weight:800}.stat-lbl{font-size:9px;color:var(--text-muted);margin-top:2px}
+  .menu-list{padding:0 16px}
+  .menu-item{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--border);font-size:13px}
+  .menu-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .menu-arrow{margin-left:auto;color:var(--text-muted);font-size:12px}
+
+  /* SETTLE */
+  .settle-screen{background:var(--bg-surface);min-height:480px;padding:20px 16px}
+  .settle-between{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:20px}
+  .settle-av{width:50px;height:50px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800}
+  .settle-amount-box{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;text-align:center;margin-bottom:14px}
+  .settle-lbl{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .settle-big{font-family:var(--font-display);font-size:36px;font-weight:800;color:var(--mint)}
+  .method-row{display:flex;gap:8px;margin-bottom:14px}
+  .method-btn{flex:1;padding:10px 4px;border-radius:var(--r-md);text-align:center;border:1px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:600}
+  .method-btn.sel{border-color:var(--border-violet);background:var(--violet-dim);color:var(--violet-light)}
+  .upi-box{background:var(--bg-elevated);border:1px solid var(--border-mint);border-radius:var(--r-md);padding:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .upi-id{font-size:13px;font-weight:600;color:var(--mint)}.copy-btn{font-size:10px;color:var(--text-muted)}
+
+  /* TAB BAR */
+  .tab-bar{display:flex;background:var(--bg-card);border-top:1px solid var(--border);padding:8px 0 4px}
+  .tab-item{flex:1;text-align:center}.tab-icon{font-size:18px;display:block}.tab-label{font-size:9px;color:var(--text-muted);margin-top:2px}
+  .tab-add{flex:1;display:flex;flex-direction:column;align-items:center}
+  .tab-add-btn{width:44px;height:44px;background:var(--grad-violet);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-top:-18px;box-shadow:var(--shadow-violet)}
+
+  /* ONBOARDING */
+  .onboard-screen{background:var(--bg-surface);min-height:480px;padding:24px 20px;display:flex;flex-direction:column}
+  .onboard-illus{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+  .onboard-circle{width:140px;height:140px;border-radius:50%;background:var(--violet-dim);border:1px solid var(--border-violet);display:flex;align-items:center;justify-content:center;font-size:56px;position:relative}
+  .onboard-float{position:absolute;width:40px;height:40px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:var(--shadow-card)}
+  .f1{top:0;right:-10px;animation:logoFloat 2s .2s ease-in-out infinite}
+  .f2{bottom:10px;left:-20px;animation:logoFloat 2s .5s ease-in-out infinite}
+  .f3{top:20px;left:-30px;animation:logoFloat 2s .8s ease-in-out infinite}
+  .onboard-title{font-family:var(--font-display);font-size:22px;font-weight:800;margin-bottom:8px}
+  .onboard-desc{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px}
+  .onboard-dots{display:flex;gap:6px;margin-bottom:16px}
+  .od{width:6px;height:6px;border-radius:50%;background:var(--border)}.od.a{background:var(--violet);width:20px;border-radius:3px}
+
+  /* COMPONENTS */
+  .components-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+  .comp-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px}
+  .comp-title{font-family:var(--font-display);font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .btn{padding:10px 20px;border-radius:var(--r-md);font-family:var(--font-display);font-weight:600;font-size:14px;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .2s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:var(--grad-violet);color:white;box-shadow:var(--shadow-violet)}
+  .btn-secondary{background:var(--bg-elevated);color:var(--text-primary);border:1px solid var(--border)}
+  .btn-mint{background:var(--grad-mint);color:var(--text-inverse)}
+  .btn-danger{background:var(--coral);color:white}
+  .btn-ghost{background:transparent;color:var(--violet-light);border:1px solid var(--border-violet)}
+  .btn-sm{padding:6px 14px;font-size:12px;border-radius:var(--r-sm)}
+  .buttons-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .input-demo{display:flex;flex-direction:column;gap:12px}
+  .input-lbl{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .input-field{width:100%;padding:12px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text-primary);font-family:var(--font-body);font-size:14px;outline:none;transition:all .2s}
+  .input-field:focus{border-color:var(--violet);box-shadow:0 0 0 3px var(--violet-dim)}
+  .input-field.error{border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-dim)}
+  .input-error{font-size:11px;color:var(--coral);margin-top:4px}
+  .badges-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .badge{padding:4px 10px;border-radius:var(--r-full);font-size:11px;font-weight:600;border:1px solid;display:inline-flex;align-items:center;gap:4px}
+  .badge-violet{background:var(--violet-dim);border-color:var(--border-violet);color:var(--violet-light)}
+  .badge-mint{background:var(--mint-dim);border-color:var(--border-mint);color:var(--mint)}
+  .badge-coral{background:var(--coral-dim);border-color:rgba(255,95,126,.3);color:var(--coral)}
+  .badge-amber{background:var(--amber-dim);border-color:rgba(255,181,71,.3);color:var(--amber)}
+  .notif-demo{display:flex;flex-direction:column;gap:8px}
+  .notif-card{display:flex;gap:10px;align-items:flex-start;padding:12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);transition:all .2s}
+  .notif-card.unread{border-left:3px solid var(--violet)}
+  .notif-icon-wrap{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .notif-title{font-size:13px;font-weight:600}.notif-msg{font-size:11px;color:var(--text-secondary);margin-top:2px}.notif-time{font-size:10px;color:var(--text-muted);margin-top:4px}
+  .progress-demo{display:flex;flex-direction:column;gap:14px}
+  .progress-top{display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px}
+  .progress-track{height:8px;background:var(--bg-elevated);border-radius:4px;overflow:hidden}
+  .progress-fill{height:100%;border-radius:4px;transition:width 1s ease}
+  .progress-fill.safe{background:var(--grad-mint)}.progress-fill.warn{background:linear-gradient(90deg,var(--amber),#FF8C42)}.progress-fill.danger{background:var(--grad-coral)}
+  .avatar-group{display:flex}
+  .av{width:36px;height:36px;border-radius:11px;border:2px solid var(--bg-surface);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-right:-10px}
+  .av-more{background:var(--bg-elevated);color:var(--text-secondary);font-size:11px}
+  .balance-card-demo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bal-demo-card{padding:16px;border-radius:var(--r-md);border:1px solid;position:relative;overflow:hidden}
+  .bal-demo-card.owe-card{background:var(--coral-dim);border-color:rgba(255,95,126,.2)}
+  .bal-demo-card.get-card{background:var(--mint-dim);border-color:rgba(0,229,176,.2)}
+  .bal-demo-card.spend-card{background:var(--violet-dim);border-color:var(--border-violet)}
+  .bal-demo-card.save-card{background:var(--amber-dim);border-color:rgba(255,181,71,.2)}
+  .bd-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+  .bd-amount{font-family:var(--font-display);font-size:20px;font-weight:800;margin-top:4px}
+  .bd-sub{font-size:10px;opacity:.6;margin-top:2px}.bd-icon{font-size:20px;margin-bottom:6px}
+  .skeleton{background:linear-gradient(90deg,var(--bg-elevated) 25%,var(--bg-glass) 50%,var(--bg-elevated) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--r-sm)}
+  .skeleton-row{display:flex;gap:10px;align-items:center;padding:10px 0}
+  .sk-circle{width:36px;height:36px;border-radius:10px;flex-shrink:0}
+  .sk-lines{flex:1;display:flex;flex-direction:column;gap:6px}
+  .sk-line{height:10px}.sk-line.short{width:60%}
+
+  /* ANIMATIONS */
+  .anim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .anim-card{padding:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);text-align:center}
+  .anim-preview{height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+  .anim-name{font-size:13px;font-weight:600;margin-bottom:4px}.anim-desc{font-size:11px;color:var(--text-muted)}
+  .float-demo{animation:logoFloat 2s ease-in-out infinite;font-size:28px}
+  .pulse-demo{width:40px;height:40px;background:var(--grad-violet);border-radius:50%;animation:pulseRing 1.5s ease-out infinite}
+  .bounce-demo{width:12px;height:12px;background:var(--mint);border-radius:50%;animation:bounce .8s ease-in-out infinite alternate}
+  .spin-demo{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--violet);border-radius:50%;animation:spin .8s linear infinite}
+  .slide-demo{width:40px;height:40px;background:var(--grad-coral);border-radius:10px;animation:slideAnim 1.5s ease-in-out infinite alternate}
+
+  /* ILLUSTRATIONS */
+  .illus-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+  .illus-card{padding:24px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);text-align:center;transition:all .3s;cursor:pointer}
+  .illus-card:hover{border-color:var(--border-violet);transform:translateY(-4px);box-shadow:var(--shadow-violet)}
+  .illus-svg{width:100px;height:100px;margin:0 auto 16px}
+  .illus-name{font-size:13px;font-weight:600}.illus-use{font-size:11px;color:var(--text-muted);margin-top:4px}
+
+  /* ICONS */
+  .icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px}
+  .icon-item{text-align:center;padding:12px 8px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border)}
+  .icon-emoji{font-size:22px;display:block;margin-bottom:4px}.icon-lbl{font-size:9px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">💸 SmartSplit</div>
+    <a class="nav-link" href="#colors">Colors</a>
+    <a class="nav-link" href="#type">Typography</a>
+    <a class="nav-link" href="#screens">Screens</a>
+    <a class="nav-link" href="#components">Components</a>
+    <a class="nav-link" href="#animations">Animations</a>
+    <a class="nav-link" href="#illustrations">Illustrations</a>
+    <a class="nav-link" href="#icons">Icons</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="container">
+    <div class="hero-badge">Complete UI Design System</div>
+    <h1>SmartSplit<br>Design Language</h1>
+    <p>Every color, component, screen &amp; animation — all in one reference guide</p>
+  </div>
+</div>
+
+<!-- COLORS -->
+<section class="section" id="colors">
+  <div class="container">
+    <div class="section-label">01 — Foundation</div>
+    <div class="section-title">Color System</div>
+    <div class="section-sub">Dark-first palette built for financial clarity. Green = money in. Red = money out. Violet = brand identity.</div>
+    <div class="palette-grid">
+      <div class="color-chip"><div class="color-swatch" style="background:#080810"></div><div class="color-info"><div class="color-name">Void</div><div class="color-hex">#080810</div><div class="color-use">App background</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#0F0F1A"></div><div class="color-info"><div class="color-name">Surface</div><div class="color-hex">#0F0F1A</div><div class="color-use">Screen background</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#14141F"></div><div class="color-info"><div class="color-name">Card</div><div class="color-hex">#14141F</div><div class="color-use">Card background</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#1A1A2B"></div><div class="color-info"><div class="color-name">Elevated</div><div class="color-hex">#1A1A2B</div><div class="color-use">Inputs, elevated cards</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:linear-gradient(135deg,#7C5CFC,#B06EFF)"></div><div class="color-info"><div class="color-name" style="color:#9B7FFF">Violet</div><div class="color-hex">#7C5CFC → #B06EFF</div><div class="color-use">Primary brand, CTAs</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:linear-gradient(135deg,#00E5B0,#00C4FF)"></div><div class="color-info"><div class="color-name" style="color:#00E5B0">Mint</div><div class="color-hex">#00E5B0 → #00C4FF</div><div class="color-use">You get money, positive</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:linear-gradient(135deg,#FF5F7E,#FF8C42)"></div><div class="color-info"><div class="color-name" style="color:#FF5F7E">Coral</div><div class="color-hex">#FF5F7E → #FF8C42</div><div class="color-use">You owe money, danger</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#FFB547"></div><div class="color-info"><div class="color-name" style="color:#FFB547">Amber</div><div class="color-hex">#FFB547</div><div class="color-use">Warnings, 80% budget</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#38BDF8"></div><div class="color-info"><div class="color-name" style="color:#38BDF8">Sky</div><div class="color-hex">#38BDF8</div><div class="color-use">Info, trip type badge</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#F0F0FF"></div><div class="color-info"><div class="color-name" style="color:#080810">Text Primary</div><div class="color-hex">#F0F0FF</div><div class="color-use">Headings, key text</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#8888AA"></div><div class="color-info"><div class="color-name">Text Secondary</div><div class="color-hex">#8888AA</div><div class="color-use">Descriptions, body</div></div></div>
+      <div class="color-chip"><div class="color-swatch" style="background:#55556A"></div><div class="color-info"><div class="color-name">Text Muted</div><div class="color-hex">#55556A</div><div class="color-use">Timestamps, labels</div></div></div>
+    </div>
+    <div style="margin-top:32px">
+      <div class="section-label" style="margin-bottom:16px">Balance Cards Color Usage</div>
+      <div class="balance-card-demo">
+        <div class="bal-demo-card owe-card"><div class="bd-icon">📤</div><div class="bd-label">You Owe</div><div class="bd-amount" style="color:var(--coral)">₹1,240</div><div class="bd-sub">3 friends</div></div>
+        <div class="bal-demo-card get-card"><div class="bd-icon">📥</div><div class="bd-label">You Get</div><div class="bd-amount" style="color:var(--mint)">₹3,500</div><div class="bd-sub">5 friends</div></div>
+        <div class="bal-demo-card spend-card"><div class="bd-icon">💸</div><div class="bd-label">Monthly Spend</div><div class="bd-amount" style="color:var(--violet-light)">₹8,200</div><div class="bd-sub">Feb 2025</div></div>
+        <div class="bal-demo-card save-card"><div class="bd-icon">🎯</div><div class="bd-label">Savings Goal</div><div class="bd-amount" style="color:var(--amber)">72%</div><div class="bd-sub">₹3,600 / ₹5,000</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TYPOGRAPHY -->
+<section class="section" id="type">
+  <div class="container">
+    <div class="section-label">02 — Typography</div>
+    <div class="section-title">Type Scale</div>
+    <div class="section-sub">Syne for display/headings — bold, geometric, memorable. DM Sans for body — readable, warm, clean.</div>
+    <div class="type-samples">
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Screen Title</div><div class="type-meta-spec">Syne 32px / 800</div></div><div class="t-h1">Dashboard</div></div>
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Section Heading</div><div class="type-meta-spec">Syne 24px / 700</div></div><div class="t-h2">Recent Activity</div></div>
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Card Title</div><div class="type-meta-spec">Syne 18px / 600</div></div><div class="t-h3">Goa Trip 2025</div></div>
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Body Text</div><div class="type-meta-spec">DM Sans 15px / 400</div></div><div class="t-body">Ramesh paid ₹2,400 for hotel checkout. Split equally among 4 members.</div></div>
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Caption</div><div class="type-meta-spec">DM Sans 12px / 400</div></div><div class="t-caption">Yesterday at 9:45 PM · Food &amp; Drinks</div></div>
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Overline Label</div><div class="type-meta-spec">DM Sans 11px / 600 UC</div></div><div class="t-label">Monthly Summary</div></div>
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Amount — Positive</div><div class="type-meta-spec">Syne 36px / 800</div></div><div class="t-amount positive">+₹3,500</div></div>
+      <div class="type-row"><div class="type-meta"><div class="type-meta-label">Amount — Negative</div><div class="type-meta-spec">Syne 36px / 800</div></div><div class="t-amount negative">-₹1,240</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SCREENS -->
+<section class="section" id="screens">
+  <div class="container">
+    <div class="section-label">03 — Screens</div>
+    <div class="section-title">All Screen Mockups</div>
+    <div class="section-sub">Every screen with layout hierarchy, color treatment, and key UI elements shown.</div>
+    <div class="screens-grid">
+
+      <!-- SPLASH -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="splash-screen"><div class="splash-logo">💸</div><div class="splash-title">SmartSplit</div><div class="splash-sub">Split smart. Settle easy.</div><div class="splash-dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div></div></div></div>
+        <div class="screen-label">Splash Screen</div><div class="screen-tag">Phase 1 · Auth</div>
+      </div>
+
+      <!-- ONBOARDING -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="onboard-screen"><div class="onboard-illus"><div class="onboard-circle">👥<div class="onboard-float f1">💸</div><div class="onboard-float f2">✅</div><div class="onboard-float f3">📊</div></div></div><div class="onboard-title">Split with Friends</div><div class="onboard-desc">Add group expenses in seconds. Everyone sees exactly what they owe.</div><div class="onboard-dots"><div class="od a"></div><div class="od"></div><div class="od"></div></div><div class="mock-btn">Next →</div></div></div></div>
+        <div class="screen-label">Onboarding</div><div class="screen-tag">Phase 1 · Auth</div>
+      </div>
+
+      <!-- LOGIN -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="login-screen"><div style="font-size:32px">👋</div><div class="login-title">Welcome back</div><div class="login-sub">Sign in to your account</div><div class="mock-input focused"><div class="mock-input-label">Email</div><div class="mock-input-val">raj@gmail.com</div></div><div class="mock-input"><div class="mock-input-label">Password</div><div class="mock-input-val">••••••••</div></div><div class="mock-btn">Sign In</div><div class="divider">or continue with</div><div class="social-row"><div class="social-btn">G</div><div class="social-btn">📱</div></div></div></div></div>
+        <div class="screen-label">Login Screen</div><div class="screen-tag">Phase 1 · Auth</div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="dash-screen"><div class="dash-header"><div><div class="dash-greeting">Good morning 🌅</div><div class="dash-name">Hey, Raj!</div></div><div class="bell-btn">🔔<div class="notif-badge">3</div></div></div><div class="balance-cards"><div class="bal-card owe"><div class="bal-label">You Owe</div><div class="bal-amount">₹1,240</div></div><div class="bal-card get"><div class="bal-label">You Get</div><div class="bal-amount">₹3,500</div></div></div><div class="quick-actions"><div class="qa-btn"><span class="qa-icon">➕</span>Add</div><div class="qa-btn"><span class="qa-icon">👥</span>Group</div><div class="qa-btn"><span class="qa-icon">✅</span>Settle</div><div class="qa-btn"><span class="qa-icon">📊</span>Stats</div></div><div class="activity-section"><div class="activity-header"><div class="activity-title">Recent Activity</div><div class="see-all">See all →</div></div><div class="activity-item"><div class="activity-avatar" style="background:rgba(124,92,252,.2);color:var(--violet-light)">R</div><div class="activity-info"><div class="activity-name">Ramesh paid</div><div class="activity-desc">Goa Trip · Hotel</div></div><div class="activity-amount neg">-₹600</div></div><div class="activity-item"><div class="activity-avatar" style="background:rgba(0,229,176,.15);color:var(--mint)">J</div><div class="activity-info"><div class="activity-name">Jay settled</div><div class="activity-desc">Flatmates · Rent</div></div><div class="activity-amount pos">+₹1,000</div></div><div class="activity-item"><div class="activity-avatar" style="background:rgba(255,181,71,.15);color:var(--amber)">M</div><div class="activity-info"><div class="activity-name">You added</div><div class="activity-desc">Personal · Food</div></div><div class="activity-amount" style="color:var(--text-secondary)">₹200</div></div></div></div><div class="tab-bar"><div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-label" style="color:var(--violet-light)">Home</span></div><div class="tab-item"><span class="tab-icon">👥</span><span class="tab-label">Groups</span></div><div class="tab-add"><div class="tab-add-btn">＋</div></div><div class="tab-item"><span class="tab-icon">🤝</span><span class="tab-label">Friends</span></div><div class="tab-item"><span class="tab-icon">📊</span><span class="tab-label">Stats</span></div></div></div></div>
+        <div class="screen-label">Dashboard</div><div class="screen-tag">Phase 3 · Home</div>
+      </div>
+
+      <!-- GROUP DETAIL -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="group-screen"><div class="group-header"><div class="group-emoji">✈️</div><div class="group-name">Goa Trip 2025</div><div class="group-meta">6 members · ₹24,500 total</div></div><div class="group-tabs"><div class="gtab active">Expenses</div><div class="gtab">Balances</div><div class="gtab">Timeline</div><div class="gtab">Summary</div></div><div class="expense-list"><div class="exp-item"><div class="exp-icon">🏨</div><div class="exp-info"><div class="exp-name">Hotel Checkout</div><div class="exp-who">Ramesh paid · 6 people</div></div><div class="exp-amount">₹4,200</div></div><div class="exp-item"><div class="exp-icon">🍕</div><div class="exp-info"><div class="exp-name">Beach Dinner</div><div class="exp-who">You paid · 6 people</div></div><div class="exp-amount">₹2,800</div></div><div class="exp-item"><div class="exp-icon">🚕</div><div class="exp-info"><div class="exp-name">Cab to Airport</div><div class="exp-who">Meet paid · 4 people</div></div><div class="exp-amount">₹1,200</div></div></div></div><div class="tab-bar"><div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-label">Home</span></div><div class="tab-item"><span class="tab-icon">👥</span><span class="tab-label" style="color:var(--violet-light)">Groups</span></div><div class="tab-add"><div class="tab-add-btn">＋</div></div><div class="tab-item"><span class="tab-icon">🤝</span><span class="tab-label">Friends</span></div><div class="tab-item"><span class="tab-icon">📊</span><span class="tab-label">Stats</span></div></div></div></div>
+        <div class="screen-label">Group Detail</div><div class="screen-tag">Phase 4 · Groups</div>
+      </div>
+
+      <!-- ADD EXPENSE -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="add-screen"><div class="add-title">Add Expense</div><div class="amount-display"><span class="amount-currency">₹</span><span class="amount-number">2,400</span></div><div class="mock-input" style="margin-bottom:12px"><div class="mock-input-label">Description</div><div class="mock-input-val">Hotel Checkout</div></div><div class="cat-pills"><div class="pill active">🏨 Stay</div><div class="pill">🍔 Food</div><div class="pill">🚕 Transport</div><div class="pill">🎉 Fun</div></div><div class="split-preview"><div class="split-title">Equal Split — 4 people</div><div class="split-person"><div class="split-name"><div class="mini-avatar" style="background:rgba(124,92,252,.2);color:var(--violet-light)">R</div>Ramesh</div><div style="font-weight:700;color:var(--mint)">₹600</div></div><div class="split-person"><div class="split-name"><div class="mini-avatar" style="background:rgba(0,229,176,.15);color:var(--mint)">J</div>Jay</div><div style="font-weight:700;color:var(--mint)">₹600</div></div><div class="split-person"><div class="split-name"><div class="mini-avatar" style="background:rgba(255,181,71,.15);color:var(--amber)">M</div>Meet</div><div style="font-weight:700;color:var(--mint)">₹600</div></div></div><div class="mock-btn" style="margin-top:12px">Save Expense</div></div></div></div>
+        <div class="screen-label">Add Expense</div><div class="screen-tag">Phase 4 · Groups</div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="analytics-screen"><div class="analytics-title">Analytics</div><div class="donut-container"><svg class="donut-svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="45" fill="none" stroke="#1A1A2B" stroke-width="18"/><circle cx="60" cy="60" r="45" fill="none" stroke="#7C5CFC" stroke-width="18" stroke-dasharray="113 170" stroke-dashoffset="0" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="45" fill="none" stroke="#00E5B0" stroke-width="18" stroke-dasharray="68 215" stroke-dashoffset="-113" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="45" fill="none" stroke="#FF5F7E" stroke-width="18" stroke-dasharray="45 238" stroke-dashoffset="-181" transform="rotate(-90 60 60)"/><circle cx="60" cy="60" r="45" fill="none" stroke="#FFB547" stroke-width="18" stroke-dasharray="34 249" stroke-dashoffset="-226" transform="rotate(-90 60 60)"/></svg><div class="donut-center"><div class="donut-total">₹8.2k</div><div class="donut-label">This Month</div></div></div><div class="cat-legend"><div class="legend-item"><div class="legend-dot" style="background:#7C5CFC"></div><div class="legend-name">Food &amp; Drinks</div><div class="legend-pct" style="color:#7C5CFC">40%</div><div class="legend-amt">₹3,280</div></div><div class="legend-item"><div class="legend-dot" style="background:#00E5B0"></div><div class="legend-name">Transport</div><div class="legend-pct" style="color:#00E5B0">25%</div><div class="legend-amt">₹2,050</div></div><div class="legend-item"><div class="legend-dot" style="background:#FF5F7E"></div><div class="legend-name">Entertainment</div><div class="legend-pct" style="color:#FF5F7E">20%</div><div class="legend-amt">₹1,640</div></div><div class="legend-item"><div class="legend-dot" style="background:#FFB547"></div><div class="legend-name">Shopping</div><div class="legend-pct" style="color:#FFB547">15%</div><div class="legend-amt">₹1,230</div></div></div></div></div></div>
+        <div class="screen-label">Analytics</div><div class="screen-tag">Phase 8 · Analytics</div>
+      </div>
+
+      <!-- FRIENDS -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="friends-screen"><div class="friends-title">Friends</div><div class="search-bar">🔍 Search friends…</div><div class="friend-item"><div class="friend-avatar" style="background:rgba(124,92,252,.2);color:var(--violet-light)">R</div><div class="friend-info"><div class="friend-name">Ramesh Patel</div><div class="friend-last">Goa Trip · 2 days ago</div></div><div class="friend-balance"><div class="friend-bal-amount" style="color:var(--coral)">₹350</div><div class="friend-bal-label">owes you</div><div class="settle-mini-btn">Settle</div></div></div><div class="friend-item"><div class="friend-avatar" style="background:rgba(0,229,176,.15);color:var(--mint)">J</div><div class="friend-info"><div class="friend-name">Jay Shah</div><div class="friend-last">Flatmates · 1 week ago</div></div><div class="friend-balance"><div class="friend-bal-amount" style="color:var(--mint)">₹120</div><div class="friend-bal-label">you owe</div><div class="settle-mini-btn">Pay</div></div></div><div class="friend-item"><div class="friend-avatar" style="background:rgba(255,181,71,.15);color:var(--amber)">M</div><div class="friend-info"><div class="friend-name">Meet Desai</div><div class="friend-last">College · Settled</div></div><div class="friend-balance"><div class="friend-bal-amount" style="color:var(--text-muted)">₹0</div><div class="friend-bal-label">settled ✓</div></div></div></div><div class="tab-bar"><div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-label">Home</span></div><div class="tab-item"><span class="tab-icon">👥</span><span class="tab-label">Groups</span></div><div class="tab-add"><div class="tab-add-btn">＋</div></div><div class="tab-item"><span class="tab-icon">🤝</span><span class="tab-label" style="color:var(--violet-light)">Friends</span></div><div class="tab-item"><span class="tab-icon">📊</span><span class="tab-label">Stats</span></div></div></div></div>
+        <div class="screen-label">Friends List</div><div class="screen-tag">Phase 7 · Friends</div>
+      </div>
+
+      <!-- SETTLE UP -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="settle-screen"><div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Settle Up</div><div class="settle-between"><div><div class="settle-av" style="background:rgba(124,92,252,.2);color:var(--violet-light)">You</div><div style="font-size:9px;color:var(--text-muted);text-align:center;margin-top:4px">You</div></div><div style="font-size:20px;color:var(--text-muted)">→</div><div><div class="settle-av" style="background:rgba(0,229,176,.15);color:var(--mint)">R</div><div style="font-size:9px;color:var(--text-muted);text-align:center;margin-top:4px">Ramesh</div></div></div><div class="settle-amount-box"><div class="settle-lbl">Amount to Settle</div><div class="settle-big">₹350</div></div><div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Payment Method</div><div class="method-row"><div class="method-btn sel">💳 UPI</div><div class="method-btn">💵 Cash</div><div class="method-btn">🏦 Bank</div></div><div class="upi-box"><div><div style="font-size:9px;color:var(--text-muted)">Ramesh's UPI ID</div><div class="upi-id">ramesh@okaxis</div></div><div class="copy-btn">📋 Copy</div></div><div class="mock-input"><div class="mock-input-label">Note</div><div class="mock-input-val">Goa trip settlement</div></div><div class="mock-btn" style="margin-top:12px">✅ Confirm Settlement</div></div></div></div>
+        <div class="screen-label">Settle Up</div><div class="screen-tag">Phase 7 · Friends</div>
+      </div>
+
+      <!-- PROFILE -->
+      <div>
+        <div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><div class="profile-screen"><div class="profile-header"><div class="profile-avatar-wrap"><div class="profile-avatar">R</div><div class="profile-edit-btn">✏️</div></div><div class="profile-name">Raj Mehta</div><div class="profile-email">raj@gmail.com</div></div><div class="stats-row"><div class="stat-box"><div class="stat-val" style="color:var(--violet-light)">6</div><div class="stat-lbl">Groups</div></div><div class="stat-box"><div class="stat-val" style="color:var(--mint)">142</div><div class="stat-lbl">Expenses</div></div><div class="stat-box"><div class="stat-val" style="color:var(--amber)">₹28k</div><div class="stat-lbl">Total</div></div></div><div class="menu-list"><div class="menu-item"><div class="menu-icon" style="background:var(--violet-dim)">🎯</div>Budget Settings<div class="menu-arrow">›</div></div><div class="menu-item"><div class="menu-icon" style="background:var(--mint-dim)">⚙️</div>Preferences<div class="menu-arrow">›</div></div><div class="menu-item"><div class="menu-icon" style="background:var(--amber-dim)">📤</div>Export Data<div class="menu-arrow">›</div></div><div class="menu-item" style="color:var(--coral)"><div class="menu-icon" style="background:var(--coral-dim)">🚪</div>Logout<div class="menu-arrow">›</div></div></div></div></div></div>
+        <div class="screen-label">Profile</div><div class="screen-tag">Phase 10 · Profile</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- COMPONENTS -->
+<section class="section" id="components">
+  <div class="container">
+    <div class="section-label">04 — Components</div>
+    <div class="section-title">UI Component Library</div>
+    <div class="section-sub">Build each once, reuse everywhere. Every component follows the same color rules.</div>
+    <div class="components-grid">
+      <div class="comp-card">
+        <div class="comp-title">Buttons</div>
+        <div class="buttons-row"><button class="btn btn-primary">Save Expense</button><button class="btn btn-secondary">Cancel</button></div>
+        <div class="buttons-row"><button class="btn btn-mint">✅ Settle Up</button><button class="btn btn-danger">Delete</button></div>
+        <div class="buttons-row"><button class="btn btn-ghost btn-sm">+ Add Member</button><button class="btn btn-primary btn-sm">Save</button></div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-title">Input Fields</div>
+        <div class="input-demo">
+          <div><div class="input-lbl">Amount</div><input class="input-field" value="₹2,400" readonly></div>
+          <div><div class="input-lbl">Focused State</div><input class="input-field" style="border-color:var(--violet);box-shadow:0 0 0 3px var(--violet-dim)" value="raj@gmail.com" readonly></div>
+          <div><div class="input-lbl">Error State</div><input class="input-field error" value="invalid@" readonly><div class="input-error">⚠ Enter a valid email</div></div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-title">Badges &amp; Tags</div>
+        <div class="badges-row"><span class="badge badge-violet">◆ Active</span><span class="badge badge-mint">✓ Settled</span><span class="badge badge-coral">⚠ Overdue</span></div>
+        <div class="badges-row"><span class="badge badge-amber">⚡ 80% Budget</span><span class="badge badge-sky" style="background:var(--sky-dim);border-color:rgba(56,189,248,.3);color:var(--sky)">✈️ Trip</span></div>
+        <div class="badges-row"><span class="badge badge-violet">🍔 Food</span><span class="badge badge-mint">🚕 Transport</span><span class="badge badge-coral">🎬 Fun</span></div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-title">Notification Cards</div>
+        <div class="notif-demo">
+          <div class="notif-card unread"><div class="notif-icon-wrap" style="background:var(--coral-dim)">🚨</div><div><div class="notif-title">Budget Alert</div><div class="notif-msg">Food budget 80% used (₹2,400 / ₹3,000)</div><div class="notif-time">2 hours ago</div></div></div>
+          <div class="notif-card unread"><div class="notif-icon-wrap" style="background:var(--mint-dim)">✅</div><div><div class="notif-title">Payment Received</div><div class="notif-msg">Ramesh settled ₹350 with you</div><div class="notif-time">Yesterday</div></div></div>
+          <div class="notif-card"><div class="notif-icon-wrap" style="background:var(--violet-dim)">💸</div><div><div class="notif-title">New Expense Added</div><div class="notif-msg">Jay added Hotel in Goa Trip (₹4,200)</div><div class="notif-time">2 days ago</div></div></div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-title">Budget Progress Bars</div>
+        <div class="progress-demo">
+          <div><div class="progress-top"><span>🍔 Food &amp; Drinks</span><span style="color:var(--mint)">₹1,800 / ₹3,000</span></div><div class="progress-track"><div class="progress-fill safe" style="width:60%"></div></div><div style="font-size:10px;color:var(--text-muted);margin-top:4px">60% used · ₹1,200 left</div></div>
+          <div><div class="progress-top"><span>🚕 Transport</span><span style="color:var(--amber)">₹1,600 / ₹2,000</span></div><div class="progress-track"><div class="progress-fill warn" style="width:80%"></div></div><div style="font-size:10px;color:var(--amber);margin-top:4px">⚡ 80% used · ₹400 left</div></div>
+          <div><div class="progress-top"><span>🎬 Entertainment</span><span style="color:var(--coral)">₹1,100 / ₹1,000</span></div><div class="progress-track"><div class="progress-fill danger" style="width:100%"></div></div><div style="font-size:10px;color:var(--coral);margin-top:4px">🚨 Over budget by ₹100</div></div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-title">Avatar Groups &amp; Sizes</div>
+        <div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Group Members (stacked)</div><div style="display:flex;align-items:center;gap:12px"><div class="avatar-group"><div class="av" style="background:rgba(124,92,252,.2);color:var(--violet-light)">R</div><div class="av" style="background:rgba(0,229,176,.15);color:var(--mint)">J</div><div class="av" style="background:rgba(255,181,71,.15);color:var(--amber)">M</div><div class="av" style="background:rgba(255,95,126,.15);color:var(--coral)">P</div><div class="av av-more">+2</div></div><span style="font-size:12px;color:var(--text-muted)">6 members</span></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Individual Sizes</div><div style="display:flex;align-items:center;gap:10px"><div style="width:48px;height:48px;border-radius:14px;background:var(--grad-violet);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800">R</div><div style="width:36px;height:36px;border-radius:11px;background:rgba(0,229,176,.2);color:var(--mint);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">J</div><div style="width:28px;height:28px;border-radius:8px;background:rgba(255,181,71,.2);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">M</div></div></div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-title">Loading Skeleton</div>
+        <div class="skeleton-row"><div class="skeleton sk-circle"></div><div class="sk-lines"><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div></div>
+        <div class="skeleton-row"><div class="skeleton sk-circle"></div><div class="sk-lines"><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div></div>
+        <div class="skeleton-row"><div class="skeleton sk-circle"></div><div class="sk-lines"><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div></div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-title">Empty States</div>
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:48px;margin-bottom:12px;animation:logoFloat 2s ease-in-out infinite">🎉</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:700;margin-bottom:6px">All Settled Up!</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">No pending balances with friends</div>
+          <button class="btn btn-ghost btn-sm">Add Expense</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANIMATIONS -->
+<section class="section" id="animations">
+  <div class="container">
+    <div class="section-label">05 — Motion</div>
+    <div class="section-title">Animations &amp; Micro-interactions</div>
+    <div class="section-sub">Every interaction should feel alive. These animations guide users and create delight without distraction.</div>
+    <div class="anim-grid">
+      <div class="anim-card"><div class="anim-preview"><div class="float-demo">💸</div></div><div class="anim-name">Float</div><div class="anim-desc">Splash logo, empty state icons, onboarding illustrations</div></div>
+      <div class="anim-card"><div class="anim-preview"><div class="pulse-demo"></div></div><div class="anim-name">Pulse Ring</div><div class="anim-desc">Notification badge, settle button, new expense indicator</div></div>
+      <div class="anim-card"><div class="anim-preview"><div class="bounce-demo"></div></div><div class="anim-name">Bounce</div><div class="anim-desc">Loading dots, success confirmation, tab press feedback</div></div>
+      <div class="anim-card"><div class="anim-preview"><div class="spin-demo"></div></div><div class="anim-name">Spinner</div><div class="anim-desc">API loading states, saving expense, confirming payment</div></div>
+      <div class="anim-card"><div class="anim-preview"><div class="slide-demo"></div></div><div class="anim-name">Slide</div><div class="anim-desc">Screen transitions, swipe to delete, bottom drawer open</div></div>
+      <div class="anim-card"><div class="anim-preview"><div style="text-align:center"><div style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--mint)" id="counter">₹0</div><div style="font-size:10px;color:var(--text-muted)">counting up</div></div></div><div class="anim-name">Count Up</div><div class="anim-desc">Dashboard balance reveal, analytics totals, settle confirm</div></div>
+      <div class="anim-card"><div class="anim-preview"><div style="width:100%;height:8px;background:var(--bg-elevated);border-radius:4px;overflow:hidden"><div id="prog-bar" style="height:100%;background:var(--grad-violet);border-radius:4px;width:0%;transition:width .8s ease"></div></div></div><div class="anim-name">Progress Fill</div><div class="anim-desc">Budget bars animating in on screen load</div></div>
+      <div class="anim-card"><div class="anim-preview"><div style="display:flex;flex-direction:column;gap:6px;width:100%"><div id="fade1" style="height:10px;background:var(--bg-elevated);border-radius:4px;opacity:0;transition:opacity .4s,transform .4s;transform:translateY(8px)"></div><div id="fade2" style="height:10px;background:var(--bg-elevated);border-radius:4px;opacity:0;transition:opacity .4s .1s,transform .4s .1s;transform:translateY(8px)"></div><div id="fade3" style="height:10px;background:var(--bg-elevated);border-radius:4px;opacity:0;transition:opacity .4s .2s,transform .4s .2s;transform:translateY(8px)"></div></div></div><div class="anim-name">Stagger Fade Up</div><div class="anim-desc">List items appear on screen mount, expense feed load</div></div>
+    </div>
+    <div style="margin-top:32px;padding:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg)">
+      <div class="section-label" style="margin-bottom:16px">Animation Rules for React Native</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+        <div style="padding:16px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border)"><div style="color:var(--violet-light);font-weight:700;margin-bottom:8px">Duration</div><div style="font-size:13px;color:var(--text-secondary)">Micro: 150ms · Standard: 300ms · Transitions: 400ms · Page loads: 600ms</div></div>
+        <div style="padding:16px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border)"><div style="color:var(--mint);font-weight:700;margin-bottom:8px">Easing</div><div style="font-size:13px;color:var(--text-secondary)">Ease.out for entrances · Ease.in for exits · Spring for interactive gestures</div></div>
+        <div style="padding:16px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border)"><div style="color:var(--amber);font-weight:700;margin-bottom:8px">Library</div><div style="font-size:13px;color:var(--text-secondary)">react-native-reanimated for gestures · Animated API for simple transitions</div></div>
+        <div style="padding:16px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border)"><div style="color:var(--coral);font-weight:700;margin-bottom:8px">Rule</div><div style="font-size:13px;color:var(--text-secondary)">Haptic feedback on settle &amp; confirm · Never animate layout during scroll</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ILLUSTRATIONS -->
+<section class="section" id="illustrations">
+  <div class="container">
+    <div class="section-label">06 — Illustrations</div>
+    <div class="section-title">SVG Illustrations Per Screen</div>
+    <div class="section-sub">Each empty state gets a unique inline SVG illustration. Keep them consistent — dark background, violet glow, floating elements.</div>
+    <div class="illus-grid">
+      <div class="illus-card"><svg class="illus-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="rgba(124,92,252,.1)" stroke="rgba(124,92,252,.3)" stroke-width="1"/><circle cx="50" cy="50" r="28" fill="rgba(124,92,252,.15)"/><text x="50" y="58" text-anchor="middle" font-size="24">👥</text><circle cx="75" cy="25" r="10" fill="rgba(0,229,176,.2)" stroke="rgba(0,229,176,.4)" stroke-width="1"/><text x="75" y="29" text-anchor="middle" font-size="10">💸</text><circle cx="25" cy="30" r="8" fill="rgba(255,95,126,.2)" stroke="rgba(255,95,126,.4)" stroke-width="1"/><text x="25" y="34" text-anchor="middle" font-size="8">✅</text></svg><div class="illus-name">No Groups Yet</div><div class="illus-use">Groups list empty state</div></div>
+      <div class="illus-card"><svg class="illus-svg" viewBox="0 0 100 100"><rect x="15" y="30" width="70" height="50" rx="8" fill="rgba(124,92,252,.1)" stroke="rgba(124,92,252,.3)" stroke-width="1"/><rect x="25" y="40" width="50" height="8" rx="4" fill="rgba(124,92,252,.3)"/><rect x="25" y="54" width="35" height="6" rx="3" fill="rgba(255,255,255,.1)"/><rect x="25" y="64" width="42" height="6" rx="3" fill="rgba(255,255,255,.08)"/><circle cx="80" cy="28" r="14" fill="rgba(0,229,176,.2)" stroke="rgba(0,229,176,.4)" stroke-width="1.5"/><text x="80" y="33" text-anchor="middle" font-size="14" fill="#00E5B0">✓</text></svg><div class="illus-name">All Settled</div><div class="illus-use">Friends settled empty state</div></div>
+      <div class="illus-card"><svg class="illus-svg" viewBox="0 0 100 100"><ellipse cx="50" cy="75" rx="35" ry="8" fill="rgba(124,92,252,.08)"/><rect x="30" y="20" width="40" height="55" rx="6" fill="rgba(26,26,43,.8)" stroke="rgba(124,92,252,.3)" stroke-width="1"/><rect x="36" y="28" width="28" height="4" rx="2" fill="rgba(124,92,252,.4)"/><rect x="36" y="36" width="20" height="3" rx="1.5" fill="rgba(255,255,255,.1)"/><rect x="36" y="43" width="24" height="3" rx="1.5" fill="rgba(255,255,255,.08)"/><text x="50" y="65" text-anchor="middle" font-size="14">📊</text></svg><div class="illus-name">No Expenses</div><div class="illus-use">Personal expense empty</div></div>
+      <div class="illus-card"><svg class="illus-svg" viewBox="0 0 100 100"><path d="M20 70 L35 45 L50 55 L65 30 L80 40" fill="none" stroke="rgba(124,92,252,.5)" stroke-width="2" stroke-linecap="round"/><path d="M20 70 L35 45 L50 55 L65 30 L80 40 L80 70 Z" fill="rgba(124,92,252,.08)"/><circle cx="35" cy="45" r="4" fill="#7C5CFC"/><circle cx="50" cy="55" r="4" fill="#7C5CFC"/><circle cx="65" cy="30" r="4" fill="#7C5CFC"/><circle cx="80" cy="40" r="4" fill="#7C5CFC"/></svg><div class="illus-name">No Analytics</div><div class="illus-use">Analytics empty state</div></div>
+      <div class="illus-card"><svg class="illus-svg" viewBox="0 0 100 100"><circle cx="50" cy="45" r="25" fill="rgba(0,229,176,.1)" stroke="rgba(0,229,176,.3)" stroke-width="1.5"/><path d="M38 45 L46 53 L62 37" fill="none" stroke="#00E5B0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="25" y="72" width="50" height="6" rx="3" fill="rgba(0,229,176,.2)"/><rect x="33" y="82" width="34" height="4" rx="2" fill="rgba(255,255,255,.06)"/></svg><div class="illus-name">Success State</div><div class="illus-use">After settling payment</div></div>
+      <div class="illus-card"><svg class="illus-svg" viewBox="0 0 100 100"><circle cx="50" cy="45" r="28" fill="rgba(255,95,126,.08)" stroke="rgba(255,95,126,.25)" stroke-width="1"/><text x="50" y="53" text-anchor="middle" font-size="28">🔔</text><circle cx="68" cy="22" r="10" fill="#FF5F7E"/><text x="68" y="26" text-anchor="middle" font-size="10" font-weight="700" fill="white">3</text></svg><div class="illus-name">Notifications</div><div class="illus-use">Notifications screen header</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ICONS -->
+<section class="section" id="icons">
+  <div class="container">
+    <div class="section-label">07 — Iconography</div>
+    <div class="section-title">Category &amp; UI Icons</div>
+    <div class="section-sub">Emoji icons for categories — universal and zero setup. Ionicons for UI chrome elements like tabs, back buttons, settings.</div>
+    <div style="margin-bottom:24px"><div class="section-label" style="margin-bottom:12px">Expense Categories</div><div class="icon-grid"><div class="icon-item"><span class="icon-emoji">🍔</span><span class="icon-lbl">Food</span></div><div class="icon-item"><span class="icon-emoji">🚕</span><span class="icon-lbl">Transport</span></div><div class="icon-item"><span class="icon-emoji">🎬</span><span class="icon-lbl">Entertainment</span></div><div class="icon-item"><span class="icon-emoji">📚</span><span class="icon-lbl">Education</span></div><div class="icon-item"><span class="icon-emoji">🛍️</span><span class="icon-lbl">Shopping</span></div><div class="icon-item"><span class="icon-emoji">💊</span><span class="icon-lbl">Health</span></div><div class="icon-item"><span class="icon-emoji">🏠</span><span class="icon-lbl">Rent</span></div><div class="icon-item"><span class="icon-emoji">📱</span><span class="icon-lbl">Subscriptions</span></div><div class="icon-item"><span class="icon-emoji">🎮</span><span class="icon-lbl">Gaming</span></div><div class="icon-item"><span class="icon-emoji">✈️</span><span class="icon-lbl">Travel</span></div><div class="icon-item"><span class="icon-emoji">🎁</span><span class="icon-lbl">Gifts</span></div><div class="icon-item"><span class="icon-emoji">⚡</span><span class="icon-lbl">Utilities</span></div></div></div>
+    <div style="margin-bottom:24px"><div class="section-label" style="margin-bottom:12px">Group Types</div><div class="icon-grid"><div class="icon-item"><span class="icon-emoji">✈️</span><span class="icon-lbl">Trip</span></div><div class="icon-item"><span class="icon-emoji">🎓</span><span class="icon-lbl">College</span></div><div class="icon-item"><span class="icon-emoji">🏠</span><span class="icon-lbl">Flatmates</span></div><div class="icon-item"><span class="icon-emoji">🎂</span><span class="icon-lbl">Event</span></div><div class="icon-item"><span class="icon-emoji">🍕</span><span class="icon-lbl">Food Run</span></div><div class="icon-item"><span class="icon-emoji">💼</span><span class="icon-lbl">Office</span></div><div class="icon-item"><span class="icon-emoji">🎮</span><span class="icon-lbl">Gaming</span></div><div class="icon-item"><span class="icon-emoji">🏖️</span><span class="icon-lbl">Beach</span></div></div></div>
+    <div><div class="section-label" style="margin-bottom:12px">UI Chrome — Ionicons Names</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px"><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Home tab</span><span>home-outline</span></div><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Groups tab</span><span>people-outline</span></div><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Analytics tab</span><span>bar-chart-outline</span></div><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Notifications</span><span>notifications-outline</span></div><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Back button</span><span>chevron-back</span></div><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Settings</span><span>settings-outline</span></div><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Delete</span><span>trash-outline</span></div><div style="padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);border:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Search</span><span>search-outline</span></div></div></div>
+  </div>
+</section>
+
+<div style="padding:60px 0;text-align:center;border-top:1px solid var(--border)">
+  <div style="font-size:32px;margin-bottom:12px;animation:logoFloat 2s ease-in-out infinite">💸</div>
+  <div style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:8px">SmartSplit Design System</div>
+  <div style="color:var(--text-muted);font-size:13px">Dark · Violet · Mint · Coral · Syne + DM Sans</div>
+</div>
+
+<script>
+function countUp(el,end,dur){let s=0;const step=end/(dur/16);const t=setInterval(()=>{s+=step;if(s>=end){s=end;clearInterval(t)}el.textContent='₹'+Math.floor(s).toLocaleString('en-IN')},16)}
+function animateProgress(){const b=document.getElementById('prog-bar');if(b){b.style.width='0%';setTimeout(()=>b.style.width='72%',100)}}
+function animateStagger(){['fade1','fade2','fade3'].forEach((id,i)=>{const el=document.getElementById(id);if(el){el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(()=>{el.style.opacity='1';el.style.transform='translateY(0)'},i*120)}})}
+const counterEl=document.getElementById('counter');
+function runAll(){if(counterEl)countUp(counterEl,1250,1500);animateProgress();animateStagger()}
+setTimeout(runAll,500);setInterval(runAll,3500);
+</script>
+</body>
+</html>
