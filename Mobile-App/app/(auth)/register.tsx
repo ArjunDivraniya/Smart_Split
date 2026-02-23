@@ -2,11 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { STORAGE_KEYS } from '@/src/constants/categories';
 import { apiService, setAuthToken } from '@/src/services/api';
+import { useGoogleAuth, handleGoogleSignIn } from '@/src/utils/googleAuth';
 
 const COLORS = {
   void: '#080810',
@@ -29,6 +31,34 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Google Auth
+  const { request, response, promptAsync } = useGoogleAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Handle Google Sign-In response
+  useEffect(() => {
+    if (response) {
+      handleGoogleAuthResponse();
+    }
+  }, [response]);
+
+  const handleGoogleAuthResponse = async () => {
+    if (!response) return;
+
+    setGoogleLoading(true);
+    setError('');
+
+    const result = await handleGoogleSignIn(response);
+
+    if (result.success) {
+      router.replace('/(tabs)');
+    } else {
+      setError(result.error || 'Google sign-in failed');
+    }
+
+    setGoogleLoading(false);
+  };
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password || !confirmPassword) {
@@ -75,6 +105,17 @@ export default function RegisterScreen() {
       setError(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignInPress = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await promptAsync();
+    } catch (err: any) {
+      setError('Failed to initiate Google sign-in');
+      setGoogleLoading(false);
     }
   };
 
@@ -149,6 +190,28 @@ export default function RegisterScreen() {
               <Text style={styles.buttonText}>Sign Up</Text>
             )}
           </LinearGradient>
+        </TouchableOpacity>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.googleButton, (googleLoading || !request) && styles.buttonDisabled]}
+          onPress={handleGoogleSignInPress}
+          activeOpacity={0.9}
+          disabled={googleLoading || !request}
+        >
+          {googleLoading ? (
+            <ActivityIndicator color={COLORS.textPrimary} />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={20} color={COLORS.textPrimary} />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         <View style={styles.loginRow}>
@@ -241,6 +304,39 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.7,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 10,
+    color: COLORS.textMuted,
+    fontFamily: 'DMSans_400Regular',
+  },
+  googleButton: {
+    height: 48,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.elevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 8,
+  },
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
+    color: COLORS.textPrimary,
   },
   helper: {
     marginTop: 12,

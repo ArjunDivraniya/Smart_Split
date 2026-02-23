@@ -11,6 +11,8 @@ import userRoutes from './routes/user.routes';
 import tripRoutes from './routes/trip.routes';
 import expenseRoutes from './routes/expense.routes';
 import notificationRoutes from './routes/notification.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import profileRoutes from './routes/profile.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -80,6 +82,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/profile', profileRoutes);
 
 // 404 Handler
 app.use((req, res) => {

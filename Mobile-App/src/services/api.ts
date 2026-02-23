@@ -134,14 +134,17 @@ export const apiService = {
 
   // User endpoints
   user: {
-    getProfile: () =>
-      api.get('/user/profile'),
+    getMe: () =>
+      api.get('/user/me'),
     
     updateProfile: (data: any) =>
-      api.put('/user/profile', data),
+      api.put('/user/update', data),
+    
+    searchUsers: (query: string) =>
+      api.get(`/user/search?q=${query}`),
     
     uploadProfileImage: (formData: FormData) =>
-      api.post('/user/profile/image', formData, {
+      api.post('/user/upload-profile', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       }),
   },
@@ -149,57 +152,43 @@ export const apiService = {
   // Trip endpoints
   trips: {
     getAll: () =>
-      api.get('/trips'),
+      api.get('/trips/user'),
     
     getById: (tripId: string) =>
       api.get(`/trips/${tripId}`),
     
     create: (data: any) =>
-      api.post('/trips', data),
-    
-    update: (tripId: string, data: any) =>
-      api.put(`/trips/${tripId}`, data),
-    
-    delete: (tripId: string) =>
-      api.delete(`/trips/${tripId}`),
+      api.post('/trips/create', data),
     
     addMember: (tripId: string, userId: string) =>
-      api.post(`/trips/${tripId}/members`, { userId }),
+      api.post(`/trips/${tripId}/add-member`, { userId }),
     
-    removeMember: (tripId: string, userId: string) =>
-      api.delete(`/trips/${tripId}/members/${userId}`),
+    endTrip: (tripId: string) =>
+      api.post(`/trips/${tripId}/end`),
+    
+    getSettlements: (tripId: string) =>
+      api.get(`/trips/${tripId}/settlements`),
+    
+    getItinerary: (tripId: string) =>
+      api.get(`/trips/${tripId}/itinerary`),
+    
+    addActivity: (tripId: string, data: any) =>
+      api.post(`/trips/${tripId}/itinerary`, data),
+    
+    getPackingList: (tripId: string) =>
+      api.get(`/trips/${tripId}/packing`),
   },
 
   // Expense endpoints
   expenses: {
-    getAllByTrip: (tripId: string) =>
-      api.get(`/expenses/trip/${tripId}`),
-    
-    getById: (expenseId: string) =>
-      api.get(`/expenses/${expenseId}`),
-    
     create: (data: any) =>
-      api.post('/expenses', data),
+      api.post('/expenses/add', data),
     
     update: (expenseId: string, data: any) =>
       api.put(`/expenses/${expenseId}`, data),
     
     delete: (expenseId: string) =>
       api.delete(`/expenses/${expenseId}`),
-    
-    uploadReceipt: (expenseId: string, formData: FormData) =>
-      api.post(`/expenses/${expenseId}/receipt`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }),
-  },
-
-  // Settlement endpoints
-  settlements: {
-    calculate: (tripId: string) =>
-      api.post(`/trips/${tripId}/settlements/calculate`),
-    
-    markAsPaid: (settlementId: string) =>
-      api.put(`/settlements/${settlementId}/paid`),
   },
 
   // Analytics endpoints
@@ -207,8 +196,14 @@ export const apiService = {
     getTripAnalytics: (tripId: string) =>
       api.get(`/analytics/trip/${tripId}`),
     
-    getUserAnalytics: () =>
-      api.get('/analytics/user'),
+    getRecentActivity: () =>
+      api.get('/analytics/recent-activity'),
+    
+    getDashboardInsights: () =>
+      api.get('/analytics/insights'),
+    
+    getDashboardSummary: () =>
+      api.get('/analytics/dashboard'),
   },
 
   // Notification endpoints
@@ -224,6 +219,39 @@ export const apiService = {
     
     delete: (notificationId: string) =>
       api.delete(`/notifications/${notificationId}`),
+  },
+
+  // Profile endpoints
+  profile: {
+    getStats: () =>
+      api.get('/profile/stats'),
+    
+    updatePreferences: (data: any) =>
+      api.put('/profile/preferences', data),
+    
+    updateBudgetGoals: (data: { monthlyIncome?: number; monthlyBudget?: number; savingsGoal?: number }) =>
+      api.put('/profile/budget-goals', data),
+    
+    updatePaymentPreferences: (data: { paymentPreferences: any }) =>
+      api.put('/profile/payment-preferences', data),
+    
+    updateCategories: (expenseCategories: any) =>
+      api.put('/profile/categories', { expenseCategories }),
+    
+    updatePrivacySettings: (privacySettings: any) =>
+      api.put('/profile/privacy', { privacySettings }),
+    
+    updateSecuritySettings: (securitySettings: any) =>
+      api.put('/profile/security', securitySettings),
+    
+    changePassword: (data: { currentPassword: string; newPassword: string }) =>
+      api.put('/profile/change-password', data),
+    
+    exportData: () =>
+      api.get('/profile/export'),
+    
+    resetSavings: () =>
+      api.post('/profile/reset-savings'),
   },
 };
 
