@@ -253,6 +253,36 @@ export const apiService = {
     resetSavings: () =>
       api.post('/profile/reset-savings'),
   },
+
+  // Group endpoints
+  groups: {
+    getAll: () =>
+      api.get('/groups'),
+    
+    getById: (groupId: string) =>
+      api.get(`/groups/${groupId}`),
+    
+    create: (data: any) =>
+      api.post('/groups', data),
+    
+    update: (groupId: string, data: any) =>
+      api.put(`/groups/${groupId}`, data),
+    
+    delete: (groupId: string) =>
+      api.delete(`/groups/${groupId}`),
+    
+    addExpense: (groupId: string, data: any) =>
+      api.post(`/groups/${groupId}/expenses`, data),
+    
+    removeExpense: (groupId: string, expenseId: string) =>
+      api.delete(`/groups/${groupId}/expenses/${expenseId}`),
+    
+    getTimeline: (groupId: string) =>
+      api.get(`/groups/${groupId}/timeline`),
+    
+    getSettlements: (groupId: string) =>
+      api.get(`/groups/${groupId}/settlements`),
+  },
 };
 
 // Helper function to store auth token
