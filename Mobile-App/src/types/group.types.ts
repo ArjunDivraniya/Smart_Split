@@ -1,6 +1,7 @@
 // Mobile-App/src/types/group.types.ts
 
 export enum GroupType {
+  PERSONAL = 'personal',
   TRIP = 'trip',
   COLLEGE = 'college',
   FOOD = 'food',
@@ -19,6 +20,7 @@ export enum GroupIcon {
 }
 
 export const GROUP_TYPE_MAP = {
+  [GroupType.PERSONAL]: { emoji: '👤', label: 'Personal', description: 'Personal expenses' },
   [GroupType.TRIP]: { emoji: '✈️', label: 'Trip', description: 'Travel & vacation expenses' },
   [GroupType.COLLEGE]: { emoji: '🎓', label: 'College', description: 'Shared college group' },
   [GroupType.FOOD]: { emoji: '🍔', label: 'Food & Snacks', description: 'Food sharing expenses' },
@@ -66,6 +68,7 @@ export interface Expense {
 
 export interface Group {
   id: string;
+  _id?: string; // MongoDB ObjectId (for compatibility)
   name: string;
   type: GroupType;
   emoji?: string;
@@ -78,19 +81,25 @@ export interface Group {
     email: string;
     avatar?: string;
     role: 'creator' | 'member';
+    status?: 'invited' | 'joined' | 'rejected'; // For trip-type groups
   }>;
   expenses?: Expense[];
-  createdBy?: string;
+  createdBy?: {
+    _id?: string;
+    name: string;
+    email: string;
+  } | string; // Can be user object or just user ID string
   createdAt?: Date;
   updatedAt?: Date;
   isActive: boolean;
+  status?: 'active' | 'completed'; // For trip-type groups and regular groups
 
-  // Trip-specific fields
+  // Trip-specific fields (all optional - only present when type='trip')
   tripStartDate?: Date;
   tripEndDate?: Date;
   tripDestination?: string;
-  tripBudget?: number;
-  trackBudget?: boolean; // NEW: Track budget progress
+  tripBudget?: number | null;
+  trackBudget?: boolean;
 
   // Regular group fields
   totalSpent: number;

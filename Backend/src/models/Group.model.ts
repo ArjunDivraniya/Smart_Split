@@ -1,23 +1,27 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IGroupMember extends Document {
+  userId: mongoose.Types.ObjectId;
+  userName: string;
+  email: string;
+  role: 'creator' | 'member';
+  status?: 'invited' | 'joined' | 'rejected'; // For trip-type groups
+}
+
 export interface IGroup extends Document {
   name: string;
-  type: 'trip' | 'college' | 'food' | 'flatmates' | 'event' | 'custom';
+  type: 'personal' | 'trip' | 'college' | 'food' | 'flatmates' | 'event' | 'custom';
   emoji: string;
   description?: string;
   createdBy: mongoose.Types.ObjectId;
-  members: Array<{
-    userId: mongoose.Types.ObjectId;
-    userName: string;
-    email: string;
-    role: 'creator' | 'member';
-  }>;
+  members: IGroupMember[];
   expenses: mongoose.Types.ObjectId[];
   totalSpent: number;
   netBalance: number;
   isActive: boolean;
+  status?: 'active' | 'completed'; // For trip-type groups
   
-  // Trip-specific fields
+  // Trip-specific fields (optional, only for trip-type groups)
   tripStartDate?: Date;
   tripEndDate?: Date;
   tripDestination?: string;
@@ -37,7 +41,7 @@ const GroupSchema: Schema = new Schema(
     },
     type: {
       type: String,
-      enum: ['trip', 'college', 'food', 'flatmates', 'event', 'custom'],
+      enum: ['personal', 'trip', 'college', 'food', 'flatmates', 'event', 'custom'],
       required: true,
     },
     emoji: {
@@ -67,6 +71,11 @@ const GroupSchema: Schema = new Schema(
           enum: ['creator', 'member'],
           default: 'member',
         },
+        status: {
+          type: String,
+          enum: ['invited', 'joined', 'rejected'],
+          default: 'joined', // For non-trip groups, default to joined
+        },
       },
     ],
     expenses: [
@@ -86,6 +95,11 @@ const GroupSchema: Schema = new Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    status: {
+      type: String,
+      enum: ['active', 'completed'],
+      default: 'active',
     },
     
     // Trip-specific fields

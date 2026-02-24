@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import Group from '../models/Group.model';
-import Trip from '../models/Trip.model';
 import User from '../models/User.model';
 
 // Create a new group
@@ -121,22 +120,19 @@ export const getUserGroups = async (req: Request, res: Response) => {
   try {
     console.log('\n📡 ============ GET /api/groups REQUEST ============');
     console.log('Authorization Header:', req.headers.authorization);
-    console.log('All Headers:', JSON.stringify(req.headers, null, 2));
     
     const userId = (req as any).userId;
     console.log('Extracted userId from req:', userId);
-    console.log('userId type:', typeof userId);
-    console.log('userId is truthy:', !!userId);
 
     if (!userId) {
-      console.error('❌ No userId found in request - Auth middleware may have failed');
+      console.error('❌ No userId found in request');
       return res.status(401).json({
         success: false,
         error: 'Unauthorized - No user ID',
       });
     }
 
-    // Query Groups collection - MongoDB will handle ObjectId matching
+    // Query only Groups collection - includes both regular groups and migrated trips
     console.log('Searching Group collection...');
     const groups = await Group.find({
       $or: [
@@ -147,25 +143,9 @@ export const getUserGroups = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
     
-    console.log(`βœ… Found ${groups.length} groups`);
-    if (groups.length > 0) {
-      console.log('📋 Sample group:', JSON.stringify(groups[0], null, 2));
-    }
+    console.log(`✅ Found ${groups.length} groups`);
 
-    // Query Trips collection
-    console.log('Searching Trip collection...');
-    const trips = await Trip.find({
-      $or: [
-        { createdBy: userId },
-        { 'members.userId': userId },
-      ],
-    })
-      .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
-    
-    console.log(`✅ Found ${trips.length} trips`);
-
-    // Map _id to id for groups - Convert to plain objects first
+    // Convert Mongoose documents to plain objects with proper id field
     const mappedGroups = groups.map((group: any) => {
       const groupObj = group.toObject ? group.toObject() : group;
       return {
@@ -174,46 +154,12 @@ export const getUserGroups = async (req: Request, res: Response) => {
       };
     });
 
-    // Map trips to group format for consistency
-    const mappedTrips = trips.map((trip: any) => {
-      const tripObj = trip.toObject ? trip.toObject() : trip;
-      return {
-        id: tripObj._id.toString(),
-        type: 'trip',
-        name: tripObj.name,
-        emoji: '✈️',
-        description: '',
-        createdBy: tripObj.createdBy,
-        members: tripObj.members?.map((m: any) => ({
-          userId: m.userId?.toString?.() || m.userId,
-          userName: m.name || 'Unknown',
-          email: m.email || '',
-          role: 'member',
-        })) || [],
-        expenses: tripObj.expenses || [],
-        totalSpent: 0,
-        netBalance: 0,
-        isActive: tripObj.status === 'active',
-        tripStartDate: tripObj.startDate,
-        tripEndDate: tripObj.endDate,
-        tripDestination: tripObj.destination,
-        tripBudget: null,
-        trackBudget: false,
-        createdAt: tripObj.createdAt,
-        updatedAt: tripObj.createdAt,
-      };
-    });
-
-    // Combine and sort by date
-    const allGroups = [...mappedGroups, ...mappedTrips].sort(
-      (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    console.log(`🎉 Returning ${allGroups.length} total groups/trips`);
+    console.log(`🎉 Returning ${mappedGroups.length} groups`);
+    console.log('═══════════════════════════════════════════════════\n');
 
     res.status(200).json({
       success: true,
-      data: allGroups,
+      data: mappedGroups,
     });
   } catch (error: any) {
     console.error('❌ Error fetching groups:', error);
