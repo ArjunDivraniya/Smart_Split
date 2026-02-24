@@ -119,12 +119,17 @@ export const createGroup = async (req: Request, res: Response) => {
 // Get all groups for a user
 export const getUserGroups = async (req: Request, res: Response) => {
   try {
+    console.log('\n📡 ============ GET /api/groups REQUEST ============');
+    console.log('Authorization Header:', req.headers.authorization);
+    console.log('All Headers:', JSON.stringify(req.headers, null, 2));
+    
     const userId = (req as any).userId;
-    console.log('πŸ"„ Fetching groups for user:', userId);
-    console.log('πŸ"„ User ID type:', typeof userId);
+    console.log('Extracted userId from req:', userId);
+    console.log('userId type:', typeof userId);
+    console.log('userId is truthy:', !!userId);
 
     if (!userId) {
-      console.error('❌ No userId found in request');
+      console.error('❌ No userId found in request - Auth middleware may have failed');
       return res.status(401).json({
         success: false,
         error: 'Unauthorized - No user ID',
@@ -158,48 +163,53 @@ export const getUserGroups = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
     
-    console.log(`βœ… Found ${trips.length} trips`);
+    console.log(`✅ Found ${trips.length} trips`);
 
-    // Map _id to id for groups
-    const mappedGroups = groups.map((group: any) => ({
-      id: group._id.toString(),
-      type: group.type || 'trip',
-      ...group,
-    }));
+    // Map _id to id for groups - Convert to plain objects first
+    const mappedGroups = groups.map((group: any) => {
+      const groupObj = group.toObject ? group.toObject() : group;
+      return {
+        id: groupObj._id.toString(),
+        ...groupObj,
+      };
+    });
 
     // Map trips to group format for consistency
-    const mappedTrips = trips.map((trip: any) => ({
-      id: trip._id.toString(),
-      type: 'trip',
-      name: trip.name,
-      emoji: '✈️',
-      description: '',
-      createdBy: trip.createdBy,
-      members: trip.members?.map((m: any) => ({
-        userId: m.userId?.toString?.() || m.userId,
-        userName: m.name || 'Unknown',
-        email: m.email || '',
-        role: 'member',
-      })) || [],
-      expenses: trip.expenses || [],
-      totalSpent: 0,
-      netBalance: 0,
-      isActive: trip.status === 'active',
-      tripStartDate: trip.startDate,
-      tripEndDate: trip.endDate,
-      tripDestination: trip.destination,
-      tripBudget: null,
-      trackBudget: false,
-      createdAt: trip.createdAt,
-      updatedAt: trip.createdAt,
-    }));
+    const mappedTrips = trips.map((trip: any) => {
+      const tripObj = trip.toObject ? trip.toObject() : trip;
+      return {
+        id: tripObj._id.toString(),
+        type: 'trip',
+        name: tripObj.name,
+        emoji: '✈️',
+        description: '',
+        createdBy: tripObj.createdBy,
+        members: tripObj.members?.map((m: any) => ({
+          userId: m.userId?.toString?.() || m.userId,
+          userName: m.name || 'Unknown',
+          email: m.email || '',
+          role: 'member',
+        })) || [],
+        expenses: tripObj.expenses || [],
+        totalSpent: 0,
+        netBalance: 0,
+        isActive: tripObj.status === 'active',
+        tripStartDate: tripObj.startDate,
+        tripEndDate: tripObj.endDate,
+        tripDestination: tripObj.destination,
+        tripBudget: null,
+        trackBudget: false,
+        createdAt: tripObj.createdAt,
+        updatedAt: tripObj.createdAt,
+      };
+    });
 
     // Combine and sort by date
     const allGroups = [...mappedGroups, ...mappedTrips].sort(
       (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    console.log(`πŸŽ‰ Returning ${allGroups.length} total groups/trips`);
+    console.log(`🎉 Returning ${allGroups.length} total groups/trips`);
 
     res.status(200).json({
       success: true,
