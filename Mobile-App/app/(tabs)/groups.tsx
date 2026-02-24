@@ -1,8 +1,8 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '@/src/services';
 import { GroupCard } from '@/src/components/groups/GroupCard';
@@ -17,19 +17,38 @@ export default function GroupsScreen() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Fetch groups on mount
     useEffect(() => {
         fetchGroups();
     }, []);
+
+    // Refetch groups when tab is focused
+    useFocusEffect(
+        useCallback(() => {
+            fetchGroups();
+        }, [])
+    );
 
     const fetchGroups = async () => {
         try {
             setLoading(true);
             setError(null);
+            console.log('πŸ"„ Fetching groups from API...');
             const response = await apiService.groups.getAll();
+            console.log('βœ… Groups fetched successfully:', response.data?.length || 0, 'groups');
             setGroups(response.data || []);
         } catch (err: any) {
-            console.error('Error fetching groups:', err);
-            setError(err.response?.data?.message || 'Failed to load groups');
+            console.error('❌ Error fetching groups:', err);
+            console.error('Full error object:', JSON.stringify(err, null, 2));
+            
+            const errorMessage = 
+                err?.response?.data?.error || 
+                err?.response?.data?.message || 
+                err?.message || 
+                'Failed to load groups';
+            
+            console.error('📢 Error message:', errorMessage);
+            setError(errorMessage);
             setGroups([]);
         } finally {
             setLoading(false);

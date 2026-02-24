@@ -115,7 +115,7 @@ export default function CreateGroupScreen() {
       console.error('Error creating group:', error);
       Alert.alert(
         'Error',
-        error.response?.data?.message || 'Failed to create group'
+        error.response?.data?.error || error.response?.data?.message || 'Failed to create group'
       );
     } finally {
       setLoading(false);

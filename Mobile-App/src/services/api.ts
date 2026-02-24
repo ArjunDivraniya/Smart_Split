@@ -6,27 +6,35 @@ import { Platform } from 'react-native';
 const getDevBaseUrl = (): string => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) {
-    console.log('Using EXPO_PUBLIC_API_URL:', envUrl);
+    console.log('✅ Using EXPO_PUBLIC_API_URL:', envUrl);
     return envUrl;
   }
 
   // Try to get host from Expo config (LAN IP auto-detected)
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.hostUri;
-  if (hostUri && !hostUri.includes('localhost')) {
-    const host = hostUri.split(':')[0];
-    console.log('Using Expo hostUri:', host);
-    return `http://${host}:5000/api`;
+  
+  // For development on Expo Go/Web: localhost works
+  if (hostUri?.includes('localhost') || Platform.OS === 'web') {
+    console.log('✅ Using localhost for web/local development');
+    return 'http://localhost:5000/api';
   }
 
-  // For Android emulator only (NOT physical devices)
+  // For Android emulator
   if (Platform.OS === 'android' && hostUri?.includes('localhost')) {
-    console.log('Using Android Emulator fallback: 10.0.2.2');
+    console.log('✅ Using Android Emulator: 10.0.2.2');
     return 'http://10.0.2.2:5000/api';
   }
 
-  // Fallback for physical devices
-  console.log('Using physical device fallback: 192.168.43.155');
-  return 'http://192.168.43.155:5000/api';
+  // For physical device: use the Expo hostUri (LAN IP)
+  if (hostUri && !hostUri.includes('localhost')) {
+    const host = hostUri.split(':')[0];
+    console.log('✅ Using Expo hostUri (LAN IP):', host);
+    return `http://${host}:5000/api`;
+  }
+
+  // Final fallback: try localhost
+  console.log('⚠️ No detected host, using localhost fallback');
+  return 'http://localhost:5000/api';
 };
 
 // Backend API Base URL
