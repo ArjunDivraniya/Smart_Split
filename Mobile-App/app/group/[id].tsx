@@ -81,8 +81,7 @@ export default function GroupDetailScreen() {
   };
 
   const handleAddExpense = () => {
-    // TODO: Implement add expense flow
-    Alert.alert('Coming Soon', 'Add expense functionality will be implemented next');
+    router.push(`/group/add-expense?id=${id}`);
   };
 
   if (loading || !group) {
