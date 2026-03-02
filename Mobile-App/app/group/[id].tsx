@@ -2,11 +2,9 @@ import {
   StyleSheet,
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -15,7 +13,11 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiService } from '@/src/services';
 import { Group, GroupType } from '@/src/types/group.types';
-import { TimelineTab } from '@/src/components/groups/TimelineTab';
+import { ExpensesTab } from '@/components/ExpensesTab';
+import { BalancesTab } from '@/components/BalancesTab';
+import { TimelineTab } from '@/components/TimelineTab';
+import { SummaryTab } from '@/components/SummaryTab';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Expense {
   id: string;
@@ -39,10 +41,14 @@ export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams();
 
   const [group, setGroup] = useState<Group | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balance' | 'timeline'>('expenses');
+  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'timeline' | 'summary'>('expenses');
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [currentUserName, setCurrentUserName] = useState('');
+
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -50,16 +56,21 @@ export default function GroupDetailScreen() {
     }
   }, [id]);
 
+  const loadCurrentUser = async () => {
+    try {
+      const userResponse = await apiService.user.getMe();
+      setCurrentUserId(userResponse.data._id);
+      setCurrentUserName(userResponse.data.name);
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
+
   const fetchGroupDetails = async () => {
     try {
       setLoading(true);
       const groupResponse = await apiService.groups.getById(id as string);
       setGroup(groupResponse.data);
-      setExpenses(groupResponse.data.expenses || []);
-
-      // Fetch settlements
-      const settlementsResponse = await apiService.groups.getSettlements(id as string);
-      setSettlements(settlementsResponse.data || []);
     } catch (error: any) {
       console.error('Error fetching group:', error);
       Alert.alert('Error', 'Failed to load group details');
@@ -70,26 +81,8 @@ export default function GroupDetailScreen() {
   };
 
   const handleAddExpense = () => {
-    router.push(`/group/${id}/add-expense` as any);
-  };
-
-  const handleDeleteExpense = async (expenseId: string) => {
-    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await apiService.groups.removeExpense(id as string, expenseId);
-            setExpenses(expenses.filter((e) => e.id !== expenseId));
-            Alert.alert('Success', 'Expense deleted');
-          } catch (error) {
-            Alert.alert('Error', 'Failed to delete expense');
-          }
-        },
-      },
-    ]);
+    // TODO: Implement add expense flow
+    Alert.alert('Coming Soon', 'Add expense functionality will be implemented next');
   };
 
   if (loading || !group) {
@@ -101,6 +94,54 @@ export default function GroupDetailScreen() {
   }
 
   const isTrip = group.type === GroupType.TRIP;
+  const tabs = isTrip 
+    ? ['expenses', 'balances', 'timeline', 'summary']
+    : ['expenses', 'balances', 'summary'];
+
+  const renderTabContent = () => {
+    if (!currentUserId) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.violet} />
+        </View>
+      );
+    }
+
+    switch (activeTab) {
+      case 'expenses':
+        return (
+          <ExpensesTab
+            groupId={id as string}
+            currentUserId={currentUserId}
+            onAddExpense={handleAddExpense}
+          />
+        );
+      case 'balances':
+        return (
+          <BalancesTab
+            groupId={id as string}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
+        );
+      case 'timeline':
+        return (
+          <TimelineTab
+            groupId={id as string}
+            currentUserId={currentUserId}
+          />
+        );
+      case 'summary':
+        return (
+          <SummaryTab
+            groupId={id as string}
+            currentUserId={currentUserId}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -145,7 +186,7 @@ export default function GroupDetailScreen() {
 
       {/* Tabs */}
       <View style={[styles.tabBar, { borderBottomColor: colors.elevated }]}>
-        {['expenses', 'balance', ...(isTrip ? ['timeline'] : [])].map((tab) => (
+        {tabs.map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[
@@ -170,112 +211,9 @@ export default function GroupDetailScreen() {
         ))}
       </View>
 
-      {/* Content */}
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Expenses Tab */}
-        {activeTab === 'expenses' && (
-          <View>
-            {expenses.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="receipt-outline" size={48} color={colors.icon} />
-                <Text style={[styles.emptyTitle, { color: colors.text }]}>No Expenses</Text>
-                <Text style={[styles.emptyDesc, { color: colors.icon }]}>
-                  Add your first expense to this group
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={expenses}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View
-                    style={[
-                      styles.expenseItem,
-                      { backgroundColor: colors.elevated, borderColor: colors.card },
-                    ]}
-                  >
-                    <View style={styles.expenseContent}>
-                      <View>
-                        <Text style={[styles.expenseDesc, { color: colors.text }]}>
-                          {item.description}
-                        </Text>
-                        <Text style={[styles.expenseCategory, { color: colors.icon }]}>
-                          {item.category} • Paid by {item.paidBy}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.expenseAmount, { color: colors.mint }]}>
-                      ₹{item.amount}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteExpense(item.id)}
-                      style={styles.deleteButton}
-                    >
-                      <Ionicons name="trash" size={18} color={colors.coral} />
-                    </TouchableOpacity>
-                  </View>
-                )}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-              />
-            )}
-          </View>
-        )}
-
-        {/* Balance Tab */}
-        {activeTab === 'balance' && (
-          <View>
-            {settlements.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="checkmark-circle" size={48} color={colors.mint} />
-                <Text style={[styles.emptyTitle, { color: colors.text }]}>All Settled</Text>
-                <Text style={[styles.emptyDesc, { color: colors.icon }]}>
-                  No pending settlements
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={settlements}
-                keyExtractor={(_, index) => index.toString()}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View
-                    style={[
-                      styles.settlementItem,
-                      { backgroundColor: colors.elevated, borderColor: colors.card },
-                    ]}
-                  >
-                    <View style={styles.settlementContent}>
-                      <Text style={[styles.settlementText, { color: colors.text }]}>
-                        <Text style={{ fontFamily: 'DMSans_600SemiBold' }}>{item.from}</Text> owes{' '}
-                        <Text style={{ fontFamily: 'DMSans_600SemiBold' }}>{item.to}</Text>
-                      </Text>
-                    </View>
-                    <Text style={[styles.settlementAmount, { color: colors.coral }]}>
-                      ₹{item.amount}
-                    </Text>
-                  </View>
-                )}
-              />
-            )}
-          </View>
-        )}
-
-        {/* Timeline Tab (if trip) */}
-        {activeTab === 'timeline' && isTrip && (
-          <TimelineTab group={group} expenses={expenses} />
-        )}
-      </ScrollView>
-
-      {/* Add Expense Button */}
-      <View style={[styles.footer, { borderTopColor: colors.elevated }]}>
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.violet }]}
-          onPress={handleAddExpense}
-        >
-          <Ionicons name="add" size={24} color="#FFF" />
-          <Text style={styles.addButtonText}>Add Expense</Text>
-        </TouchableOpacity>
+      {/* Tab Content */}
+      <View style={styles.tabContent}>
+        {renderTabContent()}
       </View>
     </View>
   );
@@ -284,6 +222,11 @@ export default function GroupDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -350,99 +293,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_600SemiBold',
     textAlign: 'center',
   },
-  content: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Syne',
-    marginTop: 12,
-  },
-  emptyDesc: {
-    fontSize: 12,
-    fontFamily: 'DMSans_400Regular',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  expenseItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 12,
-  },
-  expenseContent: {
+  tabContent: {
     flex: 1,
-  },
-  expenseDesc: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'DMSans_500Medium',
-  },
-  expenseCategory: {
-    fontSize: 12,
-    fontFamily: 'DMSans_400Regular',
-    marginTop: 4,
-  },
-  expenseAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'DMSans_600SemiBold',
-  },
-  deleteButton: {
-    padding: 8,
-  },
-  separator: {
-    height: 8,
-  },
-  settlementItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  settlementContent: {
-    flex: 1,
-  },
-  settlementText: {
-    fontSize: 13,
-    fontFamily: 'DMSans_400Regular',
-  },
-  settlementAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'DMSans_600SemiBold',
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  addButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'DMSans_600SemiBold',
   },
 });

@@ -81,7 +81,8 @@ export const getUserTrips = async (req: AuthRequest, res: Response) => {
     const tripStats: Record<string, { total: number; balance: number }> = {};
     
     expenses.forEach((expense) => {
-      const tid = expense.trip.toString();
+      const tid = expense.trip?.toString();
+      if (!tid) return;
       if (!tripStats[tid]) tripStats[tid] = { total: 0, balance: 0 };
       tripStats[tid].total += expense.amount;
 

@@ -102,25 +102,30 @@ const GroupSchema: Schema = new Schema(
       default: 'active',
     },
     
-    // Trip-specific fields
+    // Trip-specific fields (optional - only present for trip type groups)
     tripStartDate: {
       type: Date,
+      required: false,
       default: null,
     },
     tripEndDate: {
       type: Date,
+      required: false,
       default: null,
     },
     tripDestination: {
       type: String,
-      default: '',
+      required: false,
+      default: null,
     },
     tripBudget: {
       type: Number,
+      required: false,
       default: null,
     },
     trackBudget: {
       type: Boolean,
+      required: false,
       default: false,
     },
   },

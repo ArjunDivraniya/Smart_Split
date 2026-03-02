@@ -6,6 +6,8 @@ import {
   updateGroup,
   deleteGroup,
   getGroupSettlements,
+  recordGroupSettlement,
+  getGroupSummary,
   getGroupTimeline,
   addGroupExpense,
   removeGroupExpense,
@@ -111,10 +113,24 @@ router.delete('/:id', deleteGroup);
 
 /**
  * @route GET /api/groups/:id/settlements
- * @desc Get settlement information for a group
+ * @desc Get optimized settlement information for a group
  * @access Private
  */
 router.get('/:id/settlements', getGroupSettlements);
+
+/**
+ * @route POST /api/groups/:id/settlements
+ * @desc Record a completed settlement transaction
+ * @access Private
+ */
+router.post('/:id/settlements', recordGroupSettlement);
+
+/**
+ * @route GET /api/groups/:id/summary
+ * @desc Get summary analytics for a group
+ * @access Private
+ */
+router.get('/:id/summary', getGroupSummary);
 
 /**
  * @route GET /api/groups/:id/timeline

@@ -290,6 +290,21 @@ export const apiService = {
     
     getSettlements: (groupId: string) =>
       api.get(`/groups/${groupId}/settlements`),
+    
+    recordSettlement: (groupId: string, data: { fromUserId: string; toUserId: string; amount: number; note?: string }) =>
+      api.post(`/groups/${groupId}/settlements`, data),
+    
+    getSummary: (groupId: string) =>
+      api.get(`/groups/${groupId}/summary`),
+  },
+
+  // Expense endpoints (group-specific)
+  groupExpenses: {
+    getAll: (groupId: string, params?: { paid?: string; category?: string; search?: string; sortBy?: string; sortOrder?: string }) =>
+      api.get(`/expenses/group/${groupId}`, { params }),
+    
+    getBalances: (groupId: string) =>
+      api.get(`/expenses/group/${groupId}/balances`),
   },
 };
 

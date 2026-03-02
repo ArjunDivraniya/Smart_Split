@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEffect, useState, useCallback } from 'react';
@@ -35,8 +35,33 @@ export default function GroupsScreen() {
             setError(null);
             console.log('πŸ"„ Fetching groups from API...');
             const response = await apiService.groups.getAll();
-            console.log('βœ… Groups fetched successfully:', response.data?.length || 0, 'groups');
-            setGroups(response.data || []);
+            const payload = response?.data;
+            const groupsData: Group[] = Array.isArray(payload)
+                ? payload
+                : Array.isArray(payload?.data)
+                    ? payload.data
+                    : [];
+
+            console.log('βœ… Groups fetched successfully:', groupsData.length, 'groups');
+            
+            // Log group types to verify unified data
+            const groupsByType: Record<string, number> = {};
+            groupsData.forEach((group: Group) => {
+                groupsByType[group.type] = (groupsByType[group.type] || 0) + 1;
+            });
+            console.log('πŸ"ƒ Group types distribution:', groupsByType);
+            
+            // Verify both id and _id are present in the unified response
+            if (groupsData.length > 0) {
+                const firstGroup = groupsData[0];
+                console.log('πŸ"Ž Sample group structure:', {
+                    hasId: !!firstGroup.id,
+                    has_id: !!firstGroup._id,
+                    type: firstGroup.type
+                });
+            }
+            
+            setGroups(groupsData);
         } catch (err: any) {
             console.error('❌ Error fetching groups:', err);
             console.error('Full error object:', JSON.stringify(err, null, 2));
@@ -119,6 +144,7 @@ export default function GroupsScreen() {
             ) : (
                 <FlatList
                     data={groups}
+                    style={styles.list}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <GroupCard
@@ -126,7 +152,6 @@ export default function GroupsScreen() {
                             onPress={() => handleGroupPress(item.id)}
                         />
                     )}
-                    scrollEnabled={false}
                     contentContainerStyle={styles.listContent}
                     ItemSeparatorComponent={() => (
                         <View style={[styles.separator, { backgroundColor: colors.elevated }]} />
@@ -221,6 +246,9 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontFamily: 'DMSans_600SemiBold',
         fontSize: 14,
+    },
+    list: {
+        flex: 1,
     },
     listContent: {
         paddingHorizontal: 16,

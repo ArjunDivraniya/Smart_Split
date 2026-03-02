@@ -1,8 +1,165 @@
 import { Request, Response } from 'express';
 import Group from '../models/Group.model';
 import User from '../models/User.model';
+import Expense from '../models/Expense.model';
+import Settlement from '../models/Settlement.model';
 
-// Create a new group
+const toStringId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value._id) return String(value._id);
+  return String(value);
+};
+
+const getMapValue = (source: any, key: string): number => {
+  if (!source) return 0;
+  if (source instanceof Map) return Number(source.get(key) || 0);
+  if (typeof source === 'object') return Number(source[key] || 0);
+  return 0;
+};
+
+const calculateExpenseShares = (expense: any, participantIds: string[]): Record<string, number> => {
+  const amount = Number(expense.amount || 0);
+  const safeParticipants = participantIds.length > 0 ? participantIds : [toStringId(expense.paidBy)];
+  const shares: Record<string, number> = {};
+
+  if (expense.splitType === 'unequally') {
+    let assignedTotal = 0;
+    safeParticipants.forEach((id) => {
+      const value = getMapValue(expense.splitAmounts, id);
+      shares[id] = value;
+      assignedTotal += value;
+    });
+
+    if (assignedTotal <= 0) {
+      const equal = amount / safeParticipants.length;
+      safeParticipants.forEach((id) => (shares[id] = equal));
+    }
+
+    return shares;
+  }
+
+  if (expense.splitType === 'percentage') {
+    safeParticipants.forEach((id) => {
+      const pct = getMapValue(expense.splitPercentages, id);
+      shares[id] = (amount * pct) / 100;
+    });
+    return shares;
+  }
+
+  if (expense.splitType === 'shares') {
+    let totalUnits = 0;
+    safeParticipants.forEach((id) => {
+      totalUnits += getMapValue(expense.splitShares, id);
+    });
+
+    if (totalUnits > 0) {
+      safeParticipants.forEach((id) => {
+        const units = getMapValue(expense.splitShares, id);
+        shares[id] = (amount * units) / totalUnits;
+      });
+      return shares;
+    }
+  }
+
+  const equalShare = amount / safeParticipants.length;
+  safeParticipants.forEach((id) => {
+    shares[id] = equalShare;
+  });
+
+  return shares;
+};
+
+const buildBalanceRows = (expenses: any[], usersMap: Record<string, string>) => {
+  const balances: Record<string, { userId: string; userName: string; netBalance: number; paid: number; owedShare: number }> = {};
+
+  Object.entries(usersMap).forEach(([userId, userName]) => {
+    balances[userId] = { userId, userName, netBalance: 0, paid: 0, owedShare: 0 };
+  });
+
+  expenses.forEach((expense: any) => {
+    const payerId = toStringId(expense.paidBy);
+    const amount = Number(expense.amount || 0);
+    const participants = Array.isArray(expense.splitBetween)
+      ? expense.splitBetween.map((item: any) => toStringId(item)).filter(Boolean)
+      : [];
+
+    if (!participants.length) participants.push(payerId);
+
+    if (!balances[payerId]) {
+      balances[payerId] = { userId: payerId, userName: 'Unknown', netBalance: 0, paid: 0, owedShare: 0 };
+    }
+
+    balances[payerId].paid += amount;
+    balances[payerId].netBalance += amount;
+
+    const shares = calculateExpenseShares(expense, participants);
+    participants.forEach((participantId: string) => {
+      if (!balances[participantId]) {
+        balances[participantId] = { userId: participantId, userName: 'Unknown', netBalance: 0, paid: 0, owedShare: 0 };
+      }
+      const shareAmount = Number(shares[participantId] || 0);
+      balances[participantId].owedShare += shareAmount;
+      balances[participantId].netBalance -= shareAmount;
+    });
+  });
+
+  return Object.values(balances).map((row) => ({
+    ...row,
+    netBalance: Number(row.netBalance.toFixed(2)),
+    paid: Number(row.paid.toFixed(2)),
+    owedShare: Number(row.owedShare.toFixed(2)),
+  }));
+};
+
+const optimizeSettlementGraph = (balanceRows: Array<{ userId: string; userName: string; netBalance: number }>) => {
+  const creditors = balanceRows
+    .filter((row) => row.netBalance > 0.01)
+    .map((row) => ({ ...row, amount: row.netBalance }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const debtors = balanceRows
+    .filter((row) => row.netBalance < -0.01)
+    .map((row) => ({ ...row, amount: Math.abs(row.netBalance) }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const settlements: Array<{
+    fromUserId: string;
+    fromUserName: string;
+    toUserId: string;
+    toUserName: string;
+    amount: number;
+  }> = [];
+
+  let creditorIndex = 0;
+  let debtorIndex = 0;
+
+  while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
+    const creditor = creditors[creditorIndex];
+    const debtor = debtors[debtorIndex];
+    const amount = Number(Math.min(creditor.amount, debtor.amount).toFixed(2));
+
+    if (amount > 0) {
+      settlements.push({
+        fromUserId: debtor.userId,
+        fromUserName: debtor.userName,
+        toUserId: creditor.userId,
+        toUserName: creditor.userName,
+        amount,
+      });
+    }
+
+    creditor.amount = Number((creditor.amount - amount).toFixed(2));
+    debtor.amount = Number((debtor.amount - amount).toFixed(2));
+
+    if (creditor.amount <= 0.01) creditorIndex += 1;
+    if (debtor.amount <= 0.01) debtorIndex += 1;
+  }
+
+  return settlements;
+};
+
+// Create a new group (unified schema supports both regular groups and trip groups)
 export const createGroup = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
@@ -60,7 +217,7 @@ export const createGroup = async (req: Request, res: Response) => {
       }
     }
 
-    // Create the group
+    // Create the group (unified schema)
     const newGroup = new Group({
       name,
       type,
@@ -78,6 +235,7 @@ export const createGroup = async (req: Request, res: Response) => {
       totalSpent: 0,
       netBalance: 0,
       isActive: true,
+      // Trip-specific fields only set for trip type
       ...(type === 'trip' && {
         tripStartDate: new Date(tripStartDate),
         tripEndDate: new Date(tripEndDate),
@@ -92,19 +250,21 @@ export const createGroup = async (req: Request, res: Response) => {
     // Fetch the created group with populated references
     const populatedGroup = await Group.findById(newGroup._id)
       .populate('createdBy', 'name email')
-      .populate('members.userId', 'name email');
+      .populate('members.userId', 'name email')
+      .lean()
+      .orFail(new Error('Group created but failed to fetch created group'));
 
     // Map the response to include both id and _id for compatibility
-    const groupResponse = populatedGroup?.toObject() || {};
+    const mappedGroup = {
+      ...populatedGroup,
+      id: populatedGroup._id.toString(),
+      _id: populatedGroup._id.toString(),
+    };
     
     res.status(201).json({
       success: true,
       message: 'Group created successfully',
-      data: {
-        id: populatedGroup?._id?.toString(),
-        ...groupResponse,
-        _id: populatedGroup?._id?.toString(),
-      },
+      data: mappedGroup,
     });
   } catch (error: any) {
     console.error('Error creating group:', error);
@@ -116,24 +276,20 @@ export const createGroup = async (req: Request, res: Response) => {
 };
 
 // Get all groups for a user
+// Queries unified Groups collection which includes both regular groups and trip groups
+// Returns a single array of groups with both 'id' and '_id' fields for frontend compatibility
 export const getUserGroups = async (req: Request, res: Response) => {
   try {
-    console.log('\n📡 ============ GET /api/groups REQUEST ============');
-    console.log('Authorization Header:', req.headers.authorization);
-    
     const userId = (req as any).userId;
-    console.log('Extracted userId from req:', userId);
 
     if (!userId) {
-      console.error('❌ No userId found in request');
       return res.status(401).json({
         success: false,
         error: 'Unauthorized - No user ID',
       });
     }
 
-    // Query only Groups collection - includes both regular groups and migrated trips
-    console.log('Searching Group collection...');
+    // Query only Groups collection - unified collection includes both regular groups and trip groups
     const groups = await Group.find({
       $or: [
         { createdBy: userId },
@@ -141,21 +297,16 @@ export const getUserGroups = async (req: Request, res: Response) => {
       ],
     })
       .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
-    
-    console.log(`✅ Found ${groups.length} groups`);
+      .populate('members.userId', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // Convert Mongoose documents to plain objects with proper id field
-    const mappedGroups = groups.map((group: any) => {
-      const groupObj = group.toObject ? group.toObject() : group;
-      return {
-        id: groupObj._id.toString(),
-        ...groupObj,
-      };
-    });
-
-    console.log(`🎉 Returning ${mappedGroups.length} groups`);
-    console.log('═══════════════════════════════════════════════════\n');
+    // Convert to plain objects with both 'id' and '_id' for consistency
+    const mappedGroups = groups.map((group: any) => ({
+      ...group,
+      id: group._id.toString(),
+      _id: group._id.toString(),
+    }));
 
     res.status(200).json({
       success: true,
@@ -163,7 +314,6 @@ export const getUserGroups = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('❌ Error fetching groups:', error);
-    console.error('Stack:', error.stack);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch groups',
@@ -187,7 +337,8 @@ export const getGroupById = async (req: Request, res: Response) => {
     const group = await Group.findById(id)
       .populate('createdBy', 'name email')
       .populate('members.userId', 'name email')
-      .populate('expenses');
+      .populate('expenses')
+      .lean();
 
     if (!group) {
       return res.status(404).json({
@@ -196,10 +347,10 @@ export const getGroupById = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if user is member of group
+    // Check if user is member or creator
     const isMember =
-      group.createdBy?.toString() === userId ||
-      group.members.some((m) => m.userId?.toString() === userId);
+      group.createdBy?._id?.toString() === userId ||
+      group.members?.some((m: any) => m.userId?._id?.toString() === userId);
 
     if (!isMember) {
       return res.status(403).json({
@@ -208,11 +359,11 @@ export const getGroupById = async (req: Request, res: Response) => {
       });
     }
 
-    // Map _id to id for frontend
-    const groupObj = group.toObject();
+    // Map both 'id' and '_id' for consistency
     const mappedGroup = {
-      id: groupObj._id,
-      ...groupObj,
+      ...group,
+      id: group._id.toString(),
+      _id: group._id.toString(),
     };
 
     res.status(200).json({
@@ -326,7 +477,7 @@ export const deleteGroup = async (req: Request, res: Response) => {
   }
 };
 
-// Get settlements for a group
+// Get optimized settlements for a group
 export const getGroupSettlements = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -339,7 +490,10 @@ export const getGroupSettlements = async (req: Request, res: Response) => {
       });
     }
 
-    const group = await Group.findById(id);
+    const group = await Group.findById(id)
+      .populate('createdBy', 'name email')
+      .populate('members.userId', 'name email')
+      .lean();
 
     if (!group) {
       return res.status(404).json({
@@ -348,11 +502,51 @@ export const getGroupSettlements = async (req: Request, res: Response) => {
       });
     }
 
-    // For now, return empty settlements
-    // In a real app, this would calculate settlements
+    const usersMap: Record<string, string> = {};
+    const creatorId = toStringId(group.createdBy);
+    usersMap[creatorId] = (group.createdBy as any)?.name || 'Creator';
+
+    (group.members || []).forEach((member: any) => {
+      const memberId = toStringId(member.userId);
+      if (memberId) {
+        usersMap[memberId] = member.userName || member.userId?.name || member.email || 'Member';
+      }
+    });
+
+    if (!Object.keys(usersMap).includes(userId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to view settlements',
+      });
+    }
+
+    const expenses = await Expense.find({ group: id }).lean();
+    const balances = buildBalanceRows(expenses, usersMap);
+    const optimizedSettlements = optimizeSettlementGraph(balances);
+
+    const settlementHistory = await Settlement.find({ group: id, status: 'completed' })
+      .populate('fromUser', 'name email')
+      .populate('toUser', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
     res.status(200).json({
       success: true,
-      data: [],
+      data: {
+        optimized: optimizedSettlements,
+        balances,
+        history: settlementHistory.map((item: any) => ({
+          id: toStringId(item._id),
+          fromUserId: toStringId(item.fromUser),
+          fromUserName: item.fromUser?.name || 'Unknown',
+          toUserId: toStringId(item.toUser),
+          toUserName: item.toUser?.name || 'Unknown',
+          amount: Number(item.amount || 0),
+          note: item.note || '',
+          createdAt: item.createdAt,
+        })),
+      },
     });
   } catch (error: any) {
     console.error('Error fetching settlements:', error);
@@ -364,6 +558,160 @@ export const getGroupSettlements = async (req: Request, res: Response) => {
 };
 
 // Get timeline for a group
+export const recordGroupSettlement = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).userId;
+    const { fromUserId, toUserId, amount, note } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    if (!fromUserId || !toUserId || !amount || Number(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'fromUserId, toUserId and positive amount are required',
+      });
+    }
+
+    const group = await Group.findById(id).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found' });
+    }
+
+    const memberIds = new Set<string>([
+      toStringId(group.createdBy),
+      ...(group.members || []).map((m: any) => toStringId(m.userId)).filter(Boolean),
+    ]);
+
+    if (!memberIds.has(userId) || !memberIds.has(String(fromUserId)) || !memberIds.has(String(toUserId))) {
+      return res.status(403).json({ success: false, error: 'Users must belong to this group' });
+    }
+
+    const settlement = await Settlement.create({
+      group: id,
+      fromUser: fromUserId,
+      toUser: toUserId,
+      amount: Number(amount),
+      note: note || '',
+      createdBy: userId,
+      status: 'completed',
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Settlement recorded successfully',
+      data: {
+        id: settlement._id.toString(),
+        _id: settlement._id.toString(),
+        fromUserId: String(fromUserId),
+        toUserId: String(toUserId),
+        amount: Number(amount),
+        note: note || '',
+        createdAt: settlement.createdAt,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error recording settlement:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to record settlement' });
+  }
+};
+
+export const getGroupSummary = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const group = await Group.findById(id)
+      .populate('createdBy', 'name email')
+      .populate('members.userId', 'name email')
+      .lean();
+
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found' });
+    }
+
+    const usersMap: Record<string, string> = {};
+    const creatorId = toStringId(group.createdBy);
+    usersMap[creatorId] = (group.createdBy as any)?.name || 'Creator';
+
+    (group.members || []).forEach((member: any) => {
+      const memberId = toStringId(member.userId);
+      if (memberId) {
+        usersMap[memberId] = member.userName || member.userId?.name || member.email || 'Member';
+      }
+    });
+
+    if (!Object.keys(usersMap).includes(userId)) {
+      return res.status(403).json({ success: false, error: 'Not authorized to view summary' });
+    }
+
+    const expenses = await Expense.find({ group: id }).lean();
+    const balances = buildBalanceRows(expenses, usersMap);
+
+    const categoryBreakdown: Record<string, number> = {};
+    expenses.forEach((expense: any) => {
+      const category = expense.category || 'other';
+      categoryBreakdown[category] = Number((categoryBreakdown[category] || 0) + Number(expense.amount || 0));
+    });
+
+    const mostSpentCategory = Object.entries(categoryBreakdown)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+    const memberContributionMap: Record<string, number> = {};
+    expenses.forEach((expense: any) => {
+      const payerId = toStringId(expense.paidBy);
+      memberContributionMap[payerId] = Number((memberContributionMap[payerId] || 0) + Number(expense.amount || 0));
+    });
+
+    const memberContributions = Object.entries(usersMap).map(([memberId, userName]) => ({
+      userId: memberId,
+      userName,
+      amount: Number((memberContributionMap[memberId] || 0).toFixed(2)),
+    }));
+
+    const totalGroupSpend = Number(
+      expenses.reduce((sum: number, expense: any) => sum + Number(expense.amount || 0), 0).toFixed(2)
+    );
+
+    const settlementHistory = await Settlement.find({ group: id, status: 'completed' })
+      .populate('fromUser', 'name email')
+      .populate('toUser', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        groupId: id,
+        totalGroupSpend,
+        expenseCount: expenses.length,
+        perMemberContribution: memberContributions,
+        perMemberNetBalance: balances,
+        categoryBreakdown,
+        mostSpentCategory,
+        settlementHistory: settlementHistory.map((item: any) => ({
+          id: toStringId(item._id),
+          fromUserName: item.fromUser?.name || 'Unknown',
+          toUserName: item.toUser?.name || 'Unknown',
+          amount: Number(item.amount || 0),
+          note: item.note || '',
+          createdAt: item.createdAt,
+        })),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching group summary:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to fetch summary' });
+  }
+};
+
 export const getGroupTimeline = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -416,7 +764,22 @@ export const addGroupExpense = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
     const userId = (req as any).userId;
-    const { amount, description, category, paidBy, splitAmong, date } = req.body;
+    const {
+      amount,
+      description,
+      title,
+      category,
+      paidBy,
+      splitAmong,
+      splitBetween,
+      splitType,
+      splitAmounts,
+      splitPercentages,
+      splitShares,
+      date,
+      receiptUrl,
+      notes,
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -425,7 +788,7 @@ export const addGroupExpense = async (req: Request, res: Response) => {
       });
     }
 
-    if (!amount || !description) {
+    if (!amount || !(description || title)) {
       return res.status(400).json({
         success: false,
         error: 'Amount and description are required',
@@ -440,10 +803,16 @@ export const addGroupExpense = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if user is a member
-    const isMember = group.createdBy.toString() === userId || 
-      group.members.some(m => m.userId.toString() === userId);
-    
+    const participantIds = Array.isArray(splitBetween)
+      ? splitBetween
+      : Array.isArray(splitAmong)
+      ? splitAmong
+      : [userId];
+
+    const isMember =
+      group.createdBy.toString() === userId ||
+      group.members.some((m) => m.userId.toString() === userId);
+
     if (!isMember) {
       return res.status(403).json({
         success: false,
@@ -451,29 +820,35 @@ export const addGroupExpense = async (req: Request, res: Response) => {
       });
     }
 
-    // Create expense object
-    const expense = {
-      _id: new (require('mongoose')).Types.ObjectId(),
+    const newExpense = await Expense.create({
+      title: title || description,
       amount: Number(amount),
-      description,
       category: category || 'other',
       paidBy: paidBy || userId,
-      splitAmong: splitAmong || [userId],
+      splitBetween: participantIds,
+      splitType: splitType || 'equally',
+      splitAmounts: splitAmounts || {},
+      splitPercentages: splitPercentages || {},
+      splitShares: splitShares || {},
       date: date ? new Date(date) : new Date(),
-    };
+      receiptUrl: receiptUrl || undefined,
+      notes: notes || '',
+      group: groupId,
+    });
 
-    // Add to group expenses array
-    group.expenses.push(expense._id as any);
-    
-    // Update group totals
-    group.totalSpent = (group.totalSpent || 0) + Number(amount);
-
+    group.expenses.push(newExpense._id as any);
+    group.totalSpent = Number((group.totalSpent || 0) + Number(amount));
     await group.save();
 
     res.status(201).json({
       success: true,
       message: 'Expense added successfully',
-      data: expense,
+      data: {
+        ...newExpense.toObject(),
+        id: newExpense._id.toString(),
+        _id: newExpense._id.toString(),
+        description: newExpense.title,
+      },
     });
   } catch (error: any) {
     console.error('Error adding expense:', error);
@@ -505,10 +880,10 @@ export const removeGroupExpense = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if user is a member
-    const isMember = group.createdBy.toString() === userId || 
-      group.members.some(m => m.userId.toString() === userId);
-    
+    const isMember =
+      group.createdBy.toString() === userId ||
+      group.members.some((m) => m.userId.toString() === userId);
+
     if (!isMember) {
       return res.status(403).json({
         success: false,
@@ -516,17 +891,18 @@ export const removeGroupExpense = async (req: Request, res: Response) => {
       });
     }
 
-    // Find and remove expense
-    const expenseIndex = group.expenses.findIndex(exp => exp.toString() === expenseId);
-    if (expenseIndex === -1) {
+    const expenseDoc = await Expense.findOne({ _id: expenseId, group: groupId });
+    if (!expenseDoc) {
       return res.status(404).json({
         success: false,
         error: 'Expense not found',
       });
     }
 
-    group.expenses.splice(expenseIndex, 1);
-    await group.save();
+    group.expenses = group.expenses.filter((exp) => exp.toString() !== expenseId);
+    group.totalSpent = Math.max(0, Number((group.totalSpent || 0) - Number(expenseDoc.amount || 0)));
+
+    await Promise.all([group.save(), Expense.findByIdAndDelete(expenseId)]);
 
     res.status(200).json({
       success: true,

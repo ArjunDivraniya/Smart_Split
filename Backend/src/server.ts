@@ -14,6 +14,7 @@ import notificationRoutes from './routes/notification.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import profileRoutes from './routes/profile.routes';
 import groupRoutes from './routes/group.routes';
+import settlementRoutes from './routes/settlement.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -86,6 +87,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/settlements', settlementRoutes);
 
 // 404 Handler
 app.use((req, res) => {
