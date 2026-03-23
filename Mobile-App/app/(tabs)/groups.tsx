@@ -1,197 +1,189 @@
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useEffect, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { apiService } from '@/src/services';
-import { GroupCard } from '@/src/components/groups/GroupCard';
-import { Group, GroupType, GROUP_TYPE_MAP } from '@/src/types/group.types';
+import { GroupCard } from '../../src/components/groups/GroupCard';
+import { Group, GroupType } from '@/src/types/group.types';
+import { useGroups } from '@/src/hooks/useGroups';
+
+type GroupFilter = 'all' | 'active' | 'trips' | 'archived';
 
 export default function GroupsScreen() {
     const colorScheme = useColorScheme() ?? 'dark';
     const colors = Colors[colorScheme];
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
-    const [groups, setGroups] = useState<Group[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedFilter, setSelectedFilter] = useState<'all' | GroupType>('all');
+    const { groups, loading, error, refreshGroups } = useGroups();
+    const [selectedFilter, setSelectedFilter] = useState<GroupFilter>('all');
 
-    const filterOptions: Array<{ key: 'all' | GroupType; label: string }> = [
+    const filterOptions: Array<{ key: GroupFilter; label: string }> = [
         { key: 'all', label: 'All' },
-        ...Object.values(GroupType).map((type) => ({
-            key: type,
-            label: GROUP_TYPE_MAP[type].label,
-        })),
+        { key: 'active', label: 'Active' },
+        { key: 'trips', label: 'Trips' },
+        { key: 'archived', label: 'Archived' },
     ];
 
-    const filteredGroups = selectedFilter === 'all'
-        ? groups
-        : groups.filter((group) => group.type === selectedFilter);
-
-    useEffect(() => {
-        fetchGroups();
-    }, []);
+    const filteredGroups = useMemo(() => {
+        switch (selectedFilter) {
+            case 'active':
+                return groups.filter((group) => group.isActive);
+            case 'trips':
+                return groups.filter((group) => group.type === GroupType.TRIP);
+            case 'archived':
+                return groups.filter((group) => !group.isActive);
+            case 'all':
+            default:
+                return groups;
+        }
+    }, [groups, selectedFilter]);
 
     useFocusEffect(
         useCallback(() => {
-            fetchGroups();
-        }, [])
+            refreshGroups();
+        }, [refreshGroups])
     );
-
-    const fetchGroups = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            const response = await apiService.groups.getAll();
-            const payload = response?.data;
-            const groupsData: Group[] = Array.isArray(payload)
-                ? payload
-                : Array.isArray(payload?.data)
-                    ? payload.data
-                    : [];
-
-            setGroups(groupsData);
-        } catch (err: any) {
-            const errorMessage =
-                err?.response?.data?.error ||
-                err?.response?.data?.message ||
-                err?.message ||
-                'Failed to load groups';
-
-            setError(errorMessage);
-            setGroups([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleCreateGroup = () => {
         router.push('/group/create');
     };
 
-    const handleGroupPress = (groupId: string) => {
+    const handleGroupPress = (group: Group) => {
+        const groupId = group.id || group._id;
+        if (!groupId) {
+            return;
+        }
         router.push(`/group/${groupId}` as any);
     };
 
-    if (loading) {
+    const renderLoadingSkeleton = () => {
+        const skeletonRows = Array.from({ length: 4 }, (_, index) => index);
         return (
-            <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-                <View style={[styles.container, { backgroundColor: colors.background }]}>
-                <ActivityIndicator size="large" color={colors.violet} />
-                </View>
-            </SafeAreaView>
+            <View style={styles.skeletonList}>
+                {skeletonRows.map((item) => (
+                    <View
+                        key={`skeleton-${item}`}
+                        style={[styles.skeletonCard, { backgroundColor: colors.elevated }]}
+                    >
+                        <View style={styles.skeletonHeaderRow}>
+                            <View style={[styles.skeletonCircle, { backgroundColor: colors.icon }]} />
+                            <View style={styles.skeletonTextBlock}>
+                                <View style={[styles.skeletonLineLg, { backgroundColor: colors.icon }]} />
+                                <View style={[styles.skeletonLineSm, { backgroundColor: colors.icon }]} />
+                            </View>
+                        </View>
+                        <View style={[styles.skeletonLineMd, { backgroundColor: colors.icon }]} />
+                        <View style={[styles.skeletonLineFull, { backgroundColor: colors.icon }]} />
+                    </View>
+                ))}
+            </View>
         );
-    }
+    };
+
+    const renderEmptyState = () => (
+        <View style={styles.emptyContainer}>
+            <View style={[styles.emptyIllustrationOuter, { backgroundColor: colors.elevated }]}> 
+                <View style={[styles.emptyIllustrationInner, { borderColor: colors.icon }]}> 
+                    <Ionicons name="people-outline" size={46} color={colors.icon} />
+                </View>
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No groups found</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.icon }]}>Create a new group to start tracking shared expenses.</Text>
+        </View>
+    );
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
             <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { borderBottomColor: colors.elevated }]}>
-                <View>
+                <View style={[styles.header, { borderBottomColor: colors.elevated }]}> 
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Groups</Text>
                     <Text style={[styles.headerSubtitle, { color: colors.icon }]}>
                         {filteredGroups.length} {filteredGroups.length === 1 ? 'group' : 'groups'}
                     </Text>
                 </View>
-                <TouchableOpacity
-                    style={[styles.createButton, { backgroundColor: colors.violet }]}
-                    onPress={handleCreateGroup}
-                >
-                    <Ionicons name="add" size={24} color="#FFF" />
-                </TouchableOpacity>
-            </View>
 
-            {error ? (
-                <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={48} color={colors.coral} />
-                    <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
-                    <TouchableOpacity
-                        style={[styles.retryButton, { backgroundColor: colors.violet }]}
-                        onPress={fetchGroups}
-                    >
-                        <Text style={styles.retryButtonText}>Retry</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : groups.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                    <Ionicons name="people-outline" size={64} color={colors.icon} />
-                    <Text style={[styles.emptyTitle, { color: colors.text }]}>No Groups Yet</Text>
-                    <Text style={[styles.emptySubtitle, { color: colors.icon }]}>
-                        Create your first group to start tracking shared expenses
-                    </Text>
-                    <TouchableOpacity
-                        style={[styles.emptyButton, { backgroundColor: colors.violet }]}
-                        onPress={handleCreateGroup}
-                    >
-                        <Ionicons name="add" size={20} color="#FFF" />
-                        <Text style={styles.emptyButtonText}>Create Group</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <>
-                    <View style={styles.filterContainer}>
-                        <FlatList
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            data={filterOptions}
-                            keyExtractor={(item) => item.key}
-                            contentContainerStyle={styles.filterListContent}
-                            renderItem={({ item }) => {
-                                const isSelected = selectedFilter === item.key;
-                                return (
-                                    <TouchableOpacity
+                <View style={styles.filterContainer}>
+                    <FlatList
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        data={filterOptions}
+                        keyExtractor={(item) => item.key}
+                        contentContainerStyle={styles.filterListContent}
+                        renderItem={({ item }) => {
+                            const isSelected = selectedFilter === item.key;
+                            return (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.filterChip,
+                                        {
+                                            backgroundColor: isSelected ? colors.violet : colors.elevated,
+                                            borderColor: isSelected ? colors.violet : colors.elevated,
+                                        },
+                                    ]}
+                                    onPress={() => setSelectedFilter(item.key)}
+                                >
+                                    <Text
                                         style={[
-                                            styles.filterChip,
-                                            {
-                                                backgroundColor: isSelected ? colors.violet : colors.elevated,
-                                                borderColor: isSelected ? colors.violet : colors.elevated,
-                                            },
+                                            styles.filterChipText,
+                                            { color: isSelected ? '#FFF' : colors.icon },
                                         ]}
-                                        onPress={() => setSelectedFilter(item.key)}
                                     >
-                                        <Text
-                                            style={[
-                                                styles.filterChipText,
-                                                { color: isSelected ? '#FFF' : colors.icon },
-                                            ]}
-                                        >
-                                            {item.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            }}
-                        />
-                    </View>
+                                        {item.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        }}
+                    />
+                </View>
 
-                    {filteredGroups.length === 0 ? (
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="funnel-outline" size={64} color={colors.icon} />
-                            <Text style={[styles.emptyTitle, { color: colors.text }]}>No groups in this category</Text>
-                            <Text style={[styles.emptySubtitle, { color: colors.icon }]}>Try another filter to find your group</Text>
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={filteredGroups}
-                            style={styles.list}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <GroupCard
-                                    group={item}
-                                    onPress={() => handleGroupPress(item.id)}
-                                />
-                            )}
-                            contentContainerStyle={styles.listContent}
-                            ItemSeparatorComponent={() => (
-                                <View style={[styles.separator, { backgroundColor: colors.elevated }]} />
-                            )}
-                        />
-                    )}
-                </>
-            )}
+                {loading ? (
+                    renderLoadingSkeleton()
+                ) : error ? (
+                    <View style={styles.errorContainer}>
+                        <Ionicons name="alert-circle" size={48} color={colors.coral} />
+                        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
+                        <TouchableOpacity
+                            style={[styles.retryButton, { backgroundColor: colors.violet }]}
+                            onPress={refreshGroups}
+                        >
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : filteredGroups.length === 0 ? (
+                    renderEmptyState()
+                ) : (
+                    <FlatList
+                        data={filteredGroups}
+                        style={styles.list}
+                        keyExtractor={(item, index) => item.id || item._id || `group-${index}`}
+                        renderItem={({ item }) => (
+                            <GroupCard
+                                group={item}
+                                onPress={() => handleGroupPress(item)}
+                            />
+                        )}
+                        contentContainerStyle={styles.listContent}
+                        ItemSeparatorComponent={() => <View style={styles.separator} />}
+                    />
+                )}
+
+                <TouchableOpacity
+                    style={[
+                        styles.fabButton,
+                        {
+                            backgroundColor: colors.violet,
+                            bottom: (Platform.OS === 'ios' ? 98 : 82) + insets.bottom,
+                        },
+                    ]}
+                    onPress={handleCreateGroup}
+                    activeOpacity={0.9}
+                >
+                    <Ionicons name="add" size={22} color="#FFF" />
+                    <Text style={styles.fabButtonText}>New Group</Text>
+                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );
@@ -205,11 +197,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 16,
+        paddingTop: 8,
+        paddingBottom: 12,
         borderBottomWidth: 1,
     },
     headerTitle: {
@@ -222,16 +212,10 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontFamily: 'DMSans_400Regular',
     },
-    createButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     filterContainer: {
         paddingHorizontal: 16,
         paddingTop: 12,
+        paddingBottom: 6,
     },
     filterListContent: {
         paddingRight: 12,
@@ -246,6 +230,65 @@ const styles = StyleSheet.create({
     filterChipText: {
         fontSize: 12,
         fontFamily: 'DMSans_600SemiBold',
+    },
+    list: {
+        flex: 1,
+    },
+    listContent: {
+        paddingHorizontal: 16,
+        paddingTop: 6,
+        paddingBottom: 110,
+    },
+    separator: {
+        height: 2,
+    },
+    skeletonList: {
+        flex: 1,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 110,
+    },
+    skeletonCard: {
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 12,
+        minHeight: 140,
+    },
+    skeletonHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+    skeletonCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        marginRight: 12,
+    },
+    skeletonTextBlock: {
+        flex: 1,
+    },
+    skeletonLineLg: {
+        height: 10,
+        width: '62%',
+        borderRadius: 5,
+        marginBottom: 8,
+    },
+    skeletonLineSm: {
+        height: 8,
+        width: '36%',
+        borderRadius: 4,
+    },
+    skeletonLineMd: {
+        height: 9,
+        width: '72%',
+        borderRadius: 5,
+        marginBottom: 10,
+    },
+    skeletonLineFull: {
+        height: 9,
+        width: '100%',
+        borderRadius: 5,
     },
     errorContainer: {
         flex: 1,
@@ -275,11 +318,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 24,
+        paddingBottom: 88,
+    },
+    emptyIllustrationOuter: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+    },
+    emptyIllustrationInner: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     emptyTitle: {
         fontSize: 20,
         fontWeight: '700',
-        marginTop: 16,
+        marginTop: 8,
         fontFamily: 'Syne',
     },
     emptySubtitle: {
@@ -287,32 +347,28 @@ const styles = StyleSheet.create({
         marginTop: 8,
         textAlign: 'center',
         fontFamily: 'DMSans_400Regular',
+        maxWidth: 280,
     },
-    emptyButton: {
+    fabButton: {
+        position: 'absolute',
+        right: 18,
+        borderRadius: 999,
+        paddingHorizontal: 18,
+        height: 52,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
-        marginTop: 24,
-        gap: 8,
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+        zIndex: 50,
+        gap: 6,
     },
-    emptyButtonText: {
+    fabButtonText: {
         color: '#FFF',
-        fontWeight: '600',
-        fontFamily: 'DMSans_600SemiBold',
         fontSize: 14,
-    },
-    list: {
-        flex: 1,
-    },
-    listContent: {
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 12,
-    },
-    separator: {
-        height: 1,
-        marginVertical: 8,
+        fontFamily: 'DMSans_700Bold',
     },
 });
