@@ -9,6 +9,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -205,7 +206,7 @@ export default function DashboardScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
       
       <ScrollView
@@ -396,7 +397,7 @@ export default function DashboardScreen() {
         {/* Bottom Spacing for Tab Bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -411,7 +412,7 @@ const styles = StyleSheet.create({
   
   // 1️⃣ HEADER SECTION
   headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 16,
+    paddingTop: 12,
     paddingBottom: 16,
   },
   header: {

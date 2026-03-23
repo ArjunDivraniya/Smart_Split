@@ -34,15 +34,17 @@ interface GroupCardProps {
 export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
   const typeInfo = GROUP_TYPE_MAP[group.type];
   const isTrip = group.type === GroupType.TRIP;
+  const membersCount = group.members?.length ?? 0;
   const secondaryInfo = isTrip && group.tripStartDate && group.tripEndDate
     ? formatTripSummary(group)
-    : `${(group.members?.length ?? 0)} member${(group.members?.length ?? 0) !== 1 ? 's' : ''}`;
+    : `${membersCount} member${membersCount !== 1 ? 's' : ''}`;
   const tertiaryInfo = isTrip
     ? (group.tripDestination || typeInfo.label)
     : typeInfo.label;
   const budgetText = isTrip && group.trackBudget && group.tripBudget
     ? `${Math.round((group.totalSpent / group.tripBudget) * 100)}% of ₹${group.tripBudget.toLocaleString('en-IN')}`
     : null;
+  const statusLabel = group.isActive ? 'Active' : 'Ended';
 
   const netBalanceColor =
     group.netBalance > 0 ? COLORS.mint : group.netBalance < 0 ? COLORS.coral : COLORS.textMuted;
@@ -59,9 +61,14 @@ export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
         <View style={styles.titleSection}>
           <Text style={styles.emoji}>{group.emoji || typeInfo.emoji}</Text>
           <View style={styles.titleInfo}>
-            <Text style={styles.groupName} numberOfLines={1}>
-              {group.name}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.groupName} numberOfLines={1}>
+                {group.name}
+              </Text>
+              <View style={styles.typeBadge}>
+                <Text style={styles.typeBadgeText}>{typeInfo.label}</Text>
+              </View>
+            </View>
             <Text style={styles.tripInfo} numberOfLines={1}>
               {secondaryInfo}
             </Text>
@@ -69,6 +76,18 @@ export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
               <Ionicons name={isTrip ? 'location' : 'pricetag'} size={14} color={isTrip ? COLORS.mint : COLORS.violetLight} />
               <Text style={styles.destinationText} numberOfLines={1}>{tertiaryInfo}</Text>
             </View>
+          </View>
+        </View>
+
+        <View style={styles.metaRow}>
+          <View style={styles.metaChip}>
+            <Ionicons name="people-outline" size={12} color={COLORS.textSecondary} />
+            <Text style={styles.metaChipText}>{membersCount}</Text>
+          </View>
+          <View style={[styles.metaChip, group.isActive ? styles.metaChipActive : styles.metaChipEnded]}>
+            <Text style={[styles.metaChipText, group.isActive ? styles.metaChipTextActive : styles.metaChipTextEnded]}>
+              {statusLabel}
+            </Text>
           </View>
         </View>
       </View>
@@ -93,14 +112,10 @@ export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
       </View>
 
       <View style={styles.budgetSlot}>
-        {budgetText ? (
-          <View style={styles.budgetBar}>
-            <View style={styles.budgetBarFill} />
-            <Text style={styles.budgetLabel}>{budgetText}</Text>
-          </View>
-        ) : (
-          <Text style={styles.budgetPlaceholder}> </Text>
-        )}
+        <View style={styles.budgetBar}>
+          <View style={[styles.budgetBarFill, !budgetText && styles.budgetBarMuted]} />
+          <Text style={styles.budgetLabel}>{budgetText || 'No budget tracking enabled'}</Text>
+        </View>
       </View>
 
       {/* Status Indicator */}
@@ -139,12 +154,29 @@ const styles = StyleSheet.create({
   titleInfo: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   groupName: {
     fontSize: 16,
     fontWeight: '800',
     fontFamily: 'Syne_800ExtraBold',
     color: COLORS.textPrimary,
     marginBottom: 2,
+    flex: 1,
+  },
+  typeBadge: {
+    backgroundColor: `${COLORS.violet}25`,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  typeBadgeText: {
+    color: COLORS.violetLight,
+    fontSize: 10,
+    fontFamily: 'DMSans_600SemiBold',
   },
   tripInfo: {
     fontSize: 11,
@@ -173,6 +205,38 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontFamily: 'DMSans_500Medium',
     flex: 1,
+  },
+  metaRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: `${COLORS.textPrimary}10`,
+  },
+  metaChipText: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+    fontFamily: 'DMSans_500Medium',
+  },
+  metaChipActive: {
+    backgroundColor: `${COLORS.mint}20`,
+  },
+  metaChipEnded: {
+    backgroundColor: `${COLORS.textMuted}25`,
+  },
+  metaChipTextActive: {
+    color: COLORS.mint,
+  },
+  metaChipTextEnded: {
+    color: COLORS.textMuted,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -214,6 +278,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginBottom: 6,
   },
+  budgetBarMuted: {
+    backgroundColor: `${COLORS.textMuted}50`,
+  },
   budgetLabel: {
     fontSize: 10,
     color: COLORS.textMuted,
@@ -222,10 +289,6 @@ const styles = StyleSheet.create({
   budgetSlot: {
     minHeight: 24,
     justifyContent: 'center',
-  },
-  budgetPlaceholder: {
-    fontSize: 10,
-    opacity: 0,
   },
   inactiveOverlay: {
     position: 'absolute',
