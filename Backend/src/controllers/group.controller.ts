@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Group from '../models/Group.model';
 import User from '../models/User.model';
 import Expense from '../models/Expense.model';
@@ -9,6 +10,21 @@ const toStringId = (value: any): string => {
   if (typeof value === 'string') return value;
   if (typeof value === 'object' && value._id) return String(value._id);
   return String(value);
+};
+
+const ensureValidObjectId = (
+  id: string | undefined,
+  res: Response,
+  label: string = 'Group'
+): id is string => {
+  if (!id || id === 'undefined' || !mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400).json({
+      success: false,
+      error: `Invalid ${label.toLowerCase()} id`,
+    });
+    return false;
+  }
+  return true;
 };
 
 const getMapValue = (source: any, key: string): number => {
@@ -327,6 +343,10 @@ export const getGroupById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = (req as any).userId;
 
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -384,7 +404,25 @@ export const updateGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).userId;
-    const { name, description, tripBudget, trackBudget, tripDestination } = req.body;
+
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
+    const {
+      name,
+      emoji,
+      description,
+      budget,
+      tripBudget,
+      trackBudget,
+      tripDestination,
+      status,
+      coverImage,
+      member,
+      newMember,
+      addMember,
+      members,
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -410,18 +448,88 @@ export const updateGroup = async (req: Request, res: Response) => {
       });
     }
 
-    if (name) group.name = name;
-    if (description) group.description = description;
-    if (tripDestination) group.tripDestination = tripDestination;
-    if (tripBudget) group.tripBudget = tripBudget;
-    if (trackBudget !== undefined) group.trackBudget = trackBudget;
+    if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
+      group.name = name;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'emoji')) {
+      group.emoji = emoji;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'description')) {
+      group.description = description;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'tripDestination')) {
+      group.tripDestination = tripDestination;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'budget')) {
+      group.tripBudget = budget === null || budget === '' ? null : Number(budget);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'tripBudget')) {
+      group.tripBudget = tripBudget === null || tripBudget === '' ? null : Number(tripBudget);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'trackBudget')) {
+      group.trackBudget = Boolean(trackBudget);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'status')) {
+      if (status === 'archived' || status === 'completed') {
+        group.status = 'completed';
+        group.isActive = false;
+      } else if (status === 'active') {
+        group.status = 'active';
+        group.isActive = true;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'coverImage')) {
+      (group as any).coverImage = coverImage || '';
+    }
+
+    const incomingMembers = [member, newMember, addMember]
+      .filter(Boolean)
+      .concat(Array.isArray(members) ? members : []);
+
+    for (const entry of incomingMembers) {
+      const entryUserId = entry?.userId || entry?._id || entry?.id;
+      const entryEmail = entry?.email;
+
+      let resolvedUser: any = null;
+      if (entryUserId) {
+        resolvedUser = await User.findById(entryUserId).select('name email').lean();
+      } else if (entryEmail) {
+        resolvedUser = await User.findOne({ email: String(entryEmail).toLowerCase() }).select('name email').lean();
+      }
+
+      if (!resolvedUser) {
+        continue;
+      }
+
+      const resolvedId = String(resolvedUser._id);
+      const exists = group.members.some((m: any) => toStringId(m.userId) === resolvedId);
+      if (exists) {
+        continue;
+      }
+
+      group.members.push({
+        userId: resolvedUser._id,
+        userName: resolvedUser.name || resolvedUser.email,
+        email: resolvedUser.email,
+        role: 'member',
+        status: 'joined',
+      } as any);
+    }
 
     await group.save();
+
+    const updatedGroup = await Group.findById(id)
+      .populate('createdBy', 'name email')
+      .populate('members.userId', 'name email')
+      .lean();
 
     res.status(200).json({
       success: true,
       message: 'Group updated successfully',
-      data: group,
+      data: updatedGroup,
     });
   } catch (error: any) {
     console.error('Error updating group:', error);
@@ -432,11 +540,117 @@ export const updateGroup = async (req: Request, res: Response) => {
   }
 };
 
+// Add member to group
+export const addGroupMember = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).userId;
+    const { userId: newMemberUserId } = req.body;
+
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
+
+    if (!ensureValidObjectId(newMemberUserId, res, 'User')) {
+      return;
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    if (!newMemberUserId) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId is required',
+      });
+    }
+
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found',
+      });
+    }
+
+    // Only creator can add new members.
+    if (toStringId(group.createdBy) !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only group creator can add members',
+      });
+    }
+
+    const userToAdd = await User.findById(newMemberUserId).select('name email').lean();
+    if (!userToAdd) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    const alreadyMember = group.members.some((member: any) => toStringId(member.userId) === toStringId(userToAdd._id));
+    if (alreadyMember) {
+      const existingGroup = await Group.findById(id)
+        .populate('createdBy', 'name email')
+        .populate('members.userId', 'name email')
+        .lean();
+
+      return res.status(200).json({
+        success: true,
+        message: 'User is already a member of this group',
+        data: existingGroup,
+      });
+    }
+
+    await Group.findByIdAndUpdate(
+      id,
+      {
+        $addToSet: {
+          members: {
+            userId: userToAdd._id,
+            userName: userToAdd.name || userToAdd.email,
+            email: userToAdd.email,
+            role: 'member',
+            status: 'joined',
+          },
+        },
+      },
+      { new: true }
+    );
+
+    const updatedGroup = await Group.findById(id)
+      .populate('createdBy', 'name email')
+      .populate('members.userId', 'name email')
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Member added successfully',
+      data: updatedGroup,
+    });
+  } catch (error: any) {
+    console.error('Error adding member to group:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to add member to group',
+    });
+  }
+};
+
 // Delete group
 export const deleteGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).userId;
+
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
 
     if (!userId) {
       return res.status(401).json({
@@ -462,11 +676,26 @@ export const deleteGroup = async (req: Request, res: Response) => {
       });
     }
 
+    const expenseIds = (group.expenses || []).map((expenseId: any) => expenseId);
+
+    const deletedExpenses = await Expense.deleteMany({
+      $or: [
+        { group: id },
+        ...(expenseIds.length > 0 ? [{ _id: { $in: expenseIds } }] : []),
+      ],
+    });
+
+    const deletedSettlements = await Settlement.deleteMany({ group: id });
+
     await Group.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
       message: 'Group deleted successfully',
+      data: {
+        deletedExpenses: deletedExpenses.deletedCount || 0,
+        deletedSettlements: deletedSettlements.deletedCount || 0,
+      },
     });
   } catch (error: any) {
     console.error('Error deleting group:', error);
@@ -482,6 +711,10 @@ export const getGroupSettlements = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).userId;
+
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
 
     if (!userId) {
       return res.status(401).json({
@@ -564,6 +797,14 @@ export const recordGroupSettlement = async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { fromUserId, toUserId, amount, note } = req.body;
 
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
+
+    if (!ensureValidObjectId(fromUserId, res, 'User') || !ensureValidObjectId(toUserId, res, 'User')) {
+      return;
+    }
+
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
@@ -622,6 +863,10 @@ export const getGroupSummary = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).userId;
+
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
 
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -717,6 +962,10 @@ export const getGroupTimeline = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = (req as any).userId;
 
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -786,6 +1035,10 @@ export const addGroupExpense = async (req: Request, res: Response) => {
         success: false,
         error: 'Unauthorized',
       });
+    }
+
+    if (!ensureValidObjectId(groupId, res, 'Group')) {
+      return;
     }
 
     if (!amount || !(description || title)) {

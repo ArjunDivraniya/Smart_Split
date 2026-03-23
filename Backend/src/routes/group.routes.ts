@@ -4,6 +4,7 @@ import {
   getUserGroups,
   getGroupById,
   updateGroup,
+  addGroupMember,
   deleteGroup,
   getGroupSettlements,
   recordGroupSettlement,
@@ -103,6 +104,13 @@ router.get('/:id', getGroupById);
  * @access Private
  */
 router.put('/:id', updateGroup);
+
+/**
+ * @route POST /api/groups/:id/members
+ * @desc Add a member to a group (duplicate-safe)
+ * @access Private
+ */
+router.post('/:id/members', addGroupMember);
 
 /**
  * @route DELETE /api/groups/:id

@@ -12,6 +12,7 @@ export interface IGroup extends Document {
   name: string;
   type: 'personal' | 'trip' | 'college' | 'food' | 'flatmates' | 'event' | 'custom';
   emoji: string;
+  coverImage?: string;
   description?: string;
   createdBy: mongoose.Types.ObjectId;
   members: IGroupMember[];
@@ -25,7 +26,7 @@ export interface IGroup extends Document {
   tripStartDate?: Date;
   tripEndDate?: Date;
   tripDestination?: string;
-  tripBudget?: number;
+  tripBudget?: number | null;
   trackBudget?: boolean;
   
   createdAt: Date;
@@ -47,6 +48,10 @@ const GroupSchema: Schema = new Schema(
     emoji: {
       type: String,
       default: '👥',
+    },
+    coverImage: {
+      type: String,
+      default: '',
     },
     description: {
       type: String,

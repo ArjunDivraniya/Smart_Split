@@ -4,3 +4,4 @@
 
 export { useApi } from './useApi';
 export { default } from './useApi';
+export { useGroups } from './useGroups';
