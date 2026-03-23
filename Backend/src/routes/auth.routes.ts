@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, logout, googleLogin } from '../controllers/auth.controller';
+import { register, login, logout, googleLogin, refresh } from '../controllers/auth.controller';
 
 const router = Router();
 
@@ -23,6 +23,13 @@ router.post('/login', login);
  * @access  Public
  */
 router.post('/google-login', googleLogin);
+
+/**
+ * @route   POST /api/auth/refresh
+ * @desc    Refresh access token using refresh token
+ * @access  Public
+ */
+router.post('/refresh', refresh);
 
 /**
  * @route   POST /api/auth/logout

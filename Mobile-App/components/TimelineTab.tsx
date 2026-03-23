@@ -40,7 +40,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     try {
       setLoading(true);
       const response = await apiService.groups.getTimeline(groupId);
-      const timeline = response.data?.timeline || [];
+      const payload = response?.data?.data || response?.data || {};
+      const timeline = payload?.timeline || [];
       setTimelineData(timeline);
       
       // Auto-expand the most recent day

@@ -1,5 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  clearAuthCookies,
+  getTokenFromAuthHeader,
+  setAuthCookies,
+  signAccessToken,
+  signRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+} from '../utils/authTokens';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -11,34 +21,58 @@ export const authenticateToken = async (
   next: NextFunction
 ) => {
   try {
-    // Check for token in Authorization header or cookies
-    let token = req.headers.authorization?.replace('Bearer ', '') || req.cookies.token;
+    const accessToken = getTokenFromAuthHeader(req.headers.authorization) || req.cookies?.[ACCESS_TOKEN_COOKIE];
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
     
     console.log(`[AUTH] Checking auth for: ${req.method} ${req.path}`);
-    console.log(`[AUTH] Token present: ${token ? 'YES' : 'NO'}`);
+    console.log(`[AUTH] Access token present: ${accessToken ? 'YES' : 'NO'}`);
+    console.log(`[AUTH] Refresh token present: ${refreshToken ? 'YES' : 'NO'}`);
 
-    if (!token) {
-      console.error('[AUTH] ❌ No token found');
-      return res.status(401).json({ message: 'Authentication token missing' });
+    if (accessToken) {
+      const decoded = verifyAccessToken(accessToken);
+      req.userId = decoded.userId;
+      console.log(`[AUTH] User authenticated: ${decoded.userId}`);
+      return next();
     }
 
-    const JWT_SECRET = process.env.JWT_SECRET;
-    if (!JWT_SECRET) {
-      console.error('[AUTH] ❌ JWT_SECRET not configured');
-      throw new Error('JWT_SECRET is not defined');
+    if (!refreshToken) {
+      console.warn('[AUTH] No access token or refresh token found');
+      return res.status(401).json({
+        message: 'Authentication required',
+        code: 'AUTH_TOKEN_MISSING',
+      });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
-    req.userId = decoded.userId;
-    
-    console.log(`[AUTH] βœ… User authenticated: ${decoded.userId}`);
-    next();
+    const decodedRefresh = verifyRefreshToken(refreshToken);
+    const newAccessToken = signAccessToken({
+      userId: decodedRefresh.userId,
+      email: decodedRefresh.email,
+    });
+    const rotatedRefreshToken = signRefreshToken({
+      userId: decodedRefresh.userId,
+      email: decodedRefresh.email,
+    });
+
+    // Restore session seamlessly when only refresh token is available.
+    setAuthCookies(res, newAccessToken, rotatedRefreshToken);
+    req.userId = decodedRefresh.userId;
+
+    console.log(`[AUTH] Session restored with refresh token for user: ${decodedRefresh.userId}`);
+    return next();
   } catch (error: any) {
-    console.error('[AUTH] ❌ Authentication error:', error.message);
+    console.error('[AUTH] Authentication error:', error.message);
+
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expired' });
+      clearAuthCookies(res);
+      return res.status(401).json({
+        message: 'Session expired. Please log in again.',
+        code: 'AUTH_TOKEN_EXPIRED',
+      });
     }
-    return res.status(401).json({ message: 'Invalid token' });
+
+    return res.status(401).json({
+      message: 'Invalid authentication token',
+      code: 'AUTH_TOKEN_INVALID',
+    });
   }
 };

@@ -67,7 +67,8 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     try {
       setLoading(true);
       const response = await apiService.groupExpenses.getBalances(groupId);
-      setBalances(response.data || []);
+      const balancesData = response?.data?.data || response?.data || [];
+      setBalances(Array.isArray(balancesData) ? balancesData : []);
     } catch (error) {
       console.error('Error fetching balances:', error);
       Alert.alert('Error', 'Failed to load balances');
@@ -80,7 +81,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   const fetchSettlements = async () => {
     try {
       const response = await apiService.groups.getSettlements(groupId);
-      const data = response.data || {};
+      const data = response?.data?.data || response?.data || {};
       setSettlements(data.optimizedSettlements || []);
       setSettlementHistory(data.settlements || []);
     } catch (error) {

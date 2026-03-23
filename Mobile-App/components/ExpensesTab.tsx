@@ -85,7 +85,8 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
       }
 
       const response = await apiService.groupExpenses.getAll(groupId, params);
-      setExpenses(response.data || []);
+      const expensesData = response?.data?.data || response?.data || [];
+      setExpenses(Array.isArray(expensesData) ? expensesData : []);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       Alert.alert('Error', 'Failed to load expenses');

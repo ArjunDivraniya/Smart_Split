@@ -60,7 +60,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
     try {
       setLoading(true);
       const response = await apiService.groups.getSummary(groupId);
-      setSummary(response.data);
+      const summaryData = response?.data?.data || response?.data || null;
+      setSummary(summaryData);
     } catch (error) {
       console.error('Error fetching summary:', error);
       Alert.alert('Error', 'Failed to load summary');

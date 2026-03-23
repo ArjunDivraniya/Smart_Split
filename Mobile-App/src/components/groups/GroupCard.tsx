@@ -6,7 +6,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, GroupType, GROUP_TYPE_MAP } from '@/src/types/group.types';
@@ -34,8 +33,16 @@ interface GroupCardProps {
 
 export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
   const typeInfo = GROUP_TYPE_MAP[group.type];
-  const isDaysCounted = group.type === GroupType.TRIP;
   const isTrip = group.type === GroupType.TRIP;
+  const secondaryInfo = isTrip && group.tripStartDate && group.tripEndDate
+    ? formatTripSummary(group)
+    : `${(group.members?.length ?? 0)} member${(group.members?.length ?? 0) !== 1 ? 's' : ''}`;
+  const tertiaryInfo = isTrip
+    ? (group.tripDestination || typeInfo.label)
+    : typeInfo.label;
+  const budgetText = isTrip && group.trackBudget && group.tripBudget
+    ? `${Math.round((group.totalSpent / group.tripBudget) * 100)}% of ₹${group.tripBudget.toLocaleString('en-IN')}`
+    : null;
 
   const netBalanceColor =
     group.netBalance > 0 ? COLORS.mint : group.netBalance < 0 ? COLORS.coral : COLORS.textMuted;
@@ -55,27 +62,16 @@ export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
             <Text style={styles.groupName} numberOfLines={1}>
               {group.name}
             </Text>
-            {isTrip && group.tripStartDate && group.tripEndDate && (
-              <Text style={styles.tripInfo}>
-                {formatTripSummary(group)}
-              </Text>
-            )}
-            {!isTrip && (
-              <Text style={styles.memberCount}>
-                {(group.members?.length ?? 0)} member{(group.members?.length ?? 0) !== 1 ? 's' : ''}
-              </Text>
-            )}
+            <Text style={styles.tripInfo} numberOfLines={1}>
+              {secondaryInfo}
+            </Text>
+            <View style={styles.tripDestination}>
+              <Ionicons name={isTrip ? 'location' : 'pricetag'} size={14} color={isTrip ? COLORS.mint : COLORS.violetLight} />
+              <Text style={styles.destinationText} numberOfLines={1}>{tertiaryInfo}</Text>
+            </View>
           </View>
         </View>
       </View>
-
-      {/* Trip-specific info */}
-      {isTrip && group.tripDestination && (
-        <View style={styles.tripDestination}>
-          <Ionicons name="location" size={14} color={COLORS.mint} />
-          <Text style={styles.destinationText}>{group.tripDestination}</Text>
-        </View>
-      )}
 
       {/* Bottom Row with totals */}
       <View style={styles.cardFooter}>
@@ -96,16 +92,16 @@ export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
         </View>
       </View>
 
-      {/* Budget Status (Trip only) */}
-      {isTrip && group.trackBudget && group.tripBudget && (
-        <View style={styles.budgetBar}>
-          <View style={styles.budgetBarFill} />
-          <Text style={styles.budgetLabel}>
-            {Math.round((group.totalSpent / group.tripBudget) * 100)}% of ₹
-            {group.tripBudget.toLocaleString('en-IN')}
-          </Text>
-        </View>
-      )}
+      <View style={styles.budgetSlot}>
+        {budgetText ? (
+          <View style={styles.budgetBar}>
+            <View style={styles.budgetBarFill} />
+            <Text style={styles.budgetLabel}>{budgetText}</Text>
+          </View>
+        ) : (
+          <Text style={styles.budgetPlaceholder}> </Text>
+        )}
+      </View>
 
       {/* Status Indicator */}
       {!group.isActive && (
@@ -123,12 +119,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    minHeight: 178,
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: 'hidden',
+    justifyContent: 'space-between',
   },
   cardHeader: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   titleSection: {
     flexDirection: 'row',
@@ -152,6 +150,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textMuted,
     fontFamily: 'DMSans_400Regular',
+    marginTop: 2,
   },
   memberCount: {
     fontSize: 11,
@@ -162,17 +161,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 12,
+    marginTop: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
     backgroundColor: `${COLORS.mint}12`,
     borderRadius: 8,
-    width: 'auto',
+    minHeight: 30,
   },
   destinationText: {
     fontSize: 11,
-    color: COLORS.mint,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans_500Medium',
+    flex: 1,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -206,10 +206,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   budgetBar: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    paddingTop: 4,
   },
   budgetBarFill: {
     height: 4,
@@ -221,6 +218,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textMuted,
     fontFamily: 'DMSans_400Regular',
+  },
+  budgetSlot: {
+    minHeight: 24,
+    justifyContent: 'center',
+  },
+  budgetPlaceholder: {
+    fontSize: 10,
+    opacity: 0,
   },
   inactiveOverlay: {
     position: 'absolute',

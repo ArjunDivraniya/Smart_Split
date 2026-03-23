@@ -17,7 +17,6 @@ import { ExpensesTab } from '@/components/ExpensesTab';
 import { BalancesTab } from '@/components/BalancesTab';
 import { TimelineTab } from '@/components/TimelineTab';
 import { SummaryTab } from '@/components/SummaryTab';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Expense {
   id: string;
@@ -42,6 +41,7 @@ export default function GroupDetailScreen() {
 
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userLoading, setUserLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'timeline' | 'summary'>('expenses');
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
@@ -58,11 +58,22 @@ export default function GroupDetailScreen() {
 
   const loadCurrentUser = async () => {
     try {
+      setUserLoading(true);
       const userResponse = await apiService.user.getMe();
-      setCurrentUserId(userResponse.data._id);
-      setCurrentUserName(userResponse.data.name);
+      const userData = userResponse?.data?.data || userResponse?.data;
+      const userId = userData?._id || userData?.id || '';
+      const userName = userData?.name || '';
+
+      setCurrentUserId(userId);
+      setCurrentUserName(userName);
+
+      if (!userId) {
+        console.warn('User profile loaded but missing user id in response');
+      }
     } catch (error) {
       console.error('Error loading user:', error);
+    } finally {
+      setUserLoading(false);
     }
   };
 
@@ -70,7 +81,8 @@ export default function GroupDetailScreen() {
     try {
       setLoading(true);
       const groupResponse = await apiService.groups.getById(id as string);
-      setGroup(groupResponse.data);
+      const groupData = groupResponse?.data?.data || groupResponse?.data;
+      setGroup(groupData || null);
     } catch (error: any) {
       console.error('Error fetching group:', error);
       Alert.alert('Error', 'Failed to load group details');
@@ -98,10 +110,21 @@ export default function GroupDetailScreen() {
     : ['expenses', 'balances', 'summary'];
 
   const renderTabContent = () => {
-    if (!currentUserId) {
+    if (userLoading) {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.violet} />
+        </View>
+      );
+    }
+
+    if (!currentUserId) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.userErrorText, { color: colors.text }]}>Unable to load your profile.</Text>
+          <TouchableOpacity style={[styles.retryUserButton, { backgroundColor: colors.violet }]} onPress={loadCurrentUser}>
+            <Text style={styles.retryUserButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -226,6 +249,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  userErrorText: {
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
+    marginBottom: 12,
+  },
+  retryUserButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryUserButtonText: {
+    color: '#ffffff',
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: 13,
   },
   header: {
     flexDirection: 'row',

@@ -1,7 +1,20 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import User from '../models/User.model';
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  clearAuthCookies,
+  setAuthCookies,
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from '../utils/authTokens';
+
+const getAuthPayload = (user: { _id: unknown; email: string }) => ({
+  userId: String(user._id),
+  email: user.email,
+});
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -90,25 +103,10 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Generate token
-    const JWT_SECRET = process.env.JWT_SECRET;
-    if (!JWT_SECRET) {
-      throw new Error('JWT_SECRET is not defined');
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // Set token in cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      sameSite: 'lax',
-    });
+    const payload = getAuthPayload(user);
+    const token = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+    setAuthCookies(res, token, refreshToken);
 
     console.log(`User logged in successfully: ${email}`);
     return res.status(200).json({
@@ -141,11 +139,6 @@ export const googleLogin = async (req: Request, res: Response) => {
     email = email.trim().toLowerCase();
     name = (name || '').trim() || email.split('@')[0];
 
-    const JWT_SECRET = process.env.JWT_SECRET;
-    if (!JWT_SECRET) {
-      throw new Error('JWT_SECRET is not defined');
-    }
-
     // Find or create Google user (case-insensitive search)
     let user = await User.findOne({ email: { $regex: `^${email}$`, $options: 'i' } });
 
@@ -169,20 +162,10 @@ export const googleLogin = async (req: Request, res: Response) => {
       await user.save();
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // Set token in cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      sameSite: 'lax',
-    });
+    const payload = getAuthPayload(user);
+    const token = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+    setAuthCookies(res, token, refreshToken);
 
     console.log(`Google user logged in: ${email}`);
     return res.status(200).json({
@@ -204,7 +187,7 @@ export const googleLogin = async (req: Request, res: Response) => {
 
 export const logout = async (req: Request, res: Response) => {
   try {
-    res.clearCookie('token');
+    clearAuthCookies(res);
     return res.status(200).json({
       message: 'Logout successful',
       success: true,
@@ -212,5 +195,57 @@ export const logout = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Logout error:', error);
     return res.status(500).json({ message: error.message || 'Something went wrong' });
+  }
+};
+
+export const refresh = async (req: Request, res: Response) => {
+  try {
+    const cookieToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
+    const bodyToken = req.body?.refreshToken;
+    const refreshToken = cookieToken || bodyToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        message: 'Refresh token missing',
+        code: 'REFRESH_TOKEN_MISSING',
+      });
+    }
+
+    const decoded = verifyRefreshToken(refreshToken);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      clearAuthCookies(res);
+      return res.status(401).json({
+        message: 'User not found',
+        code: 'USER_NOT_FOUND',
+      });
+    }
+
+    const payload = getAuthPayload(user);
+    const newAccessToken = signAccessToken(payload);
+    const newRefreshToken = signRefreshToken(payload);
+
+    // Rotate refresh token on every refresh call.
+    setAuthCookies(res, newAccessToken, newRefreshToken);
+
+    return res.status(200).json({
+      message: 'Token refreshed successfully',
+      success: true,
+      token: newAccessToken,
+    });
+  } catch (error: any) {
+    clearAuthCookies(res);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        message: 'Refresh token expired',
+        code: 'REFRESH_TOKEN_EXPIRED',
+      });
+    }
+
+    return res.status(401).json({
+      message: 'Invalid refresh token',
+      code: 'REFRESH_TOKEN_INVALID',
+    });
   }
 };
