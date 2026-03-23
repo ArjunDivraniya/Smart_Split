@@ -1,5 +1,3 @@
-// Mobile-App/src/components/groups/GroupCard.tsx
-
 import React from 'react';
 import {
   StyleSheet,
@@ -8,12 +6,12 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Group, GroupType, GROUP_TYPE_MAP } from '@/src/types/group.types';
 import { formatTripSummary } from '@/src/utils/tripDayCalculator';
 
 const COLORS = {
   surface: '#0F0F1A',
-  elevated: '#1A1A2B',
   violet: '#7C5CFC',
   violetLight: '#9B7FFF',
   mint: '#00E5B0',
@@ -35,16 +33,18 @@ export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
   const typeInfo = GROUP_TYPE_MAP[group.type];
   const isTrip = group.type === GroupType.TRIP;
   const membersCount = group.members?.length ?? 0;
-  const secondaryInfo = isTrip && group.tripStartDate && group.tripEndDate
+
+  const subtitle = isTrip && group.tripStartDate && group.tripEndDate
     ? formatTripSummary(group)
     : `${membersCount} member${membersCount !== 1 ? 's' : ''}`;
-  const tertiaryInfo = isTrip
+
+  const locationOrType = isTrip
     ? (group.tripDestination || typeInfo.label)
     : typeInfo.label;
+
   const budgetText = isTrip && group.trackBudget && group.tripBudget
-    ? `${Math.round((group.totalSpent / group.tripBudget) * 100)}% of ₹${group.tripBudget.toLocaleString('en-IN')}`
+    ? `${Math.round((group.totalSpent / group.tripBudget) * 100)}% of Rs ${group.tripBudget.toLocaleString('en-IN')}`
     : null;
-  const statusLabel = group.isActive ? 'Active' : 'Ended';
 
   const netBalanceColor =
     group.netBalance > 0 ? COLORS.mint : group.netBalance < 0 ? COLORS.coral : COLORS.textMuted;
@@ -54,255 +54,256 @@ export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
       style={styles.card}
       onPress={onPress}
       onLongPress={onLongPress}
-      activeOpacity={0.7}
+      activeOpacity={0.78}
     >
-      {/* Header Row */}
-      <View style={styles.cardHeader}>
-        <View style={styles.titleSection}>
-          <Text style={styles.emoji}>{group.emoji || typeInfo.emoji}</Text>
-          <View style={styles.titleInfo}>
-            <View style={styles.titleRow}>
-              <Text style={styles.groupName} numberOfLines={1}>
-                {group.name}
-              </Text>
-              <View style={styles.typeBadge}>
-                <Text style={styles.typeBadgeText}>{typeInfo.label}</Text>
-              </View>
+      <LinearGradient
+        colors={['rgba(124, 92, 252, 0.24)', 'rgba(13, 13, 23, 0.92)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientLayer}
+      >
+        <View style={styles.topRow}>
+          <View style={styles.leftHeader}>
+            <View style={styles.emojiOrb}>
+              <Text style={styles.emoji}>{group.emoji || typeInfo.emoji}</Text>
             </View>
-            <Text style={styles.tripInfo} numberOfLines={1}>
-              {secondaryInfo}
+
+            <View style={styles.titleWrap}>
+              <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
+              <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.statusPill, group.isActive ? styles.statusPillLive : styles.statusPillEnded]}>
+            <Text style={[styles.statusPillText, group.isActive ? styles.statusTextLive : styles.statusTextEnded]}>
+              {group.isActive ? 'LIVE' : 'ENDED'}
             </Text>
-            <View style={styles.tripDestination}>
-              <Ionicons name={isTrip ? 'location' : 'pricetag'} size={14} color={isTrip ? COLORS.mint : COLORS.violetLight} />
-              <Text style={styles.destinationText} numberOfLines={1}>{tertiaryInfo}</Text>
-            </View>
           </View>
         </View>
 
-        <View style={styles.metaRow}>
-          <View style={styles.metaChip}>
+        <View style={styles.infoChipRow}>
+          <View style={styles.infoChip}>
+            <Ionicons name={isTrip ? 'location-outline' : 'pricetag-outline'} size={12} color={COLORS.violetLight} />
+            <Text style={styles.infoChipText} numberOfLines={1}>{locationOrType}</Text>
+          </View>
+
+          <View style={styles.infoChip}>
             <Ionicons name="people-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.metaChipText}>{membersCount}</Text>
-          </View>
-          <View style={[styles.metaChip, group.isActive ? styles.metaChipActive : styles.metaChipEnded]}>
-            <Text style={[styles.metaChipText, group.isActive ? styles.metaChipTextActive : styles.metaChipTextEnded]}>
-              {statusLabel}
-            </Text>
+            <Text style={styles.infoChipText}>{membersCount} members</Text>
           </View>
         </View>
-      </View>
 
-      {/* Bottom Row with totals */}
-      <View style={styles.cardFooter}>
-        <View>
-          <Text style={styles.footerLabel}>Total Spent</Text>
-          <Text style={styles.footerValue}>
-            ₹{group.totalSpent.toLocaleString('en-IN')}
-          </Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.alignRight}>
-          <Text style={styles.footerLabel}>
-            {group.netBalance > 0 ? 'You Get' : 'You Owe'}
-          </Text>
-          <Text style={[styles.footerValue, { color: netBalanceColor }]}>
-            ₹{Math.abs(group.netBalance).toLocaleString('en-IN')}
-          </Text>
-        </View>
-      </View>
+        <View style={styles.financialStrip}>
+          <View style={styles.metricBox}>
+            <Text style={styles.metricLabel}>Total Spent</Text>
+            <Text style={styles.metricValue}>Rs {group.totalSpent.toLocaleString('en-IN')}</Text>
+          </View>
 
-      <View style={styles.budgetSlot}>
-        <View style={styles.budgetBar}>
-          <View style={[styles.budgetBarFill, !budgetText && styles.budgetBarMuted]} />
-          <Text style={styles.budgetLabel}>{budgetText || 'No budget tracking enabled'}</Text>
-        </View>
-      </View>
+          <View style={styles.metricDivider} />
 
-      {/* Status Indicator */}
-      {!group.isActive && (
-        <View style={styles.inactiveOverlay}>
-          <Text style={styles.inactiveText}>Ended</Text>
+          <View style={styles.metricBoxRight}>
+            <Text style={styles.metricLabel}>{group.netBalance > 0 ? 'You Get' : 'You Owe'}</Text>
+            <Text style={[styles.metricValue, { color: netBalanceColor }]}>Rs {Math.abs(group.netBalance).toLocaleString('en-IN')}</Text>
+          </View>
         </View>
-      )}
+
+        <View style={styles.bottomRow}>
+          <View style={styles.budgetWrap}>
+            <View style={styles.budgetTrack}>
+              <View
+                style={[
+                  styles.budgetFill,
+                  {
+                    width:
+                      isTrip && group.trackBudget && group.tripBudget && group.tripBudget > 0
+                        ? `${Math.min(100, Math.max(6, (group.totalSpent / group.tripBudget) * 100))}%`
+                        : '28%',
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.budgetLabel}>{budgetText || 'Budget tracking off'}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+        </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.elevated,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
     marginBottom: 12,
-    minHeight: 178,
+    minHeight: 188,
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 9,
+  },
+  gradientLayer: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     justifyContent: 'space-between',
   },
-  cardHeader: {
-    marginBottom: 10,
-  },
-  titleSection: {
+  topRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
   },
-  emoji: {
-    fontSize: 32,
-  },
-  titleInfo: {
-    flex: 1,
-  },
-  titleRow: {
+  leftHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  emojiOrb: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.09)',
+  },
+  emoji: {
+    fontSize: 24,
+  },
+  titleWrap: {
+    flex: 1,
   },
   groupName: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     fontFamily: 'Syne_800ExtraBold',
     color: COLORS.textPrimary,
-    marginBottom: 2,
-    flex: 1,
+    letterSpacing: -0.2,
   },
-  typeBadge: {
-    backgroundColor: `${COLORS.violet}25`,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  typeBadgeText: {
-    color: COLORS.violetLight,
-    fontSize: 10,
-    fontFamily: 'DMSans_600SemiBold',
-  },
-  tripInfo: {
+  subtitle: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: COLORS.textSecondary,
     fontFamily: 'DMSans_400Regular',
     marginTop: 2,
   },
-  memberCount: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontFamily: 'DMSans_400Regular',
+  statusPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
   },
-  tripDestination: {
+  statusPillLive: {
+    backgroundColor: 'rgba(0, 229, 176, 0.14)',
+    borderColor: 'rgba(0, 229, 176, 0.35)',
+  },
+  statusPillEnded: {
+    backgroundColor: 'rgba(85, 85, 106, 0.28)',
+    borderColor: 'rgba(136, 136, 170, 0.32)',
+  },
+  statusPillText: {
+    fontSize: 9,
+    fontFamily: 'DMSans_700Bold',
+    letterSpacing: 0.8,
+  },
+  statusTextLive: {
+    color: COLORS.mint,
+  },
+  statusTextEnded: {
+    color: COLORS.textSecondary,
+  },
+  infoChipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  infoChip: {
+    flex: 1,
+    minHeight: 30,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: `${COLORS.mint}12`,
-    borderRadius: 8,
-    minHeight: 30,
   },
-  destinationText: {
+  infoChipText: {
     fontSize: 11,
     color: COLORS.textSecondary,
-    fontFamily: 'DMSans_500Medium',
+    fontFamily: 'DMSans_600SemiBold',
     flex: 1,
   },
-  metaRow: {
+  financialStrip: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(9, 9, 19, 0.45)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  metricBox: {
+    flex: 1,
+  },
+  metricBoxRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  metricLabel: {
+    fontSize: 9,
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    fontFamily: 'DMSans_600SemiBold',
+    marginBottom: 4,
+  },
+  metricValue: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontFamily: 'Syne_700Bold',
+  },
+  metricDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    marginHorizontal: 10,
+  },
+  bottomRow: {
     marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  metaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: `${COLORS.textPrimary}10`,
-  },
-  metaChipText: {
-    color: COLORS.textSecondary,
-    fontSize: 10,
-    fontFamily: 'DMSans_500Medium',
-  },
-  metaChipActive: {
-    backgroundColor: `${COLORS.mint}20`,
-  },
-  metaChipEnded: {
-    backgroundColor: `${COLORS.textMuted}25`,
-  },
-  metaChipTextActive: {
-    color: COLORS.mint,
-  },
-  metaChipTextEnded: {
-    color: COLORS.textMuted,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  footerLabel: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    fontFamily: 'DMSans_400Regular',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  footerValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Syne_700Bold',
-    color: COLORS.textPrimary,
-  },
-  divider: {
-    width: 1,
-    height: 30,
-    backgroundColor: COLORS.border,
-    marginHorizontal: 12,
-  },
-  alignRight: {
+  budgetWrap: {
     flex: 1,
-    alignItems: 'flex-end',
+    marginRight: 8,
   },
-  budgetBar: {
-    paddingTop: 4,
-  },
-  budgetBarFill: {
+  budgetTrack: {
     height: 4,
-    backgroundColor: COLORS.amber,
     borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    overflow: 'hidden',
     marginBottom: 6,
   },
-  budgetBarMuted: {
-    backgroundColor: `${COLORS.textMuted}50`,
+  budgetFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: COLORS.amber,
   },
   budgetLabel: {
     fontSize: 10,
     color: COLORS.textMuted,
-    fontFamily: 'DMSans_400Regular',
-  },
-  budgetSlot: {
-    minHeight: 24,
-    justifyContent: 'center',
-  },
-  inactiveOverlay: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: `${COLORS.textMuted}40`,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  inactiveText: {
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Syne_700Bold',
-    color: COLORS.textMuted,
+    fontFamily: 'DMSans_500Medium',
   },
 });
