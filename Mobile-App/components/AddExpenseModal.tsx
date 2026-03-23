@@ -8,9 +8,11 @@ import { BlurView } from 'expo-blur';
 interface AddExpenseModalProps {
     isVisible: boolean;
     onClose: () => void;
+    onAddPersonal: () => void;
+    onAddGroup: () => void;
 }
 
-export function AddExpenseModal({ isVisible, onClose }: AddExpenseModalProps) {
+export function AddExpenseModal({ isVisible, onClose, onAddPersonal, onAddGroup }: AddExpenseModalProps) {
     const colorScheme = useColorScheme() ?? 'dark';
     const colors = Colors[colorScheme];
 
@@ -28,24 +30,43 @@ export function AddExpenseModal({ isVisible, onClose }: AddExpenseModalProps) {
 
                 <View style={[styles.modalView, { backgroundColor: colors.card }]}>
                     <View style={styles.header}>
-                        <Text style={[styles.modalTitle, { color: colors.text }]}>Add Expense</Text>
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Expense Type</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <Ionicons name="close" size={24} color={colors.icon} />
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.content}>
-                        <View style={styles.amountContainer}>
-                            <Text style={[styles.currency, { color: colors.icon }]}>₹</Text>
-                            <Text style={[styles.amountText, { color: colors.violet }]}>0</Text>
-                        </View>
+                        <Text style={[styles.subtitle, { color: colors.icon }]}>What do you want to add?</Text>
 
-                        <View style={[styles.placeholderInput, { backgroundColor: colors.elevated }]}>
-                            <Text style={{ color: colors.tabIconDefault }}>What was it for?</Text>
-                        </View>
+                        <TouchableOpacity
+                            style={[styles.optionCard, { backgroundColor: colors.elevated, borderColor: `${colors.violet}44` }]}
+                            onPress={onAddPersonal}
+                            activeOpacity={0.85}
+                        >
+                            <View style={[styles.optionIconWrap, { backgroundColor: `${colors.violet}22` }]}>
+                                <Ionicons name="wallet-outline" size={22} color={colors.violet} />
+                            </View>
+                            <View style={styles.optionTextWrap}>
+                                <Text style={[styles.optionTitle, { color: colors.text }]}>Add Personal Expense</Text>
+                                <Text style={[styles.optionDescription, { color: colors.icon }]}>Track your own spending quickly</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+                        </TouchableOpacity>
 
-                        <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.violet }]}>
-                            <Text style={styles.saveButtonText}>Save Expense</Text>
+                        <TouchableOpacity
+                            style={[styles.optionCard, { backgroundColor: colors.elevated, borderColor: `${colors.mint}44` }]}
+                            onPress={onAddGroup}
+                            activeOpacity={0.85}
+                        >
+                            <View style={[styles.optionIconWrap, { backgroundColor: `${colors.mint}22` }]}>
+                                <Ionicons name="people-outline" size={22} color={colors.mint} />
+                            </View>
+                            <View style={styles.optionTextWrap}>
+                                <Text style={[styles.optionTitle, { color: colors.text }]}>Add Group Expense</Text>
+                                <Text style={[styles.optionDescription, { color: colors.icon }]}>Split expense with your group members</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.icon} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -66,7 +87,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         padding: 24,
-        height: '70%',
+        height: '42%',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
@@ -92,41 +113,40 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        alignItems: 'center',
+        gap: 14,
     },
-    amountContainer: {
+    subtitle: {
+        fontSize: 14,
+        fontFamily: 'DMSans_400Regular',
+        marginBottom: 4,
+    },
+    optionCard: {
+        width: '100%',
+        borderRadius: 16,
+        borderWidth: 1,
+        paddingHorizontal: 14,
+        paddingVertical: 14,
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 40,
-    },
-    currency: {
-        fontSize: 24,
-        fontWeight: '600',
-        marginTop: 10,
-        marginRight: 4,
-    },
-    amountText: {
-        fontSize: 64,
-        fontWeight: '800',
-        fontFamily: 'Syne',
-    },
-    placeholderInput: {
-        width: '100%',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 24,
-    },
-    saveButton: {
-        width: '100%',
-        padding: 18,
-        borderRadius: 16,
         alignItems: 'center',
-        marginTop: 'auto',
+        gap: 12,
     },
-    saveButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '700',
-        fontFamily: 'Syne',
+    optionIconWrap: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    optionTextWrap: {
+        flex: 1,
+    },
+    optionTitle: {
+        fontSize: 15,
+        fontFamily: 'DMSans_700Bold',
+    },
+    optionDescription: {
+        fontSize: 12,
+        fontFamily: 'DMSans_400Regular',
+        marginTop: 2,
     },
 });

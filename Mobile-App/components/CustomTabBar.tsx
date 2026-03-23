@@ -11,9 +11,28 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     const colors = Colors[colorScheme];
     const [modalVisible, setModalVisible] = useState(false);
 
+    const openAddSheet = () => {
+        setModalVisible(true);
+    };
+
+    const handleAddPersonal = () => {
+        setModalVisible(false);
+        navigation.navigate('add');
+    };
+
+    const handleAddGroup = () => {
+        setModalVisible(false);
+        navigation.navigate('groups');
+    };
+
     return (
         <View style={[styles.container, { backgroundColor: colors.card, borderTopColor: colors.elevated }]}>
-            <AddExpenseModal isVisible={modalVisible} onClose={() => setModalVisible(false)} />
+            <AddExpenseModal
+                isVisible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onAddPersonal={handleAddPersonal}
+                onAddGroup={handleAddGroup}
+            />
 
             {state.routes.map((route, index) => {
                 const { options } = descriptors[route.key];
@@ -26,6 +45,18 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                 const isFocused = state.index === index;
 
                 const onPress = () => {
+                    if (route.name === 'add') {
+                        const event = navigation.emit({
+                            type: 'tabPress',
+                            target: route.key,
+                            canPreventDefault: true,
+                        });
+                        if (!event.defaultPrevented) {
+                            openAddSheet();
+                        }
+                        return;
+                    }
+
                     const event = navigation.emit({
                         type: 'tabPress',
                         target: route.key,
@@ -42,7 +73,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                     return (
                         <TouchableOpacity
                             key={route.key}
-                            onPress={() => setModalVisible(true)}
+                            onPress={onPress}
                             style={styles.centerButtonContainer}
                             activeOpacity={0.8}
                         >
