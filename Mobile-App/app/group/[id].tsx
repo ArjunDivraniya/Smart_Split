@@ -7,6 +7,9 @@ import {
   Alert,
   ActionSheetIOS,
   Platform,
+  Modal,
+  TextInput,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -22,6 +25,8 @@ import { TimelineTab } from '@/components/TimelineTab';
 import { SummaryTab } from '@/components/SummaryTab';
 import { AvatarGroup } from '@/src/components/groups/AvatarGroup';
 import { useAuth } from '@/src/context/AuthContext';
+import api from '@/src/services/api';
+import { addMember } from '@/src/services/groups.service';
 
 interface Expense {
   id: string;
@@ -38,6 +43,12 @@ interface Settlement {
   amount: number;
 }
 
+type SearchUser = {
+  _id: string;
+  name?: string;
+  email: string;
+};
+
 export default function GroupDetailScreen() {
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
@@ -51,10 +62,35 @@ export default function GroupDetailScreen() {
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'timeline' | 'summary'>('expenses');
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [memberModalVisible, setMemberModalVisible] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [memberQuery, setMemberQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [addingMemberId, setAddingMemberId] = useState('');
 
   const normalizeId = (value: unknown): string => {
     if (value === null || value === undefined) {
       return '';
+    }
+
+    if (typeof value === 'object') {
+      const objectValue = value as Record<string, any>;
+      const nestedId =
+        objectValue.$oid ||
+        objectValue._id ||
+        objectValue.id ||
+        objectValue.userId ||
+        objectValue.value;
+
+      if (nestedId === value) {
+        return '';
+      }
+
+      return normalizeId(nestedId);
     }
 
     return String(value).trim();
@@ -110,6 +146,8 @@ export default function GroupDetailScreen() {
     router.push(`/group/add-expense?id=${id}`);
   };
 
+  const groupId = normalizeId(id || group?.id || group?._id);
+
   if (loading || !group) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
@@ -127,7 +165,8 @@ export default function GroupDetailScreen() {
       ? group.createdBy?._id || (group.createdBy as any)?.id || (group.createdBy as any)?.userId
       : group.createdBy
   );
-  const isCreator = Boolean(authUserId && groupCreatorId && authUserId === groupCreatorId);
+  const signedInUserId = authUserId || normalizeId(currentUserId);
+  const isCreator = Boolean(signedInUserId && groupCreatorId && signedInUserId === groupCreatorId);
 
   const tabs = isTrip 
     ? ['expenses', 'balances', 'timeline', 'summary']
@@ -194,17 +233,105 @@ export default function GroupDetailScreen() {
     }
   };
 
-  const handleEditGroup = () => {
-    Alert.alert('Edit Group', 'Edit group flow will be added next.');
+  const openEditModal = () => {
+    setEditedName(group.name || '');
+    setEditedDescription(group.description || '');
+    setEditModalVisible(true);
   };
 
-  const handleAddMember = () => {
-    Alert.alert('Add Member', 'Add member flow will be added next.');
+  const handleSaveEdit = async () => {
+    if (!groupId) {
+      return;
+    }
+
+    const trimmedName = editedName.trim();
+    if (!trimmedName) {
+      Alert.alert('Validation', 'Group name is required.');
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      const updated = await apiService.groups.update(groupId, {
+        name: trimmedName,
+        description: editedDescription.trim(),
+      });
+
+      const updatedGroup = updated?.data?.data || updated?.data || updated;
+      setGroup((prev) => (prev ? { ...prev, ...updatedGroup } : prev));
+      setEditModalVisible(false);
+      Alert.alert('Success', 'Group details updated.');
+    } catch {
+      Alert.alert('Error', 'Failed to update group. Please try again.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const openAddMemberModal = () => {
+    setMemberQuery('');
+    setSearchResults([]);
+    setMemberModalVisible(true);
+  };
+
+  const searchMembers = async (query: string) => {
+    setMemberQuery(query);
+
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchingUsers(true);
+      const response = await api.get('/user/search', {
+        params: { query: query.trim() },
+      });
+
+      const usersData = Array.isArray(response?.data?.data) ? response.data.data : [];
+      const memberIds = new Set((group.members || []).map((member) => normalizeId(member.userId)));
+
+      const filtered = usersData.filter((candidate: SearchUser) => {
+        const candidateId = normalizeId(candidate._id);
+        return candidateId && !memberIds.has(candidateId);
+      });
+
+      setSearchResults(filtered);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchingUsers(false);
+    }
+  };
+
+  const handleAddMember = async (user: SearchUser) => {
+    if (!groupId) {
+      return;
+    }
+
+    const userId = normalizeId(user._id);
+    if (!userId) {
+      return;
+    }
+
+    try {
+      setAddingMemberId(userId);
+      await addMember(groupId, userId);
+      await fetchGroupDetails();
+      setSearchResults((prev) => prev.filter((candidate) => normalizeId(candidate._id) !== userId));
+      Alert.alert('Success', `${user.name || user.email} added to group.`);
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error?.response?.data?.error || error?.response?.data?.message || 'Failed to add member.'
+      );
+    } finally {
+      setAddingMemberId('');
+    }
   };
 
   const handleArchiveGroup = async () => {
     try {
-      const groupId = String(id || group.id || group._id || '');
       if (!groupId) {
         return;
       }
@@ -232,7 +359,6 @@ export default function GroupDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const groupId = String(id || group.id || group._id || '');
               if (!groupId) {
                 return;
               }
@@ -266,8 +392,8 @@ export default function GroupDetailScreen() {
           userInterfaceStyle: colorScheme,
         },
         (selectedIndex) => {
-          if (selectedIndex === 0) handleEditGroup();
-          if (selectedIndex === 1) handleAddMember();
+          if (selectedIndex === 0) openEditModal();
+          if (selectedIndex === 1) openAddMemberModal();
           if (selectedIndex === 2) handleArchiveGroup();
           if (selectedIndex === 3) handleDeleteGroup();
         }
@@ -276,8 +402,8 @@ export default function GroupDetailScreen() {
     }
 
     Alert.alert('Group Actions', 'Choose an action', [
-      { text: 'Edit Group', onPress: handleEditGroup },
-      { text: 'Add Member', onPress: handleAddMember },
+      { text: 'Edit Group', onPress: openEditModal },
+      { text: 'Add Member', onPress: openAddMemberModal },
       { text: 'Archive Group', onPress: handleArchiveGroup },
       { text: 'Delete Group', onPress: handleDeleteGroup, style: 'destructive' },
       { text: 'Cancel', style: 'cancel' },
@@ -364,6 +490,126 @@ export default function GroupDetailScreen() {
       <View style={styles.tabContent}>
         {renderTabContent()}
       </View>
+
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Group</Text>
+
+            <Text style={[styles.inputLabel, { color: colors.icon }]}>Group Name</Text>
+            <TextInput
+              value={editedName}
+              onChangeText={setEditedName}
+              placeholder="Group name"
+              placeholderTextColor={colors.icon}
+              style={[styles.input, { color: colors.text, borderColor: colors.elevated, backgroundColor: colors.elevated }]}
+            />
+
+            <Text style={[styles.inputLabel, { color: colors.icon }]}>Description</Text>
+            <TextInput
+              value={editedDescription}
+              onChangeText={setEditedDescription}
+              placeholder="Description"
+              placeholderTextColor={colors.icon}
+              multiline
+              style={[
+                styles.input,
+                styles.textArea,
+                { color: colors.text, borderColor: colors.elevated, backgroundColor: colors.elevated },
+              ]}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: colors.elevated }]}
+                onPress={() => setEditModalVisible(false)}
+                disabled={savingEdit}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: colors.violet }]}
+                onPress={handleSaveEdit}
+                disabled={savingEdit}
+              >
+                {savingEdit ? <ActivityIndicator size="small" color="#ffffff" /> : <Text style={styles.primaryButtonText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={memberModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMemberModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Add Member</Text>
+            <TextInput
+              value={memberQuery}
+              onChangeText={searchMembers}
+              placeholder="Search by name or email"
+              placeholderTextColor={colors.icon}
+              style={[styles.input, { color: colors.text, borderColor: colors.elevated, backgroundColor: colors.elevated }]}
+            />
+
+            {searchingUsers ? (
+              <ActivityIndicator size="small" color={colors.violet} style={styles.searchLoader} />
+            ) : (
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item, index) => normalizeId(item._id) || `search-user-${index}`}
+                style={styles.searchList}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  const itemId = normalizeId(item._id);
+                  const isAdding = addingMemberId === itemId;
+
+                  return (
+                    <View style={[styles.searchItem, { borderBottomColor: colors.elevated }]}> 
+                      <View style={styles.searchInfo}>
+                        <Text style={[styles.searchName, { color: colors.text }]} numberOfLines={1}>
+                          {item.name || 'Unnamed User'}
+                        </Text>
+                        <Text style={[styles.searchEmail, { color: colors.icon }]} numberOfLines={1}>
+                          {item.email}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.addMemberButton, { backgroundColor: colors.violet }]}
+                        onPress={() => handleAddMember(item)}
+                        disabled={isAdding}
+                      >
+                        {isAdding ? <ActivityIndicator size="small" color="#ffffff" /> : <Text style={styles.addMemberButtonText}>Add</Text>}
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }}
+                ListEmptyComponent={
+                  memberQuery.trim().length >= 2 ? (
+                    <Text style={[styles.emptySearchText, { color: colors.icon }]}>No users found</Text>
+                  ) : null
+                }
+              />
+            )}
+
+            <TouchableOpacity
+              style={[styles.secondaryButton, styles.closeMemberButton, { borderColor: colors.elevated }]}
+              onPress={() => setMemberModalVisible(false)}
+            >
+              <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       </View>
     </SafeAreaView>
   );
@@ -478,5 +724,120 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     flex: 1,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Syne_700Bold',
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontFamily: 'DMSans_500Medium',
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 14,
+  },
+  textArea: {
+    minHeight: 96,
+    textAlignVertical: 'top',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    gap: 10,
+  },
+  secondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  primaryButton: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  searchLoader: {
+    marginTop: 12,
+  },
+  searchList: {
+    marginTop: 10,
+    maxHeight: 260,
+  },
+  searchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 8,
+  },
+  searchInfo: {
+    flex: 1,
+  },
+  searchName: {
+    fontSize: 14,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  searchEmail: {
+    fontSize: 12,
+    fontFamily: 'DMSans_400Regular',
+    marginTop: 2,
+  },
+  addMemberButton: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 58,
+    alignItems: 'center',
+  },
+  addMemberButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  emptySearchText: {
+    textAlign: 'center',
+    marginTop: 16,
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+  },
+  closeMemberButton: {
+    marginTop: 14,
+    flex: 0,
   },
 });
