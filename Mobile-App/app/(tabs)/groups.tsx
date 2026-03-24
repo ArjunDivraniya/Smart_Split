@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Platform, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GroupCard } from '../../src/components/groups/GroupCard';
 import { Group, GroupType } from '@/src/types/group.types';
 import { useGroups } from '@/src/hooks/useGroups';
+import { apiService } from '@/src/services';
 
 type GroupFilter = 'all' | 'active' | 'trips' | 'archived';
 
@@ -17,8 +18,9 @@ export default function GroupsScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
-    const { groups, loading, error, refreshGroups } = useGroups();
+    const { groups, loading, error, refreshGroups, deleteGroup } = useGroups();
     const [selectedFilter, setSelectedFilter] = useState<GroupFilter>('all');
+    const [currentUserId, setCurrentUserId] = useState('');
 
     const filterOptions: Array<{ key: GroupFilter; label: string }> = [
         { key: 'all', label: 'All' },
@@ -43,7 +45,20 @@ export default function GroupsScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            refreshGroups();
+            const loadData = async () => {
+                await refreshGroups();
+
+                try {
+                    const userResponse = await apiService.user.getMe();
+                    const userData = userResponse?.data?.data || userResponse?.data;
+                    const userId = userData?._id || userData?.id || '';
+                    setCurrentUserId(userId);
+                } catch {
+                    setCurrentUserId('');
+                }
+            };
+
+            loadData();
         }, [refreshGroups])
     );
 
@@ -57,6 +72,40 @@ export default function GroupsScreen() {
             return;
         }
         router.push(`/group/${groupId}` as any);
+    };
+
+    const handleEditGroup = (group: Group) => {
+        const groupId = group.id || group._id;
+        if (!groupId) {
+            return;
+        }
+
+        Alert.alert('Edit Group', 'Group editing screen will be added next.');
+    };
+
+    const handleDeleteGroup = (group: Group) => {
+        const groupId = group.id || group._id;
+        if (!groupId) {
+            return;
+        }
+
+        Alert.alert(
+            'Delete Group',
+            `Are you sure you want to delete ${group.name}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const deleted = await deleteGroup(groupId);
+                        if (!deleted) {
+                            Alert.alert('Error', 'Failed to delete group. Please try again.');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const renderLoadingSkeleton = () => {
@@ -162,7 +211,10 @@ export default function GroupsScreen() {
                         renderItem={({ item }) => (
                             <GroupCard
                                 group={item}
+                                currentUserId={currentUserId}
                                 onPress={() => handleGroupPress(item)}
+                                onEdit={handleEditGroup}
+                                onDelete={handleDeleteGroup}
                             />
                         )}
                         contentContainerStyle={styles.listContent}

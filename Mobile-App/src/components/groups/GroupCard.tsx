@@ -6,304 +6,359 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Group, GroupType, GROUP_TYPE_MAP } from '@/src/types/group.types';
-import { formatTripSummary } from '@/src/utils/tripDayCalculator';
+import { AvatarGroup } from '@/src/components/groups/AvatarGroup';
 
 const COLORS = {
-  surface: '#0F0F1A',
+  surface: '#141420',
+  surfaceTrip: '#1A1830',
   violet: '#7C5CFC',
-  violetLight: '#9B7FFF',
   mint: '#00E5B0',
   coral: '#FF5F7E',
-  amber: '#FFB547',
-  textPrimary: '#F0F0FF',
-  textSecondary: '#8888AA',
-  textMuted: '#55556A',
-  border: 'rgba(255, 255, 255, 0.06)',
+  textPrimary: '#F3F3FF',
+  textSecondary: '#AAAAC4',
+  textMuted: '#70708E',
+  border: 'rgba(255, 255, 255, 0.09)',
+  badgeActiveBg: 'rgba(0, 229, 176, 0.16)',
+  badgeEndedBg: 'rgba(255, 95, 126, 0.14)',
 };
 
 interface GroupCardProps {
   group: Group;
+  currentUserId: string;
   onPress: () => void;
   onLongPress?: () => void;
+  onEdit?: (group: Group) => void;
+  onDelete?: (group: Group) => void;
 }
 
-export function GroupCard({ group, onPress, onLongPress }: GroupCardProps) {
+export function GroupCard({
+  group,
+  currentUserId,
+  onPress,
+  onLongPress,
+  onEdit,
+  onDelete,
+}: GroupCardProps) {
   const typeInfo = GROUP_TYPE_MAP[group.type];
   const isTrip = group.type === GroupType.TRIP;
   const membersCount = group.members?.length ?? 0;
+  const lastActivityDate = group.updatedAt || group.createdAt;
 
-  const subtitle = isTrip && group.tripStartDate && group.tripEndDate
-    ? formatTripSummary(group)
-    : `${membersCount} member${membersCount !== 1 ? 's' : ''}`;
+  const destination = isTrip ? (group.tripDestination || 'Destination not set') : null;
 
-  const locationOrType = isTrip
-    ? (group.tripDestination || typeInfo.label)
-    : typeInfo.label;
+  const formatDate = (value?: Date): string => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
+    });
+  };
 
-  const budgetText = isTrip && group.trackBudget && group.tripBudget
-    ? `${Math.round((group.totalSpent / group.tripBudget) * 100)}% of Rs ${group.tripBudget.toLocaleString('en-IN')}`
+  const dateRange = isTrip && group.tripStartDate && group.tripEndDate
+    ? `${formatDate(group.tripStartDate)} - ${formatDate(group.tripEndDate)}`
     : null;
 
-  const netBalanceColor =
-    group.netBalance > 0 ? COLORS.mint : group.netBalance < 0 ? COLORS.coral : COLORS.textMuted;
+  const lastActivityText = (() => {
+    if (!lastActivityDate) return 'No activity yet';
+    const parsed = new Date(lastActivityDate);
+    if (Number.isNaN(parsed.getTime())) return 'No activity yet';
+    return parsed.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  })();
 
-  return (
+  const netBalanceLabel = group.netBalance >= 0 ? 'You are owed' : 'You owe';
+  const netBalanceColor = group.netBalance >= 0 ? COLORS.mint : COLORS.coral;
+
+  const memberPreview = (group.members || []).map((member) => ({
+    id: member.userId,
+    name: member.userName,
+    email: member.email,
+  }));
+
+  const creatorId = typeof group.createdBy === 'object' ? group.createdBy?._id : group.createdBy;
+  const isCreator = Boolean(currentUserId && creatorId && creatorId === currentUserId);
+  const canSwipe = isCreator && Boolean(onEdit || onDelete);
+
+  const renderRightActions = () => (
+    <View style={styles.actionsContainer}>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.editAction]}
+        onPress={() => onEdit?.(group)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="create-outline" size={16} color="#FFFFFF" />
+        <Text style={styles.actionText}>Edit</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.actionButton, styles.deleteAction]}
+        onPress={() => onDelete?.(group)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+        <Text style={styles.actionText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const cardContent = (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        isTrip ? styles.tripCard : styles.regularCard,
+        { backgroundColor: isTrip ? COLORS.surfaceTrip : COLORS.surface },
+      ]}
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.78}
     >
-      <LinearGradient
-        colors={['rgba(124, 92, 252, 0.24)', 'rgba(13, 13, 23, 0.92)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientLayer}
-      >
+      <View style={styles.contentWrap}>
         <View style={styles.topRow}>
-          <View style={styles.leftHeader}>
-            <View style={styles.emojiOrb}>
+          <View style={styles.leftBlock}>
+            <View style={styles.emojiWrap}>
               <Text style={styles.emoji}>{group.emoji || typeInfo.emoji}</Text>
             </View>
 
-            <View style={styles.titleWrap}>
-              <Text style={styles.groupName} numberOfLines={1}>{group.name}</Text>
-              <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+            <View style={styles.titleBlock}>
+              <Text style={styles.groupName} numberOfLines={1}>
+                {group.name}
+              </Text>
+
+              <View style={styles.memberRow}>
+                <AvatarGroup members={memberPreview} size="small" />
+                <Text style={styles.memberCountText}>{membersCount} member{membersCount !== 1 ? 's' : ''}</Text>
+              </View>
+
+              {isTrip && (
+                <View style={styles.tripInfoRow}>
+                  <View style={styles.tripMetaItem}>
+                    <Ionicons name="location-outline" size={13} color={COLORS.textSecondary} />
+                    <Text style={styles.tripMetaText} numberOfLines={1}>{destination}</Text>
+                  </View>
+                  {dateRange ? (
+                    <View style={styles.tripMetaItem}>
+                      <Ionicons name="calendar-outline" size={13} color={COLORS.textSecondary} />
+                      <Text style={styles.tripMetaText}>{dateRange}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              )}
             </View>
           </View>
 
-          <View style={[styles.statusPill, group.isActive ? styles.statusPillLive : styles.statusPillEnded]}>
-            <Text style={[styles.statusPillText, group.isActive ? styles.statusTextLive : styles.statusTextEnded]}>
-              {group.isActive ? 'LIVE' : 'ENDED'}
-            </Text>
-          </View>
+          {isTrip && (
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: group.isActive ? COLORS.badgeActiveBg : COLORS.badgeEndedBg },
+              ]}
+            >
+              <Text style={[styles.statusBadgeText, { color: group.isActive ? COLORS.mint : COLORS.coral }]}> 
+                {group.isActive ? 'Active' : 'Ended'}
+              </Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.infoChipRow}>
-          <View style={styles.infoChip}>
-            <Ionicons name={isTrip ? 'location-outline' : 'pricetag-outline'} size={12} color={COLORS.violetLight} />
-            <Text style={styles.infoChipText} numberOfLines={1}>{locationOrType}</Text>
-          </View>
-
-          <View style={styles.infoChip}>
-            <Ionicons name="people-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.infoChipText}>{membersCount} members</Text>
-          </View>
-        </View>
-
-        <View style={styles.financialStrip}>
-          <View style={styles.metricBox}>
+        <View style={styles.metricsRow}>
+          <View style={styles.metricBlock}>
             <Text style={styles.metricLabel}>Total Spent</Text>
-            <Text style={styles.metricValue}>Rs {group.totalSpent.toLocaleString('en-IN')}</Text>
+            <Text style={styles.metricValue}>Rs {Number(group.totalSpent || 0).toLocaleString('en-IN')}</Text>
           </View>
 
-          <View style={styles.metricDivider} />
-
-          <View style={styles.metricBoxRight}>
-            <Text style={styles.metricLabel}>{group.netBalance > 0 ? 'You Get' : 'You Owe'}</Text>
-            <Text style={[styles.metricValue, { color: netBalanceColor }]}>Rs {Math.abs(group.netBalance).toLocaleString('en-IN')}</Text>
+          <View style={styles.metricBlockRight}>
+            <Text style={styles.metricLabel}>{netBalanceLabel}</Text>
+            <Text style={[styles.metricValue, { color: netBalanceColor }]}>Rs {Math.abs(Number(group.netBalance || 0)).toLocaleString('en-IN')}</Text>
           </View>
         </View>
 
         <View style={styles.bottomRow}>
-          <View style={styles.budgetWrap}>
-            <View style={styles.budgetTrack}>
-              <View
-                style={[
-                  styles.budgetFill,
-                  {
-                    width:
-                      isTrip && group.trackBudget && group.tripBudget && group.tripBudget > 0
-                        ? `${Math.min(100, Math.max(6, (group.totalSpent / group.tripBudget) * 100))}%`
-                        : '28%',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.budgetLabel}>{budgetText || 'Budget tracking off'}</Text>
-          </View>
+          <Text style={styles.lastActivityText}>Last activity: {lastActivityText}</Text>
           <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
         </View>
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
+  );
+
+  if (!canSwipe) {
+    return cardContent;
+  }
+
+  return (
+    <Swipeable
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      rightThreshold={24}
+      friction={2}
+    >
+      {cardContent}
+    </Swipeable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    marginBottom: 12,
-    minHeight: 188,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 9,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  gradientLayer: {
-    flex: 1,
+  regularCard: {
+    minHeight: 154,
+  },
+  tripCard: {
+    minHeight: 184,
+  },
+  contentWrap: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    justifyContent: 'space-between',
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  leftHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 10,
   },
-  emojiOrb: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  leftBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 12,
+  },
+  emojiWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.09)',
+    borderColor: COLORS.border,
   },
   emoji: {
-    fontSize: 24,
+    fontSize: 30,
   },
-  titleWrap: {
+  titleBlock: {
     flex: 1,
   },
   groupName: {
-    fontSize: 17,
-    fontWeight: '800',
-    fontFamily: 'Syne_800ExtraBold',
+    fontSize: 18,
+    fontFamily: 'Syne_700Bold',
     color: COLORS.textPrimary,
-    letterSpacing: -0.2,
+    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 11,
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  memberCountText: {
+    fontSize: 12,
     color: COLORS.textSecondary,
-    fontFamily: 'DMSans_400Regular',
+    fontFamily: 'DMSans_500Medium',
+    marginLeft: 8,
+  },
+  tripInfoRow: {
     marginTop: 2,
+    gap: 5,
   },
-  statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-  },
-  statusPillLive: {
-    backgroundColor: 'rgba(0, 229, 176, 0.14)',
-    borderColor: 'rgba(0, 229, 176, 0.35)',
-  },
-  statusPillEnded: {
-    backgroundColor: 'rgba(85, 85, 106, 0.28)',
-    borderColor: 'rgba(136, 136, 170, 0.32)',
-  },
-  statusPillText: {
-    fontSize: 9,
-    fontFamily: 'DMSans_700Bold',
-    letterSpacing: 0.8,
-  },
-  statusTextLive: {
-    color: COLORS.mint,
-  },
-  statusTextEnded: {
-    color: COLORS.textSecondary,
-  },
-  infoChipRow: {
+  tripMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
+    gap: 5,
   },
-  infoChip: {
-    flex: 1,
-    minHeight: 30,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  infoChipText: {
+  tripMetaText: {
     fontSize: 11,
     color: COLORS.textSecondary,
-    fontFamily: 'DMSans_600SemiBold',
-    flex: 1,
+    fontFamily: 'DMSans_500Medium',
   },
-  financialStrip: {
-    marginTop: 12,
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontFamily: 'DMSans_700Bold',
+  },
+  metricsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(9, 9, 19, 0.45)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    paddingVertical: 10,
+    marginTop: 6,
+    marginBottom: 10,
+    gap: 10,
+  },
+  metricBlock: {
+    flex: 1,
+    paddingVertical: 8,
     paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  metricBox: {
+  metricBlockRight: {
     flex: 1,
-  },
-  metricBoxRight: {
-    flex: 1,
-    alignItems: 'flex-end',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'flex-start',
   },
   metricLabel: {
-    fontSize: 9,
+    fontSize: 10,
     color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    fontFamily: 'DMSans_600SemiBold',
-    marginBottom: 4,
+    fontFamily: 'DMSans_500Medium',
+    marginBottom: 5,
   },
   metricValue: {
     fontSize: 14,
     color: COLORS.textPrimary,
     fontFamily: 'Syne_700Bold',
   },
-  metricDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    marginHorizontal: 10,
-  },
   bottomRow: {
-    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  budgetWrap: {
+  lastActivityText: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontFamily: 'DMSans_400Regular',
     flex: 1,
-    marginRight: 8,
   },
-  budgetTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    overflow: 'hidden',
-    marginBottom: 6,
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 12,
   },
-  budgetFill: {
-    height: '100%',
-    borderRadius: 2,
-    backgroundColor: COLORS.amber,
+  actionButton: {
+    width: 82,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 12,
+    marginLeft: 8,
   },
-  budgetLabel: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    fontFamily: 'DMSans_500Medium',
+  editAction: {
+    backgroundColor: COLORS.violet,
+  },
+  deleteAction: {
+    backgroundColor: COLORS.coral,
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
   },
 });

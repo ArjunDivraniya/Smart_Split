@@ -18,6 +18,7 @@ import { ExpensesTab } from '@/components/ExpensesTab';
 import { BalancesTab } from '@/components/BalancesTab';
 import { TimelineTab } from '@/components/TimelineTab';
 import { SummaryTab } from '@/components/SummaryTab';
+import { AvatarGroup } from '@/src/components/groups/AvatarGroup';
 
 interface Expense {
   id: string;
@@ -111,6 +112,11 @@ export default function GroupDetailScreen() {
   const tabs = isTrip 
     ? ['expenses', 'balances', 'timeline', 'summary']
     : ['expenses', 'balances', 'summary'];
+  const memberPreview = (group.members || []).map((member) => ({
+    id: member.userId,
+    name: member.userName,
+    email: member.email,
+  }));
 
   const renderTabContent = () => {
     if (userLoading) {
@@ -180,9 +186,12 @@ export default function GroupDetailScreen() {
           <Text style={[styles.groupEmoji]}>{group.emoji}</Text>
           <View>
             <Text style={[styles.groupName, { color: colors.text }]}>{group.name}</Text>
-            <Text style={[styles.groupInfo, { color: colors.icon }]}>
-              {group.members?.length || 0} members
-            </Text>
+            <View style={styles.groupMetaRow}>
+              <Text style={[styles.groupInfo, { color: colors.icon }]}>
+                {group.members?.length || 0} members
+              </Text>
+              <AvatarGroup members={memberPreview} size="medium" />
+            </View>
           </View>
         </View>
         <TouchableOpacity>
@@ -298,7 +307,12 @@ const styles = StyleSheet.create({
   groupInfo: {
     fontSize: 12,
     fontFamily: 'DMSans_400Regular',
+  },
+  groupMetaRow: {
     marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   tripBanner: {
     marginHorizontal: 16,

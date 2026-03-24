@@ -15,19 +15,13 @@ import { useRouter } from 'expo-router';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { GroupTypeSelector, GroupTypeSelectorValue } from '@/src/components/groups/GroupTypeSelector';
 import { TripDatePicker } from '@/src/components/groups/TripDatePicker';
 import { addMember, createGroup } from '@/src/services/groups.service';
 import api from '@/src/services/api';
 import { GroupType } from '@/src/types/group.types';
 
 type CreateStep = 1 | 2 | 3;
-
-type GroupTypeOption = {
-  key: string;
-  label: string;
-  emoji: string;
-  value: GroupType;
-};
 
 type SearchUser = {
   _id: string;
@@ -47,15 +41,15 @@ type FormState = {
   tripBudget: string;
 };
 
-const GROUP_TYPE_OPTIONS: GroupTypeOption[] = [
-  { key: 'trip', label: 'Trip', emoji: '✈️', value: GroupType.TRIP },
-  { key: 'college', label: 'College', emoji: '🎓', value: GroupType.COLLEGE },
-  { key: 'flatmates', label: 'Flatmates', emoji: '🏠', value: GroupType.FLATMATES },
-  { key: 'event', label: 'Event', emoji: '🎉', value: GroupType.EVENT },
-  { key: 'food', label: 'Food', emoji: '🍔', value: GroupType.FOOD },
-  { key: 'office', label: 'Office', emoji: '💼', value: GroupType.CUSTOM },
-  { key: 'custom', label: 'Custom', emoji: '➕', value: GroupType.CUSTOM },
-];
+const GROUP_TYPE_SELECTION_MAP: Record<GroupTypeSelectorValue, { type: GroupType; emoji: string }> = {
+  trip: { type: GroupType.TRIP, emoji: '✈️' },
+  college: { type: GroupType.COLLEGE, emoji: '🎓' },
+  flatmates: { type: GroupType.FLATMATES, emoji: '🏠' },
+  event: { type: GroupType.EVENT, emoji: '🎉' },
+  food_run: { type: GroupType.FOOD, emoji: '🍔' },
+  office: { type: GroupType.CUSTOM, emoji: '💼' },
+  custom: { type: GroupType.CUSTOM, emoji: '➕' },
+};
 
 const EMOJI_OPTIONS = ['👥', '✈️', '🎓', '🏠', '🎉', '🍔', '💼', '🧾', '🏖️', '🗺️', '🎯', '📌'];
 
@@ -80,6 +74,7 @@ export default function CreateGroupScreen() {
   const [memberQuery, setMemberQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<SearchUser[]>([]);
+  const [selectedTypeOption, setSelectedTypeOption] = useState<GroupTypeSelectorValue | null>(null);
 
   const [form, setForm] = useState<FormState>({
     type: null,
@@ -115,11 +110,14 @@ export default function CreateGroupScreen() {
     setStep((prev) => (prev - 1) as CreateStep);
   };
 
-  const handleTypeSelect = (option: GroupTypeOption) => {
+  const handleTypeSelect = (selectedOption: GroupTypeSelectorValue) => {
+    const mappedOption = GROUP_TYPE_SELECTION_MAP[selectedOption];
+    setSelectedTypeOption(selectedOption);
+
     setForm((prev) => ({
       ...prev,
-      type: option.value,
-      emoji: option.emoji,
+      type: mappedOption.type,
+      emoji: mappedOption.emoji,
     }));
   };
 
@@ -222,29 +220,10 @@ export default function CreateGroupScreen() {
     <View>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Step 1: Pick Type</Text>
       <Text style={[styles.sectionSubtitle, { color: colors.icon }]}>Select a group category to continue.</Text>
-
-      <View style={styles.typeGrid}>
-        {GROUP_TYPE_OPTIONS.map((option) => {
-          const isSelected = form.type === option.value && form.emoji === option.emoji;
-          return (
-            <TouchableOpacity
-              key={`${option.key}-${option.emoji}`}
-              style={[
-                styles.typeCard,
-                {
-                  backgroundColor: colors.elevated,
-                  borderColor: isSelected ? colors.violet : colors.card,
-                },
-              ]}
-              onPress={() => handleTypeSelect(option)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.typeEmoji}>{option.emoji}</Text>
-              <Text style={[styles.typeLabel, { color: colors.text }]}>{option.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <GroupTypeSelector
+        selectedType={selectedTypeOption}
+        onSelectType={handleTypeSelect}
+      />
     </View>
   );
 
