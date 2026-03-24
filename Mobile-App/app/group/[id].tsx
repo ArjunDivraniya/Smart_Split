@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ActionSheetIOS,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,6 +21,7 @@ import { BalancesTab } from '@/components/BalancesTab';
 import { TimelineTab } from '@/components/TimelineTab';
 import { SummaryTab } from '@/components/SummaryTab';
 import { AvatarGroup } from '@/src/components/groups/AvatarGroup';
+import { useAuth } from '@/src/context/AuthContext';
 
 interface Expense {
   id: string;
@@ -40,6 +43,7 @@ export default function GroupDetailScreen() {
   const colors = Colors[colorScheme];
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +51,14 @@ export default function GroupDetailScreen() {
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'timeline' | 'summary'>('expenses');
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
+
+  const normalizeId = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    return String(value).trim();
+  };
 
   useEffect(() => {
     loadCurrentUser();
@@ -109,6 +121,14 @@ export default function GroupDetailScreen() {
   }
 
   const isTrip = group.type === GroupType.TRIP;
+  const authUserId = normalizeId((user as any)?._id || user?.id || (user as any)?.userId);
+  const groupCreatorId = normalizeId(
+    typeof group.createdBy === 'object'
+      ? group.createdBy?._id || (group.createdBy as any)?.id || (group.createdBy as any)?.userId
+      : group.createdBy
+  );
+  const isCreator = Boolean(authUserId && groupCreatorId && authUserId === groupCreatorId);
+
   const tabs = isTrip 
     ? ['expenses', 'balances', 'timeline', 'summary']
     : ['expenses', 'balances', 'summary'];
@@ -174,6 +194,96 @@ export default function GroupDetailScreen() {
     }
   };
 
+  const handleEditGroup = () => {
+    Alert.alert('Edit Group', 'Edit group flow will be added next.');
+  };
+
+  const handleAddMember = () => {
+    Alert.alert('Add Member', 'Add member flow will be added next.');
+  };
+
+  const handleArchiveGroup = async () => {
+    try {
+      const groupId = String(id || group.id || group._id || '');
+      if (!groupId) {
+        return;
+      }
+
+      await apiService.groups.update(groupId, {
+        isActive: false,
+        status: 'completed',
+      });
+
+      setGroup((prev) => (prev ? { ...prev, isActive: false, status: 'completed' } : prev));
+      Alert.alert('Success', 'Group archived successfully.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to archive group. Please try again.');
+    }
+  };
+
+  const handleDeleteGroup = () => {
+    Alert.alert(
+      'Delete Group',
+      'This action cannot be undone. Are you sure you want to delete this group?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const groupId = String(id || group.id || group._id || '');
+              if (!groupId) {
+                return;
+              }
+
+              await apiService.groups.delete(groupId);
+              router.replace('/(tabs)/groups' as any);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete group. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const openGroupActions = () => {
+    const actions = [
+      'Edit Group',
+      'Add Member',
+      'Archive Group',
+      'Delete Group',
+      'Cancel',
+    ];
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: actions,
+          cancelButtonIndex: 4,
+          destructiveButtonIndex: 3,
+          userInterfaceStyle: colorScheme,
+        },
+        (selectedIndex) => {
+          if (selectedIndex === 0) handleEditGroup();
+          if (selectedIndex === 1) handleAddMember();
+          if (selectedIndex === 2) handleArchiveGroup();
+          if (selectedIndex === 3) handleDeleteGroup();
+        }
+      );
+      return;
+    }
+
+    Alert.alert('Group Actions', 'Choose an action', [
+      { text: 'Edit Group', onPress: handleEditGroup },
+      { text: 'Add Member', onPress: handleAddMember },
+      { text: 'Archive Group', onPress: handleArchiveGroup },
+      { text: 'Delete Group', onPress: handleDeleteGroup, style: 'destructive' },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -194,9 +304,13 @@ export default function GroupDetailScreen() {
             </View>
           </View>
         </View>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
-        </TouchableOpacity>
+        {isCreator ? (
+          <TouchableOpacity onPress={openGroupActions} style={styles.menuButton} activeOpacity={0.8}>
+            <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.menuPlaceholder} />
+        )}
       </View>
 
       {/* Trip Info Banner (if trip) */}
@@ -313,6 +427,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  menuButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuPlaceholder: {
+    width: 32,
   },
   tripBanner: {
     marginHorizontal: 16,

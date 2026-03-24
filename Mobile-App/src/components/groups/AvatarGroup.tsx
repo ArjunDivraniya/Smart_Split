@@ -47,6 +47,20 @@ const getMemberName = (member: AvatarGroupMember): string => {
   return member.name || member.userName || member.email || 'U';
 };
 
+const toKeyString = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (typeof value === 'object') {
+    const objectValue = value as Record<string, any>;
+    const nestedId = objectValue._id || objectValue.id || objectValue.userId || objectValue.$oid;
+    return nestedId ? String(nestedId).trim() : '';
+  }
+
+  return String(value).trim();
+};
+
 const getInitial = (name: string): string => {
   const normalized = name.trim();
   if (!normalized) {
@@ -86,7 +100,7 @@ export function AvatarGroup({ members, size = 'small' }: AvatarGroupProps) {
 
         return (
           <View
-            key={member.id || `${displayName}-${index}`}
+            key={toKeyString(member.id) || `${displayName}-${index}`}
             style={[
               styles.avatar,
               {

@@ -13,6 +13,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '@/src/services/api';
 import { ExpenseItem } from '@/components/ExpenseItem';
 
+const toSafeKey = (value: unknown, fallback: string): string => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === 'object') {
+    const objectValue = value as Record<string, any>;
+    const nestedId = objectValue._id || objectValue.id || objectValue.$oid;
+    return nestedId ? String(nestedId).trim() : fallback;
+  }
+
+  const normalized = String(value).trim();
+  return normalized || fallback;
+};
+
 interface ExpensesTabProps {
   groupId: string;
   currentUserId: string;
@@ -279,7 +294,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
       
       <FlatList
         data={expenses}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => toSafeKey(item._id, `expense-${index}`)}
         renderItem={({ item }) => (
           <ExpenseItem
             expense={item}

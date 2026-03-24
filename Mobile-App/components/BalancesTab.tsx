@@ -13,6 +13,21 @@ import { apiService } from '@/src/services/api';
 import { BalanceRow } from '@/components/BalanceRow';
 import { SettlementModal } from '@/components/SettlementModal';
 
+const toSafeKey = (value: unknown, fallback: string): string => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === 'object') {
+    const objectValue = value as Record<string, any>;
+    const nestedId = objectValue._id || objectValue.id || objectValue.$oid;
+    return nestedId ? String(nestedId).trim() : fallback;
+  }
+
+  const normalized = String(value).trim();
+  return normalized || fallback;
+};
+
 interface BalancesTabProps {
   groupId: string;
   currentUserId: string;
@@ -332,7 +347,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
                   <Text style={styles.sectionTitle}>Settlement History</Text>
                 </View>
                 {settlementHistory.map((item) => (
-                  <View key={item._id}>
+                  <View key={toSafeKey(item._id, `history-${item.from}-${item.to}-${item.createdAt}`)}>
                     {renderHistoryItem({ item })}
                   </View>
                 ))}

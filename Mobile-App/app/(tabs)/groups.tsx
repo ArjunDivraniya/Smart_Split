@@ -12,6 +12,31 @@ import { apiService } from '@/src/services';
 
 type GroupFilter = 'all' | 'active' | 'trips' | 'archived';
 
+const normalizeId = (value: unknown): string => {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    if (typeof value === 'object') {
+        const objectValue = value as Record<string, any>;
+        const nestedId = objectValue._id || objectValue.id || objectValue.userId || objectValue.$oid;
+        return nestedId ? String(nestedId).trim() : '';
+    }
+
+    return String(value).trim();
+};
+
+const extractUserIdFromMe = (response: any): string => {
+    const payload = response?.data?.data || response?.data || {};
+    const user = payload?.user || payload;
+
+    return normalizeId(user?._id || user?.id || user?.userId);
+};
+
+const getGroupKey = (group: Group, index: number): string => {
+    return normalizeId(group.id || group._id) || `group-${index}`;
+};
+
 export default function GroupsScreen() {
     const colorScheme = useColorScheme() ?? 'dark';
     const colors = Colors[colorScheme];
@@ -50,9 +75,7 @@ export default function GroupsScreen() {
 
                 try {
                     const userResponse = await apiService.user.getMe();
-                    const userData = userResponse?.data?.data || userResponse?.data;
-                    const userId = userData?._id || userData?.id || '';
-                    setCurrentUserId(userId);
+                    setCurrentUserId(extractUserIdFromMe(userResponse));
                 } catch {
                     setCurrentUserId('');
                 }
@@ -207,7 +230,7 @@ export default function GroupsScreen() {
                     <FlatList
                         data={filteredGroups}
                         style={styles.list}
-                        keyExtractor={(item, index) => item.id || item._id || `group-${index}`}
+                        keyExtractor={(item, index) => getGroupKey(item, index)}
                         renderItem={({ item }) => (
                             <GroupCard
                                 group={item}

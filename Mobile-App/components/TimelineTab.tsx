@@ -12,6 +12,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '@/src/services/api';
 import { ExpenseItem } from '@/components/ExpenseItem';
 
+const toSafeKey = (value: unknown, fallback: string): string => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === 'object') {
+    const objectValue = value as Record<string, any>;
+    const nestedId = objectValue._id || objectValue.id || objectValue.$oid;
+    return nestedId ? String(nestedId).trim() : fallback;
+  }
+
+  const normalized = String(value).trim();
+  return normalized || fallback;
+};
+
 interface TimelineTabProps {
   groupId: string;
   currentUserId: string;
@@ -122,9 +137,9 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
         
         {isExpanded && (
           <View style={styles.expensesContainer}>
-            {item.expenses.map((expense) => (
+            {item.expenses.map((expense, index) => (
               <ExpenseItem
-                key={expense._id}
+                key={toSafeKey(expense._id, `${item.date}-expense-${index}`)}
                 expense={expense}
                 currentUserId={currentUserId}
                 onPress={() => {

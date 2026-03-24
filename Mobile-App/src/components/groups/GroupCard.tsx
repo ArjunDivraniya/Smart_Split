@@ -24,6 +24,14 @@ const COLORS = {
   badgeEndedBg: 'rgba(255, 95, 126, 0.14)',
 };
 
+const normalizeId = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).trim();
+};
+
 interface GroupCardProps {
   group: Group;
   currentUserId: string;
@@ -82,29 +90,37 @@ export function GroupCard({
     email: member.email,
   }));
 
-  const creatorId = typeof group.createdBy === 'object' ? group.createdBy?._id : group.createdBy;
-  const isCreator = Boolean(currentUserId && creatorId && creatorId === currentUserId);
+  const creatorRaw =
+    typeof group.createdBy === 'object'
+      ? group.createdBy?._id || (group.createdBy as any)?.id || (group.createdBy as any)?.userId
+      : group.createdBy;
+
+  const creatorId = normalizeId(creatorRaw);
+  const signedInUserId = normalizeId(currentUserId);
+  const isCreator = Boolean(signedInUserId && creatorId && creatorId === signedInUserId);
   const canSwipe = isCreator && Boolean(onEdit || onDelete);
 
   const renderRightActions = () => (
-    <View style={styles.actionsContainer}>
-      <TouchableOpacity
-        style={[styles.actionButton, styles.editAction]}
-        onPress={() => onEdit?.(group)}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="create-outline" size={16} color="#FFFFFF" />
-        <Text style={styles.actionText}>Edit</Text>
-      </TouchableOpacity>
+    <View style={styles.actionsOuter}>
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.editAction]}
+          onPress={() => onEdit?.(group)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="create-outline" size={16} color="#FFFFFF" />
+          <Text style={styles.actionText}>Edit</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.actionButton, styles.deleteAction]}
-        onPress={() => onDelete?.(group)}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-        <Text style={styles.actionText}>Delete</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteAction]}
+          onPress={() => onDelete?.(group)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+          <Text style={styles.actionText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -337,13 +353,19 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_400Regular',
     flex: 1,
   },
+  actionsOuter: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
   actionsContainer: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: '92%',
   },
   actionButton: {
     width: 82,
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 4,
