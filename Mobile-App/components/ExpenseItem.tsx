@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface ExpenseItemProps {
   expense: {
@@ -29,6 +31,8 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const isPaidByCurrentUser = expense.paidBy._id === currentUserId;
   const formattedDate = new Date(expense.date).toLocaleDateString('en-US', {
     month: 'short',
@@ -49,12 +53,18 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.iconContainer}>
-        <View style={[styles.iconCircle, isPaidByCurrentUser && styles.iconCirclePaid]}>
+        <View
+          style={[
+            styles.iconCircle,
+            { backgroundColor: `${colors.violet}22` },
+            isPaidByCurrentUser && styles.iconCirclePaid,
+          ]}
+        >
           <Ionicons
             name={getCategoryIcon(expense.category) as any}
             size={24}
@@ -64,20 +74,20 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
       </View>
 
       <View style={styles.contentContainer}>
-        <Text style={styles.description}>{expense.description}</Text>
+        <Text style={[styles.description, { color: colors.text }]}>{expense.description}</Text>
         <View style={styles.metaRow}>
-          <Text style={styles.paidBy}>
+          <Text style={[styles.paidBy, { color: colors.icon }]}>
             {isPaidByCurrentUser ? 'You paid' : `${expense.paidBy.name} paid`}
           </Text>
-          <Text style={styles.date}> • {formattedDate}</Text>
+          <Text style={[styles.date, { color: colors.icon }]}> • {formattedDate}</Text>
           {expense.category && (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{expense.category}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: colors.elevated }]}> 
+              <Text style={[styles.categoryText, { color: colors.text }]}>{expense.category}</Text>
             </View>
           )}
         </View>
         {expense.notes && (
-          <Text style={styles.notes} numberOfLines={1}>
+          <Text style={[styles.notes, { color: colors.icon }]} numberOfLines={1}>
             {expense.notes}
           </Text>
         )}
@@ -127,6 +137,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 6,

@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SplitType } from '@/src/utils/splitCalculator';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const SPLIT_TYPES = [
   {
@@ -40,10 +42,13 @@ interface SplitTypeSelectorProps {
 }
 
 export const SplitTypeSelector: React.FC<SplitTypeSelectorProps> = ({ selected, onSelect }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Split Type</Text>
-      <Text style={styles.sublabel}>How should this expense be split?</Text>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+      <Text style={[styles.label, { color: colors.text }]}>Split Type</Text>
+      <Text style={[styles.sublabel, { color: colors.icon }]}>How should this expense be split?</Text>
       
       <View style={styles.grid}>
         {SPLIT_TYPES.map((type) => {
@@ -54,7 +59,8 @@ export const SplitTypeSelector: React.FC<SplitTypeSelectorProps> = ({ selected, 
               key={type.id}
               style={[
                 styles.typeCard,
-                isSelected && { ...styles.typeCardSelected, borderColor: type.color },
+                { borderColor: colors.elevated, backgroundColor: colors.background },
+                isSelected && { borderColor: type.color, backgroundColor: `${type.color}16` },
               ]}
               onPress={() => onSelect(type.id)}
             >
@@ -71,11 +77,11 @@ export const SplitTypeSelector: React.FC<SplitTypeSelectorProps> = ({ selected, 
                 />
               </View>
               
-              <Text style={[styles.typeLabel, isSelected && { color: type.color }]}>
+              <Text style={[styles.typeLabel, { color: colors.text }, isSelected && { color: type.color }]}> 
                 {type.label}
               </Text>
               
-              <Text style={styles.typeDescription}>{type.description}</Text>
+              <Text style={[styles.typeDescription, { color: isSelected ? colors.text : colors.icon }]}>{type.description}</Text>
 
               {isSelected && (
                 <View style={[styles.checkmark, { backgroundColor: type.color }]}>
@@ -93,6 +99,7 @@ export const SplitTypeSelector: React.FC<SplitTypeSelectorProps> = ({ selected, 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 16,
     borderRadius: 16,
     marginHorizontal: 16,

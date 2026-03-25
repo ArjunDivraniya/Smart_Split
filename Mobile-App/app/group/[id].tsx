@@ -777,6 +777,10 @@ export default function GroupDetailScreen() {
         isCreator={isCreator}
         removingMemberId={removingMemberId}
         onRemoveMember={handleRemoveMember}
+        onAddMember={() => {
+          setMembersSheetVisible(false);
+          openAddMemberModal();
+        }}
       />
 
       <Modal

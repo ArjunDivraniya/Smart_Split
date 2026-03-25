@@ -26,6 +26,7 @@ interface MembersBottomSheetProps {
   isCreator: boolean;
   removingMemberId?: string;
   onRemoveMember?: (member: MemberItem) => void;
+  onAddMember?: () => void;
 }
 
 const getInitials = (name: string): string => {
@@ -54,6 +55,7 @@ export function MembersBottomSheet({
   isCreator,
   removingMemberId,
   onRemoveMember,
+  onAddMember,
 }: MembersBottomSheetProps) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -63,9 +65,17 @@ export function MembersBottomSheet({
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>Members</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              {isCreator ? (
+                <TouchableOpacity style={styles.addButton} onPress={onAddMember}>
+                  <Ionicons name="person-add" size={16} color="#FFFFFF" />
+                  <Text style={styles.addButtonText}>Add</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity onPress={onClose}>
+                <Ionicons name="close" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <FlatList
@@ -143,6 +153,25 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#7C5CFC',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
   },
   title: {
     color: '#F3F4FF',

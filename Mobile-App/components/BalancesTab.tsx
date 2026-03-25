@@ -11,6 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BalanceRow } from '@/components/BalanceRow';
 import { SettlementModal } from '@/components/SettlementModal';
 
@@ -61,6 +63,8 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   currentUserId,
   currentUserName,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const [balances, setBalances] = useState<Balance[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settlementHistory, setSettlementHistory] = useState<any[]>([]);
@@ -120,8 +124,9 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     try {
       const response = await apiService.groups.getSettlements(groupId);
       const data = response?.data?.data || response?.data || {};
-      setSettlements(data.optimizedSettlements || []);
-      setSettlementHistory(data.settlements || []);
+      // Support both legacy and current backend response shapes.
+      setSettlements(data.optimizedSettlements || data.optimized || []);
+      setSettlementHistory(data.settlements || data.history || []);
     } catch (error) {
       console.error('Error fetching settlements:', error);
     }
@@ -185,22 +190,21 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   };
 
   const renderSummaryCard = () => {
-    const totalOwed = balances
-      .filter((b) => b.netBalance < 0)
-      .reduce((sum, b) => sum + Math.abs(b.netBalance), 0);
-    
-    const totalOwedToYou = balances
-      .filter((b) => b.netBalance > 0)
-      .reduce((sum, b) => sum + b.netBalance, 0);
-
     const yourBalance = balances.find((b) => b.userId === currentUserId);
-    const yourNet = yourBalance?.netBalance || 0;
+    const yourNet = Number(yourBalance?.netBalance || 0);
+
+    // Show personal, real amounts instead of whole-group totals.
+    const lentAmount = Math.max(yourNet, 0);
+    const owedAmount = Math.max(-yourNet, 0);
+
+    const lentToCount = settlements.filter((s) => s.to === currentUserId).length;
+    const owedToCount = settlements.filter((s) => s.from === currentUserId).length;
 
     return (
-      <View style={styles.summaryCard}>
+      <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
         <View style={styles.summaryHeader}>
           <Ionicons name="wallet" size={24} color="#6366f1" />
-          <Text style={styles.summaryTitle}>Your Balance</Text>
+          <Text style={[styles.summaryTitle, { color: colors.text }]}>Your Balance</Text>
         </View>
         
         <View style={styles.summaryContent}>
@@ -208,20 +212,20 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
             <Text style={yourNet >= 0 ? styles.positiveAmount : styles.negativeAmount}>
               ₹{Math.abs(yourNet).toFixed(2)}
             </Text>
-            <Text style={styles.summaryLabel}>
+            <Text style={[styles.summaryLabel, { color: colors.icon }]}>
               {yourNet > 0 ? 'You are owed' : yourNet < 0 ? 'You owe' : 'All settled'}
             </Text>
           </View>
 
-          <View style={styles.summaryDetails}>
+          <View style={[styles.summaryDetails, { borderTopColor: colors.elevated }]}> 
             <View style={styles.summaryDetailItem}>
-              <Text style={styles.summaryDetailValue}>₹{totalOwedToYou.toFixed(2)}</Text>
-              <Text style={styles.summaryDetailLabel}>Lent</Text>
+              <Text style={[styles.summaryDetailValue, { color: colors.text }]}>₹{lentAmount.toFixed(2)}</Text>
+              <Text style={[styles.summaryDetailLabel, { color: colors.icon }]}>Lent ({lentToCount})</Text>
             </View>
-            <View style={styles.summaryDivider} />
+            <View style={[styles.summaryDivider, { backgroundColor: colors.elevated }]} />
             <View style={styles.summaryDetailItem}>
-              <Text style={styles.summaryDetailValue}>₹{totalOwed.toFixed(2)}</Text>
-              <Text style={styles.summaryDetailLabel}>Owed</Text>
+              <Text style={[styles.summaryDetailValue, { color: colors.text }]}>₹{owedAmount.toFixed(2)}</Text>
+              <Text style={[styles.summaryDetailLabel, { color: colors.icon }]}>Owed ({owedToCount})</Text>
             </View>
           </View>
         </View>
@@ -232,10 +236,10 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   const renderOptimizedSettlements = () => {
     if (settlements.length === 0) {
       return (
-        <View style={styles.settledContainer}>
+        <View style={[styles.settledContainer, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
           <Ionicons name="checkmark-circle" size={64} color="#22c55e" />
           <Text style={styles.settledTitle}>All Settled Up!</Text>
-          <Text style={styles.settledSubtitle}>Everyone's balance is clear</Text>
+          <Text style={[styles.settledSubtitle, { color: colors.icon }]}>Everyone's balance is clear</Text>
         </View>
       );
     }
@@ -244,9 +248,9 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
       <View style={styles.optimizedSection}>
         <View style={styles.sectionHeader}>
           <Ionicons name="flash" size={20} color="#f59e0b" />
-          <Text style={styles.sectionTitle}>Optimized Settlements</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Optimized Settlements</Text>
         </View>
-        <Text style={styles.optimizedDescription}>
+        <Text style={[styles.optimizedDescription, { color: colors.icon }]}>
           Settle all balances with just {settlements.length} transaction{settlements.length > 1 ? 's' : ''}
         </Text>
 
@@ -264,13 +268,14 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
               key={`${settlement.from}-${settlement.to}-${index}`}
               style={[
                 styles.settlementCard,
+                { backgroundColor: colors.card, borderColor: colors.elevated },
                 isCurrentUserInvolved && styles.settlementCardHighlight,
               ]}
               onPress={() => handleSettleFromOptimized(settlement)}
             >
               <View style={styles.settlementFlow}>
                 <View style={styles.settlementUser}>
-                  <Text style={styles.settlementUserName}>
+                  <Text style={[styles.settlementUserName, { color: colors.text }]}>
                     {settlement.from === currentUserId ? 'You' : fromBalance.userName}
                   </Text>
                 </View>
@@ -281,14 +286,14 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
                 </View>
                 
                 <View style={styles.settlementUser}>
-                  <Text style={styles.settlementUserName}>
+                  <Text style={[styles.settlementUserName, { color: colors.text }]}>
                     {settlement.to === currentUserId ? 'You' : toBalance.userName}
                   </Text>
                 </View>
               </View>
 
               {isCurrentUserInvolved && (
-                <View style={styles.recordButtonContainer}>
+                <View style={[styles.recordButtonContainer, { borderTopColor: colors.elevated }]}>
                   <Ionicons name="checkmark-circle" size={16} color="#6366f1" />
                   <Text style={styles.recordButtonText}>Tap to record</Text>
                 </View>
@@ -304,7 +309,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     <View style={styles.balancesSection}>
       <View style={styles.sectionHeader}>
         <Ionicons name="people" size={20} color="#6366f1" />
-        <Text style={styles.sectionTitle}>All Balances</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>All Balances</Text>
       </View>
 
       {balances.map((balance) => (
@@ -328,16 +333,16 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     });
 
     return (
-      <View style={styles.historyCard}>
+      <View style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
         <View style={styles.historyIcon}>
           <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
         </View>
         <View style={styles.historyContent}>
-          <Text style={styles.historyText}>
+          <Text style={[styles.historyText, { color: colors.text }]}>
             {fromName} paid {toName}
           </Text>
-          <Text style={styles.historyDate}>{date}</Text>
-          {item.note && <Text style={styles.historyNote}>{item.note}</Text>}
+          <Text style={[styles.historyDate, { color: colors.icon }]}>{date}</Text>
+          {item.note && <Text style={[styles.historyNote, { color: colors.icon }]}>{item.note}</Text>}
         </View>
         <Text style={styles.historyAmount}>₹{item.amount.toFixed(2)}</Text>
       </View>
@@ -353,7 +358,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={[]}
         renderItem={null}
@@ -366,8 +371,8 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
             {settlementHistory.length > 0 && (
               <View style={styles.historySection}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="time" size={20} color="#64748b" />
-                  <Text style={styles.sectionTitle}>Settlement History</Text>
+                  <Ionicons name="time" size={20} color={colors.icon} />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Settlement History</Text>
                 </View>
                 {settlementHistory.map((item) => (
                   <View key={toSafeKey(item._id, `history-${item.from}-${item.to}-${item.createdAt}`)}>
@@ -411,6 +416,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     margin: 16,
     padding: 20,
     borderRadius: 16,
@@ -483,6 +489,7 @@ const styles = StyleSheet.create({
   settledContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
     paddingVertical: 48,
     marginHorizontal: 16,
     backgroundColor: '#ffffff',
@@ -523,6 +530,7 @@ const styles = StyleSheet.create({
   },
   settlementCard: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     marginHorizontal: 16,
     marginVertical: 6,
     padding: 16,
@@ -586,6 +594,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 6,

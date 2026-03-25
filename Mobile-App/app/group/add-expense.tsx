@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '@/src/services/api';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AmountInput } from '@/components/expenses/AmountInput';
 import { CategorySelector } from '@/components/expenses/CategorySelector';
 import { SplitTypeSelector } from '@/components/expenses/SplitTypeSelector';
@@ -34,6 +36,8 @@ interface GroupMember {
 }
 
 export default function AddExpenseScreen() {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const router = useRouter();
   const { id: groupId } = useLocalSearchParams();
 
@@ -270,7 +274,7 @@ export default function AddExpenseScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6366f1" />
         </View>
@@ -284,17 +288,17 @@ export default function AddExpenseScreen() {
   const paidByMember = groupMembers.find((m) => m.userId === paidBy);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.elevated }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close" size={28} color="#1e293b" />
+          <Ionicons name="close" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Expense</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Add Expense</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -311,14 +315,18 @@ export default function AddExpenseScreen() {
         />
 
         {/* Description */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Description</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>Description</Text>
           <TextInput
-            style={[styles.input, errors.description && styles.inputError]}
+            style={[
+              styles.input,
+              { backgroundColor: colors.background, borderColor: colors.elevated, color: colors.text },
+              errors.description && styles.inputError,
+            ]}
             value={description}
             onChangeText={setDescription}
             placeholder="What was this expense for?"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.icon}
           />
           {errors.description && (
             <Text style={styles.errorText}>{errors.description}</Text>
@@ -329,11 +337,11 @@ export default function AddExpenseScreen() {
         <CategorySelector selected={category} onSelect={setCategory} />
 
         {/* Date Picker */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Date</Text>
-          <TouchableOpacity style={styles.dateButton}>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>Date</Text>
+          <TouchableOpacity style={[styles.dateButton, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
             <Ionicons name="calendar" size={20} color="#6366f1" />
-            <Text style={styles.dateText}>
+            <Text style={[styles.dateText, { color: colors.text }]}> 
               {date.toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -344,8 +352,8 @@ export default function AddExpenseScreen() {
         </View>
 
         {/* Who Paid */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Who Paid?</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>Who Paid?</Text>
           <View style={styles.paidByList}>
             {groupMembers.map((member) => {
               const isSelected = paidBy === member.userId;
@@ -354,13 +362,18 @@ export default function AddExpenseScreen() {
               return (
                 <TouchableOpacity
                   key={member.userId}
-                  style={[styles.paidByOption, isSelected && styles.paidByOptionSelected]}
+                  style={[
+                    styles.paidByOption,
+                    { backgroundColor: colors.background, borderColor: colors.elevated },
+                    isSelected && styles.paidByOptionSelected,
+                    isSelected && { backgroundColor: `${colors.violet}20`, borderColor: colors.violet },
+                  ]}
                   onPress={() => setPaidBy(member.userId)}
                 >
                   <View style={styles.radioOuter}>
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
-                  <Text style={[styles.paidByText, isSelected && styles.paidByTextSelected]}>
+                  <Text style={[styles.paidByText, { color: colors.text }, isSelected && styles.paidByTextSelected]}>
                     {isCurrentUser ? 'You' : member.userName}
                   </Text>
                   {isCurrentUser && !isSelected && (
@@ -404,14 +417,18 @@ export default function AddExpenseScreen() {
         />
 
         {/* Notes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Notes (Optional)</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>Notes (Optional)</Text>
           <TextInput
-            style={[styles.input, styles.notesInput]}
+            style={[
+              styles.input,
+              styles.notesInput,
+              { backgroundColor: colors.background, borderColor: colors.elevated, color: colors.text },
+            ]}
             value={notes}
             onChangeText={setNotes}
             placeholder="Add any additional notes..."
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.icon}
             multiline
             numberOfLines={3}
           />
@@ -421,7 +438,7 @@ export default function AddExpenseScreen() {
       </ScrollView>
 
       {/* Save Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.elevated }]}> 
         <TouchableOpacity
           style={[styles.saveButton, (submitting || !splitValidation.valid) && styles.saveButtonDisabled]}
           onPress={handleSubmit}
@@ -479,6 +496,7 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 16,
     borderRadius: 16,
     marginHorizontal: 16,

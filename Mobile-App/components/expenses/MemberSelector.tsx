@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SplitType, Participant } from '@/src/utils/splitCalculator';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface MemberSelectorProps {
   members: Array<{ userId: string; userName: string }>;
@@ -20,6 +22,8 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
   onValueChange,
   currentUserId,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const isSelected = (userId: string) => selected.some((s) => s.userId === userId);
   const getValue = (userId: string) => selected.find((s) => s.userId === userId)?.value || 0;
 
@@ -45,9 +49,9 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
     }
 
     return (
-      <View style={styles.valueInputContainer}>
+      <View style={[styles.valueInputContainer, { backgroundColor: colors.background, borderColor: colors.elevated }]}>
         <TextInput
-          style={styles.valueInput}
+          style={[styles.valueInput, { color: colors.text }]}
           value={getValue(userId).toString()}
           onChangeText={(text) => {
             const num = parseFloat(text) || 0;
@@ -55,9 +59,9 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
           }}
           keyboardType="numeric"
           placeholder={placeholder}
-          placeholderTextColor="#cbd5e1"
+          placeholderTextColor={colors.icon}
         />
-        <Text style={styles.valueSuffix}>{suffix}</Text>
+        <Text style={[styles.valueSuffix, { color: colors.icon }]}>{suffix}</Text>
       </View>
     );
   };
@@ -76,15 +80,15 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
       <View style={styles.header}>
-        <Text style={styles.label}>Split Among</Text>
-        <Text style={styles.count}>
+        <Text style={[styles.label, { color: colors.text }]}>Split Among</Text>
+        <Text style={[styles.count, { color: colors.icon }]}> 
           {selected.length} of {members.length} selected
         </Text>
       </View>
       
-      <Text style={styles.sublabel}>{getInputLabel()}</Text>
+      <Text style={[styles.sublabel, { color: colors.icon }]}>{getInputLabel()}</Text>
 
       <View style={styles.membersList}>
         {members.map((member) => {
@@ -92,7 +96,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
           const isCurrentUser = member.userId === currentUserId;
 
           return (
-            <View key={member.userId} style={styles.memberRow}>
+            <View key={member.userId} style={[styles.memberRow, selected && { backgroundColor: `${colors.violet}12`, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }]}>
               <TouchableOpacity
                 style={styles.memberInfo}
                 onPress={() => onToggle(member.userId)}
@@ -100,6 +104,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
                 <View
                   style={[
                     styles.checkbox,
+                    { borderColor: colors.elevated },
                     selected && styles.checkboxSelected,
                   ]}
                 >
@@ -115,7 +120,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
                 </View>
 
                 <View style={styles.memberDetails}>
-                  <Text style={styles.memberName}>
+                  <Text style={[styles.memberName, { color: colors.text }]}> 
                     {isCurrentUser ? 'You' : member.userName}
                   </Text>
                   {isCurrentUser && (
@@ -134,7 +139,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
 
       {splitType !== 'equally' && (
         <TouchableOpacity
-          style={styles.selectAllButton}
+          style={[styles.selectAllButton, { borderTopColor: colors.elevated }]}
           onPress={() => {
             members.forEach((m) => {
               if (!isSelected(m.userId)) {
@@ -154,6 +159,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 16,
     borderRadius: 16,
     marginHorizontal: 16,

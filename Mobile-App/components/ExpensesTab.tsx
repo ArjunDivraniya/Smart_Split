@@ -12,6 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ExpenseItem } from '@/components/ExpenseItem';
 
 const toSafeKey = (value: unknown, fallback: string): string => {
@@ -62,6 +64,8 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   currentUserId,
   onAddExpense,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -185,12 +189,13 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   };
 
   const renderFilterBar = () => (
-    <View style={styles.filterBarContainer}>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#94a3b8" />
+    <View style={[styles.filterBarContainer, { backgroundColor: colors.card, borderBottomColor: colors.elevated }]}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="search" size={20} color={colors.icon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search expenses..."
+          placeholderTextColor={colors.icon}
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
@@ -198,13 +203,13 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => { setSearchQuery(''); fetchExpenses(); }}>
-            <Ionicons name="close-circle" size={20} color="#94a3b8" />
+            <Ionicons name="close-circle" size={20} color={colors.icon} />
           </TouchableOpacity>
         )}
       </View>
 
       <TouchableOpacity
-        style={styles.filterButton}
+        style={[styles.filterButton, { backgroundColor: `${colors.violet}22` }]}
         onPress={() => setShowFilters(!showFilters)}
       >
         <Ionicons name="options" size={20} color="#6366f1" />
@@ -217,10 +222,10 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
     if (!showFilters) return null;
 
     return (
-      <View style={styles.filtersContainer}>
+      <View style={[styles.filtersContainer, { backgroundColor: colors.card, borderBottomColor: colors.elevated }]}>
         {/* Category Filter */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Category</Text>
+          <Text style={[styles.filterLabel, { color: colors.icon }]}>Category</Text>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -230,6 +235,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
               <TouchableOpacity
                 style={[
                   styles.filterChip,
+                  { backgroundColor: colors.background },
                   selectedCategory === item && styles.filterChipActive,
                 ]}
                 onPress={() => setSelectedCategory(item)}
@@ -237,6 +243,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
                 <Text
                   style={[
                     styles.filterChipText,
+                    { color: colors.text },
                     selectedCategory === item && styles.filterChipTextActive,
                   ]}
                 >
@@ -249,13 +256,14 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
 
         {/* Paid By Filter */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Paid By</Text>
+          <Text style={[styles.filterLabel, { color: colors.icon }]}>Paid By</Text>
           <View style={styles.paidFilterRow}>
             {['all', 'me', 'others'].map((filter) => (
               <TouchableOpacity
                 key={filter}
                 style={[
                   styles.filterChip,
+                  { backgroundColor: colors.background },
                   paidFilter === filter && styles.filterChipActive,
                 ]}
                 onPress={() => setPaidFilter(filter as any)}
@@ -263,6 +271,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
                 <Text
                   style={[
                     styles.filterChipText,
+                    { color: colors.text },
                     paidFilter === filter && styles.filterChipTextActive,
                   ]}
                 >
@@ -275,7 +284,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
 
         {/* Sort Options */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Sort By</Text>
+          <Text style={[styles.filterLabel, { color: colors.icon }]}>Sort By</Text>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -285,6 +294,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
               <TouchableOpacity
                 style={[
                   styles.filterChip,
+                  { backgroundColor: colors.background },
                   sortBy === item.value && sortOrder === item.order && styles.filterChipActive,
                 ]}
                 onPress={() => {
@@ -295,6 +305,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
                 <Text
                   style={[
                     styles.filterChipText,
+                    { color: colors.text },
                     sortBy === item.value && sortOrder === item.order && styles.filterChipTextActive,
                   ]}
                 >
@@ -311,8 +322,8 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="receipt-outline" size={64} color="#cbd5e1" />
-      <Text style={styles.emptyTitle}>No expenses yet</Text>
-      <Text style={styles.emptySubtitle}>Add your first expense to get started</Text>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>No expenses yet</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.icon }]}>Add your first expense to get started</Text>
       <TouchableOpacity style={styles.addButton} onPress={onAddExpense}>
         <Ionicons name="add" size={24} color="#ffffff" />
         <Text style={styles.addButtonText}>Add Expense</Text>
@@ -329,7 +340,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {renderFilterBar()}
       {renderFilters()}
       

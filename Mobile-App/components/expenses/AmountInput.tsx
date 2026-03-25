@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface AmountInputProps {
   value: string;
@@ -9,6 +11,8 @@ interface AmountInputProps {
 }
 
 export const AmountInput: React.FC<AmountInputProps> = ({ value, onChange, error }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const [displayValue, setDisplayValue] = useState(value || '0');
 
   useEffect(() => {
@@ -51,22 +55,22 @@ export const AmountInput: React.FC<AmountInputProps> = ({ value, onChange, error
   const numericValue = parseFloat(displayValue) || 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
       <View style={styles.inputContainer}>
         <Text style={styles.currencySymbol}>₹</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: colors.text }]}
           value={displayValue}
           onChangeText={handleChange}
           keyboardType="numeric"
           placeholder="0.00"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.icon}
           autoFocus
           selectTextOnFocus
         />
       </View>
       
-      <Text style={styles.formattedAmount}>
+      <Text style={[styles.formattedAmount, { color: colors.icon }]}> 
         {numericValue > 0 ? `₹ ${formatDisplay(displayValue)}` : 'Enter amount'}
       </Text>
 
@@ -82,10 +86,10 @@ export const AmountInput: React.FC<AmountInputProps> = ({ value, onChange, error
         {[100, 500, 1000, 5000].map((amt) => (
           <TouchableOpacity
             key={amt}
-            style={styles.quickButton}
+            style={[styles.quickButton, { backgroundColor: colors.elevated }]}
             onPress={() => handleChange(amt.toString())}
           >
-            <Text style={styles.quickButtonText}>+{amt}</Text>
+            <Text style={[styles.quickButtonText, { color: colors.text }]}>+{amt}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -96,6 +100,7 @@ export const AmountInput: React.FC<AmountInputProps> = ({ value, onChange, error
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 24,
     borderRadius: 16,
     marginHorizontal: 16,

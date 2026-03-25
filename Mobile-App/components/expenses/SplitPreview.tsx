@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SplitResult, formatAmount } from '@/src/utils/splitCalculator';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface SplitPreviewProps {
   splitResults: SplitResult[] | null;
@@ -20,12 +22,15 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
   currentUserId,
   validationError,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
+
   if (validationError) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
         <View style={styles.header}>
           <Ionicons name="alert-circle" size={20} color="#ef4444" />
-          <Text style={styles.headerTitle}>Invalid Split</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Invalid Split</Text>
         </View>
         
         <View style={styles.errorCard}>
@@ -37,14 +42,14 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
 
   if (!splitResults || splitResults.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
         <View style={styles.header}>
-          <Ionicons name="eye-outline" size={20} color="#64748b" />
-          <Text style={styles.headerTitle}>Split Preview</Text>
+          <Ionicons name="eye-outline" size={20} color={colors.icon} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Split Preview</Text>
         </View>
         
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Select members to see split preview</Text>
+          <Text style={[styles.emptyText, { color: colors.icon }]}>Select members to see split preview</Text>
         </View>
       </View>
     );
@@ -56,23 +61,23 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
   const getsBack = userPaid - userOwes;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
       <View style={styles.header}>
         <Ionicons name="eye" size={20} color="#6366f1" />
-        <Text style={styles.headerTitle}>Split Preview</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Split Preview</Text>
       </View>
 
       {/* Summary Card */}
-      <View style={styles.summaryCard}>
+      <View style={[styles.summaryCard, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Paid by</Text>
-          <Text style={styles.summaryValue}>
+          <Text style={[styles.summaryLabel, { color: colors.icon }]}>Paid by</Text>
+          <Text style={[styles.summaryValue, { color: colors.text }]}> 
             {paidByUserId === currentUserId ? 'You' : paidByUserName}
           </Text>
         </View>
         
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Total Amount</Text>
+          <Text style={[styles.summaryLabel, { color: colors.icon }]}>Total Amount</Text>
           <Text style={[styles.summaryValue, styles.amountHighlight]}>
             ₹{formatAmount(totalAmount)}
           </Text>
@@ -86,7 +91,7 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
               color={getsBack > 0 ? '#22c55e' : getsBack < 0 ? '#ef4444' : '#64748b'}
             />
             <View style={styles.highlightTextContainer}>
-              <Text style={styles.highlightLabel}>
+              <Text style={[styles.highlightLabel, { color: colors.icon }]}> 
                 {getsBack > 0 ? 'You get back' : getsBack < 0 ? 'You owe extra' : "You're settled"}
               </Text>
               {getsBack !== 0 && (
@@ -112,8 +117,8 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
       </View>
 
       {/* Split Breakdown */}
-      <View style={styles.breakdownContainer}>
-        <Text style={styles.breakdownTitle}>Split Breakdown</Text>
+      <View style={[styles.breakdownContainer, { borderTopColor: colors.elevated }]}> 
+        <Text style={[styles.breakdownTitle, { color: colors.text }]}>Split Breakdown</Text>
         
         <ScrollView style={styles.breakdownList} nestedScrollEnabled>
           {splitResults.map((result, index) => {
@@ -125,6 +130,7 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
                 key={result.userId}
                 style={[
                   styles.breakdownRow,
+                  { backgroundColor: colors.background },
                   isCurrentUser && styles.breakdownRowHighlight,
                 ]}
               >
@@ -136,10 +142,10 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
                   </View>
                   
                   <View>
-                    <Text style={[styles.breakdownName, isCurrentUser && styles.breakdownNameCurrent]}>
+                    <Text style={[styles.breakdownName, { color: colors.text }, isCurrentUser && styles.breakdownNameCurrent]}>
                       {isCurrentUser ? 'You' : result.userName}
                     </Text>
-                    <Text style={styles.breakdownPercentage}>
+                    <Text style={[styles.breakdownPercentage, { color: colors.icon }]}>
                       {result.percentage.toFixed(1)}% of total
                     </Text>
                   </View>
@@ -169,6 +175,7 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 16,
     borderRadius: 16,
     marginHorizontal: 16,
@@ -212,6 +219,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: '#f8fafc',
+    borderWidth: 1,
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,

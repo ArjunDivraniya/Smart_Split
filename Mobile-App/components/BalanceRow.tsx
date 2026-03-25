@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface BalanceRowProps {
   balance: {
@@ -19,6 +21,8 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   currentUserId,
   onSettle,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const isCurrentUser = balance.userId === currentUserId;
   const isCreditor = balance.netBalance > 0;
   const isDebtor = balance.netBalance < 0;
@@ -41,7 +45,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
       <View style={styles.avatarContainer}>
         <View style={[styles.avatar, isSettled && styles.avatarSettled]}>
           <Text style={styles.avatarText}>
@@ -56,11 +60,11 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
       </View>
 
       <View style={styles.contentContainer}>
-        <Text style={styles.userName}>
+        <Text style={[styles.userName, { color: colors.text }]}>
           {isCurrentUser ? 'You' : balance.userName}
         </Text>
         <View style={styles.detailsRow}>
-          <Text style={styles.statusText}>{getBalanceText()}</Text>
+          <Text style={[styles.statusText, { color: colors.icon }]}>{getBalanceText()}</Text>
           {!isSettled && (
             <Text style={[styles.amount, { color: getBalanceColor() }]}>
               ₹{Math.abs(balance.netBalance).toFixed(2)}
@@ -68,7 +72,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
           )}
         </View>
         <View style={styles.breakdownRow}>
-          <Text style={styles.breakdownText}>
+          <Text style={[styles.breakdownText, { color: colors.icon }]}>
             Paid: ₹{balance.paid.toFixed(2)} • Owes: ₹{balance.owedShare.toFixed(2)}
           </Text>
         </View>
@@ -98,6 +102,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 6,

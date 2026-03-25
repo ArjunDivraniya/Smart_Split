@@ -11,6 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface SummaryTabProps {
   groupId: string;
@@ -50,6 +52,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   groupId,
   currentUserId,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -121,9 +125,9 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   const renderCategoryChart = () => {
     if (!summary || summary.categoryBreakdown.length === 0) {
       return (
-        <View style={styles.emptyChart}>
+        <View style={[styles.emptyChart, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
           <Ionicons name="pie-chart-outline" size={48} color="#cbd5e1" />
-          <Text style={styles.emptyChartText}>No category data</Text>
+          <Text style={[styles.emptyChartText, { color: colors.icon }]}>No category data</Text>
         </View>
       );
     }
@@ -132,8 +136,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
     const total = summary.categoryBreakdown.reduce((sum, cat) => sum + cat.amount, 0);
 
     return (
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Category Breakdown</Text>
+      <View style={[styles.chartContainer, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
+        <Text style={[styles.chartTitle, { color: colors.text }]}>Category Breakdown</Text>
         
         {/* Simple bar chart */}
         <View style={styles.barsContainer}>
@@ -146,7 +150,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
               <View key={category.category} style={styles.barRow}>
                 <View style={styles.barLabelContainer}>
                   <View style={[styles.categoryDot, { backgroundColor: color }]} />
-                  <Text style={styles.barLabel}>{category.category}</Text>
+                  <Text style={[styles.barLabel, { color: colors.text }]}>{category.category}</Text>
                 </View>
                 
                 <View style={styles.barContainer}>
@@ -163,7 +167,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
                   </View>
                 </View>
 
-                <Text style={styles.barPercentage}>{percentage.toFixed(1)}%</Text>
+                <Text style={[styles.barPercentage, { color: colors.icon }]}>{percentage.toFixed(1)}%</Text>
               </View>
             );
           })}
@@ -175,9 +179,9 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   const renderMemberContributions = () => {
     if (!summary || summary.memberContributions.length === 0) {
       return (
-        <View style={styles.emptyChart}>
+        <View style={[styles.emptyChart, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
           <Ionicons name="people-outline" size={48} color="#cbd5e1" />
-          <Text style={styles.emptyChartText}>No member data</Text>
+          <Text style={[styles.emptyChartText, { color: colors.icon }]}>No member data</Text>
         </View>
       );
     }
@@ -187,8 +191,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
     );
 
     return (
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Member Contributions</Text>
+      <View style={[styles.chartContainer, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
+        <Text style={[styles.chartTitle, { color: colors.text }]}>Member Contributions</Text>
         
         <View style={styles.barsContainer}>
           {summary.memberContributions.map((member) => {
@@ -223,7 +227,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
                   </View>
                 </View>
 
-                <Text style={styles.barPercentage}>{member.percentage.toFixed(1)}%</Text>
+                <Text style={[styles.barPercentage, { color: colors.icon }]}>{member.percentage.toFixed(1)}%</Text>
               </View>
             );
           })}
@@ -241,27 +245,27 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
         : 0;
 
     return (
-      <View style={styles.statsCard}>
+      <View style={[styles.statsCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
         <View style={styles.statItem}>
           <Ionicons name="wallet" size={32} color="#6366f1" />
-          <Text style={styles.statValue}>₹{summary.totalAmount.toFixed(2)}</Text>
-          <Text style={styles.statLabel}>Total Spent</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>₹{summary.totalAmount.toFixed(2)}</Text>
+          <Text style={[styles.statLabel, { color: colors.icon }]}>Total Spent</Text>
         </View>
 
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: colors.elevated }]} />
 
         <View style={styles.statItem}>
           <Ionicons name="receipt" size={32} color="#f59e0b" />
-          <Text style={styles.statValue}>{summary.totalExpenses}</Text>
-          <Text style={styles.statLabel}>Total Expenses</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{summary.totalExpenses}</Text>
+          <Text style={[styles.statLabel, { color: colors.icon }]}>Total Expenses</Text>
         </View>
 
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: colors.elevated }]} />
 
         <View style={styles.statItem}>
           <Ionicons name="trending-up" size={32} color="#22c55e" />
-          <Text style={styles.statValue}>₹{avgExpense.toFixed(2)}</Text>
-          <Text style={styles.statLabel}>Avg. Expense</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>₹{avgExpense.toFixed(2)}</Text>
+          <Text style={[styles.statLabel, { color: colors.icon }]}>Avg. Expense</Text>
         </View>
       </View>
     );
@@ -273,20 +277,20 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
     }
 
     return (
-      <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>Top Categories</Text>
+      <View style={[styles.listContainer, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
+        <Text style={[styles.listTitle, { color: colors.text }]}>Top Categories</Text>
         {summary.categoryBreakdown.slice(0, 5).map((category, index) => {
           const color = CATEGORY_COLORS[category.category] || CATEGORY_COLORS.Other;
           return (
-            <View key={category.category} style={styles.listItem}>
+            <View key={category.category} style={[styles.listItem, { borderBottomColor: colors.elevated }]}>
               <View style={styles.listItemLeft}>
-                <Text style={styles.listItemRank}>#{index + 1}</Text>
+                <Text style={[styles.listItemRank, { color: colors.icon }]}>#{index + 1}</Text>
                 <View style={[styles.categoryDot, { backgroundColor: color }]} />
-                <Text style={styles.listItemLabel}>{category.category}</Text>
+                <Text style={[styles.listItemLabel, { color: colors.text }]}>{category.category}</Text>
               </View>
               <View style={styles.listItemRight}>
-                <Text style={styles.listItemValue}>₹{category.amount.toFixed(2)}</Text>
-                <Text style={styles.listItemCount}>{category.count} expense{category.count > 1 ? 's' : ''}</Text>
+                <Text style={[styles.listItemValue, { color: colors.text }]}>₹{category.amount.toFixed(2)}</Text>
+                <Text style={[styles.listItemCount, { color: colors.icon }]}>{category.count} expense{category.count > 1 ? 's' : ''}</Text>
               </View>
             </View>
           );
@@ -297,7 +301,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color="#6366f1" />
       </View>
     );
@@ -305,10 +309,10 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
 
   if (!summary) {
     return (
-      <View style={styles.emptyContainer}>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
         <Ionicons name="bar-chart-outline" size={64} color="#cbd5e1" />
-        <Text style={styles.emptyTitle}>No summary available</Text>
-        <Text style={styles.emptySubtitle}>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>No summary available</Text>
+        <Text style={[styles.emptySubtitle, { color: colors.icon }]}>
           Add some expenses to see analytics
         </Text>
       </View>
@@ -316,7 +320,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       {renderStatsCard()}
       {renderCategoryChart()}
       {renderMemberContributions()}
@@ -359,6 +363,7 @@ const styles = StyleSheet.create({
   statsCard: {
     flexDirection: 'row',
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     margin: 16,
     padding: 20,
     borderRadius: 16,
@@ -390,6 +395,7 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 20,
@@ -408,6 +414,7 @@ const styles = StyleSheet.create({
   },
   emptyChart: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 40,
