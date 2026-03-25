@@ -5,6 +5,7 @@ import {
   getGroupById,
   updateGroup,
   addGroupMember,
+  removeGroupMember,
   deleteGroup,
   getGroupSettlements,
   recordGroupSettlement,
@@ -111,6 +112,13 @@ router.put('/:id', updateGroup);
  * @access Private
  */
 router.post('/:id/members', addGroupMember);
+
+/**
+ * @route DELETE /api/groups/:id/members/:memberId
+ * @desc Remove a member from a group
+ * @access Private
+ */
+router.delete('/:id/members/:memberId', removeGroupMember);
 
 /**
  * @route DELETE /api/groups/:id

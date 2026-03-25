@@ -355,8 +355,8 @@ export const getGroupById = async (req: Request, res: Response) => {
     }
 
     const group = await Group.findById(id)
-      .populate('createdBy', 'name email')
-      .populate('members.userId', 'name email')
+      .populate('createdBy', 'name email profileImage avatar')
+      .populate('members.userId', 'name email profileImage avatar phone upiId')
       .populate('expenses')
       .lean();
 
@@ -596,8 +596,8 @@ export const addGroupMember = async (req: Request, res: Response) => {
     const alreadyMember = group.members.some((member: any) => toStringId(member.userId) === toStringId(userToAdd._id));
     if (alreadyMember) {
       const existingGroup = await Group.findById(id)
-        .populate('createdBy', 'name email')
-        .populate('members.userId', 'name email')
+        .populate('createdBy', 'name email profileImage avatar')
+        .populate('members.userId', 'name email profileImage avatar phone upiId')
         .lean();
 
       return res.status(200).json({
@@ -624,8 +624,8 @@ export const addGroupMember = async (req: Request, res: Response) => {
     );
 
     const updatedGroup = await Group.findById(id)
-      .populate('createdBy', 'name email')
-      .populate('members.userId', 'name email')
+      .populate('createdBy', 'name email profileImage avatar')
+      .populate('members.userId', 'name email profileImage avatar phone upiId')
       .lean();
 
     return res.status(200).json({
@@ -638,6 +638,88 @@ export const addGroupMember = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to add member to group',
+    });
+  }
+};
+
+// Remove member from group
+export const removeGroupMember = async (req: Request, res: Response) => {
+  try {
+    const { id, memberId } = req.params;
+    const userId = (req as any).userId;
+
+    if (!ensureValidObjectId(id, res, 'Group')) {
+      return;
+    }
+
+    if (!ensureValidObjectId(memberId, res, 'Member')) {
+      return;
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found',
+      });
+    }
+
+    if (toStringId(group.createdBy) !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only group creator can remove members',
+      });
+    }
+
+    if (toStringId(group.createdBy) === toStringId(memberId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Creator cannot be removed from the group',
+      });
+    }
+
+    const memberExists = group.members.some((member: any) => toStringId(member.userId) === toStringId(memberId));
+    if (!memberExists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Member not found in group',
+      });
+    }
+
+    await Group.findByIdAndUpdate(
+      id,
+      {
+        $pull: {
+          members: {
+            userId: new mongoose.Types.ObjectId(memberId),
+          },
+        },
+      },
+      { new: true }
+    );
+
+    const updatedGroup = await Group.findById(id)
+      .populate('createdBy', 'name email profileImage avatar')
+      .populate('members.userId', 'name email profileImage avatar phone upiId')
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Member removed successfully',
+      data: updatedGroup,
+    });
+  } catch (error: any) {
+    console.error('Error removing member from group:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to remove member from group',
     });
   }
 };

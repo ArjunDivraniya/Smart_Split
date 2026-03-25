@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { ExpenseItem } from '@/components/ExpenseItem';
 
@@ -76,6 +77,12 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   useEffect(() => {
     fetchExpenses();
   }, [groupId, selectedCategory, paidFilter, sortBy, sortOrder]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchExpenses();
+    }, [groupId, selectedCategory, paidFilter, sortBy, sortOrder, searchQuery, currentUserId])
+  );
 
   const fetchExpenses = async () => {
     try {

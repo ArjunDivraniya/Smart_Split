@@ -278,6 +278,9 @@ export const apiService = {
     
     delete: (groupId: string) =>
       api.delete(`/groups/${groupId}`),
+
+    removeMember: (groupId: string, memberId: string) =>
+      api.delete(`/groups/${groupId}/members/${memberId}`),
     
     addExpense: (groupId: string, data: any) =>
       api.post(`/groups/${groupId}/expenses`, data),

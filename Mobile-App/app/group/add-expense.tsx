@@ -67,15 +67,17 @@ export default function AddExpenseScreen() {
       
       // Load current user
       const userResponse = await apiService.user.getMe();
-      const userId = userResponse.data._id;
-      const userName = userResponse.data.name;
+      const userData = userResponse?.data?.data || userResponse?.data || {};
+      const resolvedUser = userData?.user || userData;
+      const userId = resolvedUser?._id || resolvedUser?.id || '';
+      const userName = resolvedUser?.name || 'You';
       setCurrentUserId(userId);
       setCurrentUserName(userName);
       setPaidBy(userId); // Default payer is current user
 
       // Load group members
       const groupResponse = await apiService.groups.getById(groupId as string);
-      const group = groupResponse.data;
+      const group = groupResponse?.data?.data || groupResponse?.data || {};
 
       // Extract members
       const members: GroupMember[] = [];
@@ -224,6 +226,7 @@ export default function AddExpenseScreen() {
         paidBy,
         splitType,
         splitBetween: selectedMembers.map((m) => m.userId),
+        groupId: groupId as string,
         date: date.toISOString(),
         notes: notes.trim(),
       };

@@ -5,25 +5,26 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  ActionSheetIOS,
-  Platform,
   Modal,
   TextInput,
   FlatList,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiService } from '@/src/services';
 import { Group, GroupType } from '@/src/types/group.types';
+import { GROUP_TYPE_MAP } from '@/src/types/group.types';
 import { ExpensesTab } from '@/components/ExpensesTab';
 import { BalancesTab } from '@/components/BalancesTab';
 import { TimelineTab } from '@/components/TimelineTab';
 import { SummaryTab } from '@/components/SummaryTab';
 import { AvatarGroup } from '@/src/components/groups/AvatarGroup';
+import { MembersBottomSheet } from '@/src/components/groups/MembersBottomSheet';
 import { useAuth } from '@/src/context/AuthContext';
 import api from '@/src/services/api';
 import { addMember } from '@/src/services/groups.service';
@@ -49,6 +50,24 @@ type SearchUser = {
   email: string;
 };
 
+// Map group types to brand colors for premium visual distinction
+const getGroupTypeColor = (groupType?: string): string => {
+  switch (groupType?.toLowerCase()) {
+    case 'trip':
+      return '#7C5CFC'; // Violet
+    case 'food':
+      return '#FFB547'; // Amber
+    case 'college':
+      return '#38BDF8'; // Sky
+    case 'flatmates':
+      return '#00E5B0'; // Mint
+    case 'event':
+      return '#FF5F7E'; // Coral
+    default:
+      return '#7C5CFC'; // Default to violet
+  }
+};
+
 export default function GroupDetailScreen() {
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
@@ -71,6 +90,34 @@ export default function GroupDetailScreen() {
   const [memberQuery, setMemberQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [addingMemberId, setAddingMemberId] = useState('');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [membersSheetVisible, setMembersSheetVisible] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState('');
+
+  // Floating emoji animation
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 3000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+  }, [floatAnim]);
+
+  const floatY = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -8],
+  });
 
   const normalizeId = (value: unknown): string => {
     if (value === null || value === undefined) {
@@ -105,6 +152,16 @@ export default function GroupDetailScreen() {
       fetchGroupDetails();
     }
   }, [id]);
+
+  useEffect(() => {
+    // Reset timeline tab if group is not a trip
+    if (group && activeTab === 'timeline') {
+      const isTrip = group.type === GroupType.TRIP;
+      if (!isTrip) {
+        setActiveTab('expenses');
+      }
+    }
+  }, [group?.type, activeTab]);
 
   const loadCurrentUser = async () => {
     try {
@@ -159,6 +216,7 @@ export default function GroupDetailScreen() {
   }
 
   const isTrip = group.type === GroupType.TRIP;
+  const typeInfo = GROUP_TYPE_MAP[group.type] || GROUP_TYPE_MAP[GroupType.CUSTOM];
   const authUserId = normalizeId((user as any)?._id || user?.id || (user as any)?.userId);
   const groupCreatorId = normalizeId(
     typeof group.createdBy === 'object'
@@ -168,14 +226,82 @@ export default function GroupDetailScreen() {
   const signedInUserId = authUserId || normalizeId(currentUserId);
   const isCreator = Boolean(signedInUserId && groupCreatorId && signedInUserId === groupCreatorId);
 
-  const tabs = isTrip 
+  const tabs: Array<'expenses' | 'balances' | 'timeline' | 'summary'> = isTrip
     ? ['expenses', 'balances', 'timeline', 'summary']
     : ['expenses', 'balances', 'summary'];
   const memberPreview = (group.members || []).map((member) => ({
-    id: member.userId,
-    name: member.userName,
-    email: member.email,
+    id: normalizeId(member.userId),
+    name: member.userName || (typeof member.userId === 'object' ? (member.userId as any)?.name : '') || 'Member',
+    email: member.email || (typeof member.userId === 'object' ? (member.userId as any)?.email : '') || 'No email',
   }));
+
+  const membersSheetData = (() => {
+    const rows: Array<{ id: string; name: string; email: string; avatar?: string }> = [];
+    const seen = new Set<string>();
+
+    const createdByUser = typeof group.createdBy === 'object' ? (group.createdBy as any) : null;
+    if (groupCreatorId && !seen.has(groupCreatorId)) {
+      rows.push({
+        id: groupCreatorId,
+        name: createdByUser?.name || 'Creator',
+        email: createdByUser?.email || '',
+        avatar: createdByUser?.avatar || createdByUser?.profileImage,
+      });
+      seen.add(groupCreatorId);
+    }
+
+    (group.members || []).forEach((member) => {
+      const resolvedId = normalizeId(member.userId);
+      if (!resolvedId || seen.has(resolvedId)) {
+        return;
+      }
+
+      const memberUser = typeof member.userId === 'object' ? (member.userId as any) : null;
+      rows.push({
+        id: resolvedId,
+        name: member.userName || memberUser?.name || 'Member',
+        email: member.email || memberUser?.email || '',
+        avatar: member.avatar || memberUser?.avatar || memberUser?.profileImage,
+      });
+      seen.add(resolvedId);
+    });
+
+    return rows;
+  })();
+  const membersCount = group.members?.length || 0;
+
+  const totalSpent = Number(group.totalSpent || 0);
+  const yourShare = membersCount > 0 ? totalSpent / membersCount : 0;
+  const netBalance = Number(group.netBalance || 0);
+  const netBalanceColor = netBalance < 0 ? colors.coral : colors.mint;
+  const netBalanceLabel = netBalance < 0 ? 'You Owe' : 'Net Balance';
+
+  const formatDateLabel = (value?: Date) => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  };
+
+  const tripDateRange =
+    isTrip && group.tripStartDate && group.tripEndDate
+      ? `${formatDateLabel(group.tripStartDate)} - ${formatDateLabel(group.tripEndDate)}`
+      : '';
+
+  const budgetLimit = Number(group.tripBudget || 0);
+  const budgetProgress = budgetLimit > 0 ? Math.min(totalSpent / budgetLimit, 1) : 0;
+  const budgetProgressPercent = Math.round(budgetProgress * 100);
+
+  // Early return only AFTER all hooks have been called
+  if (loading || !group) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.violet} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const renderTabContent = () => {
     if (userLoading) {
@@ -375,91 +501,241 @@ export default function GroupDetailScreen() {
   };
 
   const openGroupActions = () => {
-    const actions = [
-      'Edit Group',
-      'Add Member',
-      'Archive Group',
-      'Delete Group',
-      'Cancel',
-    ];
+    setMenuVisible((prev) => !prev);
+  };
 
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: actions,
-          cancelButtonIndex: 4,
-          destructiveButtonIndex: 3,
-          userInterfaceStyle: colorScheme,
-        },
-        (selectedIndex) => {
-          if (selectedIndex === 0) openEditModal();
-          if (selectedIndex === 1) openAddMemberModal();
-          if (selectedIndex === 2) handleArchiveGroup();
-          if (selectedIndex === 3) handleDeleteGroup();
-        }
-      );
+  const closeGroupActions = () => {
+    setMenuVisible(false);
+  };
+
+  const runMenuAction = (action: () => void) => {
+    closeGroupActions();
+    action();
+  };
+
+  const handleSettleUpQuickAction = () => {
+    setActiveTab('balances');
+  };
+
+  const handleMembersQuickAction = () => {
+    setMembersSheetVisible(true);
+  };
+
+  const handleShareQuickAction = () => {
+    Alert.alert('Share', 'Share group link is coming soon.');
+  };
+
+  const handleRemoveMember = (member: { id: string; name: string; email: string }) => {
+    if (!groupId) {
       return;
     }
 
-    Alert.alert('Group Actions', 'Choose an action', [
-      { text: 'Edit Group', onPress: openEditModal },
-      { text: 'Add Member', onPress: openAddMemberModal },
-      { text: 'Archive Group', onPress: handleArchiveGroup },
-      { text: 'Delete Group', onPress: handleDeleteGroup, style: 'destructive' },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    Alert.alert(
+      'Remove Member',
+      `Remove ${member.name} from this group?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setRemovingMemberId(member.id);
+              await apiService.groups.removeMember(groupId, member.id);
+              await fetchGroupDetails();
+            } catch (error: any) {
+              Alert.alert(
+                'Error',
+                error?.response?.data?.error || error?.response?.data?.message || 'Failed to remove member.'
+              );
+            } finally {
+              setRemovingMemberId('');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.elevated }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.groupEmoji]}>{group.emoji}</Text>
-          <View>
-            <Text style={[styles.groupName, { color: colors.text }]}>{group.name}</Text>
-            <View style={styles.groupMetaRow}>
-              <Text style={[styles.groupInfo, { color: colors.icon }]}>
-                {group.members?.length || 0} members
-              </Text>
-              <AvatarGroup members={memberPreview} size="medium" />
-            </View>
+      {/* Hero Header */}
+      <View style={[styles.heroWrap, { borderBottomColor: colors.elevated }]}>
+        <View style={styles.heroTopRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+
+          <View style={styles.topRightActions}>
+            <TouchableOpacity onPress={handleShareQuickAction} style={styles.shareButton} activeOpacity={0.8}>
+              <Ionicons name="share-social" size={20} color={colors.violet} />
+            </TouchableOpacity>
+
+            {isCreator ? (
+              <TouchableOpacity onPress={openGroupActions} style={styles.menuButton} activeOpacity={0.8}>
+                <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.menuPlaceholder} />
+            )}
           </View>
         </View>
-        {isCreator ? (
-          <TouchableOpacity onPress={openGroupActions} style={styles.menuButton} activeOpacity={0.8}>
-            <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.menuPlaceholder} />
-        )}
-      </View>
 
-      {/* Trip Info Banner (if trip) */}
-      {isTrip && group.tripStartDate && group.tripEndDate && (
-        <View style={[styles.tripBanner, { backgroundColor: colors.elevated }]}>
-          <View style={styles.tripInfo}>
-            <Ionicons name="calendar" size={16} color={colors.mint} />
-            <Text style={[styles.tripDate, { color: colors.text }]}>
-              {new Date(group.tripStartDate).toLocaleDateString()} - {new Date(group.tripEndDate).toLocaleDateString()}
+        <View style={styles.heroMainRow}>
+          <Animated.View
+            style={[
+              styles.emojiGlowWrap,
+              {
+                transform: [{ translateY: floatY }],
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.emojiGlow,
+                {
+                  backgroundColor: getGroupTypeColor(group?.type) + '26',
+                },
+              ]}
+            />
+            <Text style={styles.groupEmojiHero}>{group.emoji || typeInfo.emoji}</Text>
+          </Animated.View>
+
+          <View style={styles.heroTextBlock}>
+            <Text style={[styles.groupNameHero, { color: colors.text }]} numberOfLines={1}>
+              {group.name}
+            </Text>
+
+            <View style={[styles.typeBadge, { backgroundColor: `${colors.violet}20`, borderColor: `${colors.violet}45` }]}>
+              <Text style={[styles.typeBadgeText, { color: colors.violet }]}>{typeInfo.label}</Text>
+            </View>
+
+            {isTrip && (group.tripDestination || tripDateRange) ? (
+              <View style={styles.tripMetaWrap}>
+                {group.tripDestination ? (
+                  <View style={styles.tripMetaRow}> 
+                    <Ionicons name="location" size={13} color={colors.icon} />
+                    <Text style={[styles.tripMetaTextHero, { color: colors.icon }]} numberOfLines={1}>
+                      {group.tripDestination}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {tripDateRange ? (
+                  <View style={styles.tripMetaRow}> 
+                    <Ionicons name="calendar" size={13} color={colors.icon} />
+                    <Text style={[styles.tripMetaTextHero, { color: colors.icon }]}>{tripDateRange}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            <TouchableOpacity style={styles.membersHeroRow} onPress={() => setMembersSheetVisible(true)} activeOpacity={0.8}>
+              <AvatarGroup members={memberPreview} size="medium" />
+              <Text style={[styles.membersHeroText, { color: colors.icon }]}>{membersCount} members</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={[styles.statsRowContainer, { marginBottom: 12 }]}>
+          <View style={[styles.statCellBox, { borderColor: colors.elevated }]}>
+            <Text style={[styles.statLabel, { color: colors.icon }]}>Total Spent</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>Rs {totalSpent.toLocaleString('en-IN')}</Text>
+          </View>
+
+          <View
+            style={[
+              styles.statCellBox,
+              {
+                borderColor: colors.elevated,
+                backgroundColor: netBalance < 0 ? `${colors.coral}14` : `${colors.mint}14`,
+              },
+            ]}
+          >
+            <Text style={[styles.statLabel, { color: colors.icon }]}>{netBalanceLabel}</Text>
+            <Text style={[styles.statValue, { color: netBalanceColor }]}>
+              Rs {Math.abs(netBalance).toLocaleString('en-IN')}
             </Text>
           </View>
-          {group.tripDestination && (
-            <View style={styles.tripInfo}>
-              <Ionicons name="location" size={16} color={colors.mint} />
-              <Text style={[styles.tripLocation, { color: colors.text }]}>
-                {group.tripDestination}
-              </Text>
+
+          <View style={[styles.statCellBox, { borderColor: colors.elevated }]}>
+            <Text style={[styles.statLabel, { color: colors.icon }]}>Your Share</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>Rs {yourShare.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Text>
+          </View>
+        </View>
+
+        {isTrip && budgetLimit > 0 ? (
+          <View style={styles.budgetWrap}>
+            <View style={styles.budgetHeaderRow}>
+              <Text style={[styles.budgetLabel, { color: colors.icon }]}>Trip Budget</Text>
+              <Text style={[styles.budgetValue, { color: colors.text }]}>Rs {totalSpent.toLocaleString('en-IN')} / Rs {budgetLimit.toLocaleString('en-IN')}</Text>
             </View>
-          )}
+            <View style={[styles.budgetTrack, { backgroundColor: colors.elevated }]}> 
+              <View style={[styles.budgetFill, { width: `${budgetProgressPercent}%`, backgroundColor: budgetProgress >= 1 ? colors.coral : colors.mint }]} />
+            </View>
+          </View>
+        ) : null}
+      </View>
+
+      {isCreator && menuVisible && (
+        <View style={styles.menuOverlay}>
+          <TouchableOpacity style={styles.menuBackdrop} activeOpacity={1} onPress={closeGroupActions} />
+          <View style={[styles.menuPanel, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
+            <TouchableOpacity style={styles.menuItem} onPress={() => runMenuAction(openEditModal)}>
+              <Ionicons name="create-outline" size={16} color={colors.text} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Edit Group</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => runMenuAction(openAddMemberModal)}>
+              <Ionicons name="person-add-outline" size={16} color={colors.text} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Add Member</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => runMenuAction(handleArchiveGroup)}>
+              <Ionicons name="archive-outline" size={16} color={colors.text} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>Archive Group</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => runMenuAction(handleDeleteGroup)}>
+              <Ionicons name="trash-outline" size={16} color={colors.coral} />
+              <Text style={[styles.menuItemText, { color: colors.coral }]}>Delete Group</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
-      {/* Tabs */}
+      {/* Quick Actions - 3 Buttons */}
+      <View style={[styles.quickActionsStickyContainer, { backgroundColor: `${colors.violet}08` }]}>
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity
+            style={[styles.quickActionPrimary, { backgroundColor: colors.violet }]}
+            onPress={handleAddExpense}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="add" size={16} color="#ffffff" />
+            <Text style={styles.quickActionPrimaryText}>Add Expense</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickActionSecondary, { backgroundColor: colors.mint }]}
+            onPress={handleSettleUpQuickAction}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="checkmark" size={16} color="#ffffff" />
+            <Text style={styles.quickActionText}>Settle Up</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickActionSecondary, { backgroundColor: colors.sky }]}
+            onPress={handleMembersQuickAction}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="people" size={16} color="#ffffff" />
+            <Text style={styles.quickActionText}>Members</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Tabs (sticky strip) */}
+      <View style={[styles.tabsStickyWrap, { backgroundColor: colors.background, borderBottomColor: colors.elevated }]}>
       <View style={[styles.tabBar, { borderBottomColor: colors.elevated }]}>
         {tabs.map((tab) => (
           <TouchableOpacity
@@ -485,11 +761,23 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
         ))}
       </View>
+      </View>
 
       {/* Tab Content */}
       <View style={styles.tabContent}>
         {renderTabContent()}
       </View>
+
+      <MembersBottomSheet
+        visible={membersSheetVisible}
+        onClose={() => setMembersSheetVisible(false)}
+        members={membersSheetData}
+        creatorId={groupCreatorId}
+        currentUserId={signedInUserId}
+        isCreator={isCreator}
+        removingMemberId={removingMemberId}
+        onRemoveMember={handleRemoveMember}
+      />
 
       <Modal
         visible={editModalVisible}
@@ -642,74 +930,264 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_600SemiBold',
     fontSize: 13,
   },
-  header: {
+  heroWrap: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    flexWrap: 'wrap',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  headerCenter: {
-    flex: 1,
+  heroTopRow: {
+    width: '100%',
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 12,
   },
-  groupEmoji: {
-    fontSize: 32,
-  },
-  groupName: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Syne',
-  },
-  groupInfo: {
-    fontSize: 12,
-    fontFamily: 'DMSans_400Regular',
-  },
-  groupMetaRow: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  menuButton: {
+  backButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuPlaceholder: {
-    width: 32,
+  heroMainRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
   },
-  tripBanner: {
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
+  emojiGlowWrap: {
+    width: 80,
+    height: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  tripInfo: {
+  emojiGlow: {
+    position: 'absolute',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
+  groupEmojiHero: {
+    fontSize: 52,
+  },
+  heroTextBlock: {
+    flex: 1,
+  },
+  groupNameHero: {
+    fontSize: 24,
+    fontFamily: 'Syne_700Bold',
+    marginBottom: 6,
+  },
+  typeBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginBottom: 8,
+  },
+  typeBadgeText: {
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  tripMetaWrap: {
+    marginBottom: 8,
+    gap: 4,
+  },
+  tripMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tripMetaTextHero: {
+    fontSize: 12,
+    fontFamily: 'DMSans_500Medium',
+  },
+  membersHeroRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  tripDate: {
-    fontSize: 13,
-    fontFamily: 'DMSans_400Regular',
-    flex: 1,
+  membersHeroText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_500Medium',
   },
-  tripLocation: {
+  topRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuPlaceholder: {
+    width: 40,
+  },
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 40,
+  },
+  menuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  menuPanel: {
+    position: 'absolute',
+    top: 62,
+    right: 16,
+    width: 182,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontFamily: 'DMSans_500Medium',
+  },
+  statsRowContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  statCellBox: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statLabel: {
+    fontSize: 10,
+    fontFamily: 'DMSans_500Medium',
+    marginBottom: 5,
+  },
+  statValue: {
     fontSize: 13,
-    fontFamily: 'DMSans_400Regular',
+    fontFamily: 'Syne_700Bold',
+  },
+  statDivider: {
+    width: 1,
+    opacity: 0.7,
+  },
+  budgetWrap: {
+    width: '100%',
+    marginBottom: 4,
+  },
+  budgetHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    gap: 8,
+  },
+  budgetLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_500Medium',
+  },
+  budgetValue: {
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  budgetTrack: {
+    height: 9,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  budgetFill: {
+    height: '100%',
+    borderRadius: 12,
+  },
+  quickActionsStickyContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#7C5CFC15',
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickActionPrimary: {
+    flex: 1.5,
+    height: 44,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  quickActionPrimaryText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  quickActionSecondary: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  quickActionPill: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  quickActionText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
   },
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     paddingHorizontal: 16,
+  },
+  tabsStickyWrap: {
+    zIndex: 20,
+    elevation: 6,
+    borderBottomWidth: 1,
   },
   tab: {
     flex: 1,
