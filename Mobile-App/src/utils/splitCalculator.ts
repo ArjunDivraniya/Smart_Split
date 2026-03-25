@@ -1,6 +1,6 @@
 // Split calculation utilities for expense splitting
 
-export type SplitType = 'equal' | 'percentage' | 'exact' | 'shares';
+export type SplitType = 'equally' | 'unequally' | 'percentage' | 'shares';
 
 export interface Participant {
   userId: string;
@@ -115,11 +115,11 @@ export const calculateSplit = (
   participants: Participant[]
 ): SplitResult[] | null => {
   switch (splitType) {
-    case 'equal':
+    case 'equally':
       return calculateEqualSplit(amount, participants);
     case 'percentage':
       return calculatePercentageSplit(amount, participants);
-    case 'exact':
+    case 'unequally':
       return calculateExactSplit(amount, participants);
     case 'shares':
       return calculateSharesSplit(amount, participants);
@@ -145,7 +145,7 @@ export const validateSplit = (
   }
 
   switch (splitType) {
-    case 'equal':
+    case 'equally':
       return { valid: true };
 
     case 'percentage': {
@@ -156,7 +156,7 @@ export const validateSplit = (
       return { valid: true };
     }
 
-    case 'exact': {
+    case 'unequally': {
       const total = participants.reduce((sum, p) => sum + (p.value || 0), 0);
       if (Math.abs(total - amount) > 0.01) {
         return { valid: false, error: `Amounts must sum to ₹${amount} (currently ₹${total.toFixed(2)})` };

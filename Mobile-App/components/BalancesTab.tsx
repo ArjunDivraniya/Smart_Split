@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { BalanceRow } from '@/components/BalanceRow';
 import { SettlementModal } from '@/components/SettlementModal';
@@ -74,19 +75,41 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   });
 
   useEffect(() => {
-    fetchBalances();
-    fetchSettlements();
+    if (groupId) {
+      setLoading(true);
+      Promise.all([fetchBalances(), fetchSettlements()]);
+    }
   }, [groupId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (groupId) {
+        fetchBalances();
+        fetchSettlements();
+      }
+    }, [groupId])
+  );
 
   const fetchBalances = async () => {
     try {
       setLoading(true);
       const response = await apiService.groupExpenses.getBalances(groupId);
       const balancesData = response?.data?.data || response?.data || [];
-      setBalances(Array.isArray(balancesData) ? balancesData : []);
+      
+      // Transform backend response to component format
+      const transformedBalances = (Array.isArray(balancesData) ? balancesData : []).map((item: any) => ({
+        userId: item.userId || '',
+        userName: item.user || item.userName || 'Unknown', // Backend returns 'user', component expects 'userName'
+        netBalance: Number(item.netBalance || 0),
+        paid: Number(item.paid || 0),
+        owedShare: Number(item.owedShare || 0),
+      }));
+      
+      setBalances(transformedBalances);
     } catch (error) {
       console.error('Error fetching balances:', error);
       Alert.alert('Error', 'Failed to load balances');
+      setBalances([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

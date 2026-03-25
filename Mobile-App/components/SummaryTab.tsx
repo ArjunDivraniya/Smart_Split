@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
 
 interface SummaryTabProps {
@@ -53,18 +54,65 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchSummary();
+    if (groupId) {
+      setLoading(true);
+      fetchSummary();
+    }
   }, [groupId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (groupId) {
+        fetchSummary();
+      }
+    }, [groupId])
+  );
 
   const fetchSummary = async () => {
     try {
       setLoading(true);
       const response = await apiService.groups.getSummary(groupId);
       const summaryData = response?.data?.data || response?.data || null;
-      setSummary(summaryData);
+      
+      if (!summaryData) {
+        setSummary(null);
+        return;
+      }
+      
+      // Transform backend response to frontend format
+      const categoryBreakdownObj = summaryData.categoryBreakdown || {};
+      const memberContributionsArray = summaryData.perMemberContribution || summaryData.memberContributions || [];
+      
+      // Convert category breakdown object to array
+      const total = Object.values(categoryBreakdownObj).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+      
+      const categoryBreakdown = Object.entries(categoryBreakdownObj).map(([category, amount]: [string, any]) => ({
+        category: category.charAt(0).toUpperCase() + category.slice(1),
+        amount: Number(amount) || 0,
+        count: 1, // Count not provided in backend, set to 1
+        percentage: total > 0 ? (Number(amount) / total) * 100 : 0,
+      }));
+      
+      // Transform member contributions
+      const memberContributions = memberContributionsArray.map((member: any) => ({
+        userId: member.userId || '',
+        userName: member.userName || 'Unknown',
+        totalPaid: Number(member.amount || member.totalPaid || 0),
+        percentage: total > 0 ? (Number(member.amount || member.totalPaid || 0) / total) * 100 : 0,
+      }));
+      
+      const transformedSummary: Summary = {
+        totalExpenses: summaryData.expenseCount || 0,
+        totalAmount: summaryData.totalGroupSpend || total,
+        categoryBreakdown,
+        memberContributions,
+      };
+      
+      setSummary(transformedSummary);
     } catch (error) {
       console.error('Error fetching summary:', error);
       Alert.alert('Error', 'Failed to load summary');
+      setSummary(null);
     } finally {
       setLoading(false);
     }

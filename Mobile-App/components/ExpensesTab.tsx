@@ -74,14 +74,28 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   const [sortOrder, setSortOrder] = useState('desc');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Only fetch on mount and when groupId changes
   useEffect(() => {
-    fetchExpenses();
-  }, [groupId, selectedCategory, paidFilter, sortBy, sortOrder]);
+    if (groupId) {
+      setLoading(true);
+      fetchExpenses();
+    }
+  }, [groupId]);
 
+  // Refetch when filters/sort/search change
+  useEffect(() => {
+    if (!loading && expenses.length > 0) {
+      fetchExpenses();
+    }
+  }, [selectedCategory, paidFilter, sortBy, sortOrder, searchQuery]);
+
+  // Refetch when tab is focused
   useFocusEffect(
     useCallback(() => {
-      fetchExpenses();
-    }, [groupId, selectedCategory, paidFilter, sortBy, sortOrder, searchQuery, currentUserId])
+      if (groupId) {
+        fetchExpenses();
+      }
+    }, [groupId])
   );
 
   const fetchExpenses = async () => {
@@ -97,9 +111,9 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
       }
       
       if (paidFilter === 'me') {
-        params.paid = currentUserId;
+        params.paid = 'you'; // Backend expects 'you' not userId
       } else if (paidFilter === 'others') {
-        params.paid = `!${currentUserId}`;
+        params.paid = 'others';
       }
       
       if (searchQuery.trim()) {
@@ -108,10 +122,30 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
 
       const response = await apiService.groupExpenses.getAll(groupId, params);
       const expensesData = response?.data?.data || response?.data || [];
-      setExpenses(Array.isArray(expensesData) ? expensesData : []);
+      
+      // Ensure data is array and properly structured
+      let transformedExpenses = Array.isArray(expensesData) ? expensesData : [];
+      
+      // Map to ensure correct structure
+      transformedExpenses = transformedExpenses.map((expense: any) => ({
+        _id: expense._id || expense.id || '',
+        description: expense.description || expense.title || '',
+        amount: Number(expense.amount) || 0,
+        paidBy: {
+          _id: expense.paidBy?._id || expense.paidBy || '',
+          name: expense.paidBy?.name || expense.paidByName || 'Unknown',
+        },
+        category: expense.category || 'Other',
+        date: expense.date || new Date().toISOString(),
+        receiptUrl: expense.receiptUrl,
+        notes: expense.notes,
+      }));
+      
+      setExpenses(transformedExpenses);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       Alert.alert('Error', 'Failed to load expenses');
+      setExpenses([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

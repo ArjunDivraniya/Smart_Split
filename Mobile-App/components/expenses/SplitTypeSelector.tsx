@@ -5,7 +5,7 @@ import { SplitType } from '@/src/utils/splitCalculator';
 
 const SPLIT_TYPES = [
   {
-    id: 'equal' as SplitType,
+    id: 'equally' as SplitType,
     label: 'Equal',
     description: 'Split equally among members',
     icon: 'people',
@@ -19,7 +19,7 @@ const SPLIT_TYPES = [
     color: '#f59e0b',
   },
   {
-    id: 'exact' as SplitType,
+    id: 'unequally' as SplitType,
     label: 'Exact Amount',
     description: 'Enter exact amounts',
     icon: 'calculator',

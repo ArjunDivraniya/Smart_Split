@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { ExpenseItem } from '@/components/ExpenseItem';
 
@@ -48,15 +49,52 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchTimeline();
+    if (groupId) {
+      setLoading(true);
+      fetchTimeline();
+    }
   }, [groupId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (groupId) {
+        fetchTimeline();
+      }
+    }, [groupId])
+  );
 
   const fetchTimeline = async () => {
     try {
       setLoading(true);
       const response = await apiService.groups.getTimeline(groupId);
       const payload = response?.data?.data || response?.data || {};
-      const timeline = payload?.timeline || [];
+      
+      // Get expenses array - could be in different formats
+      const expensesData = payload?.expenses || payload?.data || [];
+      const expensesArray = Array.isArray(expensesData) ? expensesData : [];
+      
+      // Group expenses by date
+      const groupedByDate: Record<string, any[]> = {};
+      
+      expensesArray.forEach((expense: any) => {
+        const expenseDate = new Date(expense.date || expense.createdAt);
+        const dateKey = expenseDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        if (!groupedByDate[dateKey]) {
+          groupedByDate[dateKey] = [];
+        }
+        groupedByDate[dateKey].push(expense);
+      });
+      
+      // Convert to timeline array sorted by date descending
+      const timeline = Object.entries(groupedByDate)
+        .map(([date, expenses]) => ({
+          date,
+          expenses: expenses || [],
+          totalAmount: (expenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
+        }))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
       setTimelineData(timeline);
       
       // Auto-expand the most recent day
@@ -66,6 +104,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     } catch (error) {
       console.error('Error fetching timeline:', error);
       Alert.alert('Error', 'Failed to load timeline');
+      setTimelineData([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

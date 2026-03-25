@@ -43,7 +43,7 @@ export default function AddExpenseScreen() {
   const [category, setCategory] = useState('Food');
   const [date, setDate] = useState(new Date());
   const [paidBy, setPaidBy] = useState('');
-  const [splitType, setSplitType] = useState<SplitType>('equal');
+  const [splitType, setSplitType] = useState<SplitType>('equally');
   const [selectedMembers, setSelectedMembers] = useState<Participant[]>([]);
   const [notes, setNotes] = useState('');
 
@@ -156,7 +156,7 @@ export default function AddExpenseScreen() {
     setSplitType(type);
     
     // Reset values based on split type
-    if (type === 'equal') {
+    if (type === 'equally') {
       setSelectedMembers(
         selectedMembers.map((m) => ({ ...m, value: 0 }))
       );
@@ -237,7 +237,7 @@ export default function AddExpenseScreen() {
         selectedMembers.forEach((m) => {
           requestBody.splitPercentages[m.userId] = m.value || 0;
         });
-      } else if (splitType === 'exact') {
+      } else if (splitType === 'unequally') {
         requestBody.splitAmounts = {};
         selectedMembers.forEach((m) => {
           requestBody.splitAmounts[m.userId] = m.value || 0;

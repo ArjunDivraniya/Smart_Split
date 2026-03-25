@@ -24,7 +24,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
   const getValue = (userId: string) => selected.find((s) => s.userId === userId)?.value || 0;
 
   const renderValueInput = (userId: string) => {
-    if (splitType === 'equal') return null;
+    if (splitType === 'equally') return null;
 
     let placeholder = '';
     let suffix = '';
@@ -34,7 +34,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
         placeholder = '0';
         suffix = '%';
         break;
-      case 'exact':
+      case 'unequally':
         placeholder = '0';
         suffix = '₹';
         break;
@@ -66,7 +66,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
     switch (splitType) {
       case 'percentage':
         return 'Enter percentage for each member';
-      case 'exact':
+      case 'unequally':
         return 'Enter exact amount for each member';
       case 'shares':
         return 'Enter share count for each member';
@@ -132,7 +132,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
         })}
       </View>
 
-      {splitType !== 'equal' && (
+      {splitType !== 'equally' && (
         <TouchableOpacity
           style={styles.selectAllButton}
           onPress={() => {

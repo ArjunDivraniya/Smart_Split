@@ -154,7 +154,7 @@ export function CreateExpenseExample({ tripId }: { tripId: string }) {
         category,
         paidBy: user!.id,
         date: new Date().toISOString(),
-        splitMethod: 'equal',
+        splitMethod: 'equally',
         splits: [], // Add members splits here
       });
 
