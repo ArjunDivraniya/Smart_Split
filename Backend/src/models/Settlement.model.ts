@@ -1,10 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISettlement extends Document {
-  group: mongoose.Types.ObjectId;
+  group?: mongoose.Types.ObjectId;
   fromUser: mongoose.Types.ObjectId;
   toUser: mongoose.Types.ObjectId;
   amount: number;
+  method: 'cash' | 'upi' | 'bank';
   note?: string;
   createdBy: mongoose.Types.ObjectId;
   status: 'completed' | 'reversed';
@@ -17,7 +18,7 @@ const SettlementSchema: Schema = new Schema(
     group: {
       type: Schema.Types.ObjectId,
       ref: 'Group',
-      required: true,
+      required: false,
     },
     fromUser: {
       type: Schema.Types.ObjectId,
@@ -33,6 +34,11 @@ const SettlementSchema: Schema = new Schema(
       type: Number,
       required: true,
       min: 0,
+    },
+    method: {
+      type: String,
+      enum: ['cash', 'upi', 'bank'],
+      default: 'cash',
     },
     note: {
       type: String,

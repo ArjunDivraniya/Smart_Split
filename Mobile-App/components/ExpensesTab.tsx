@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -41,12 +41,18 @@ interface Expense {
   _id: string;
   description: string;
   amount: number;
+  splitType?: 'equally' | 'unequally' | 'percentage' | 'shares';
+  splitBetween?: Array<{ userId?: string; userName?: string } | string>;
+  splitAmounts?: Record<string, number>;
+  splitPercentages?: Record<string, number>;
+  splitShares?: Record<string, number>;
   paidBy: {
     _id: string;
     name: string;
   };
   category?: string;
   date: string;
+  splitCount?: number;
   receiptUrl?: string;
   notes?: string;
 }
@@ -64,6 +70,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   currentUserId,
   onAddExpense,
 }) => {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -133,8 +140,16 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
       // Map to ensure correct structure
       transformedExpenses = transformedExpenses.map((expense: any) => ({
         _id: expense._id || expense.id || '',
-        description: expense.description || expense.title || '',
+        description: expense.description || expense.title || 'Untitled expense',
         amount: Number(expense.amount) || 0,
+        splitType: expense.splitType,
+        splitBetween: Array.isArray(expense.splitBetween) ? expense.splitBetween : [],
+        splitAmounts: expense.splitAmounts || {},
+        splitPercentages: expense.splitPercentages || {},
+        splitShares: expense.splitShares || {},
+        splitCount:
+          Number(expense.splitCount) ||
+          (Array.isArray(expense.splitBetween) ? expense.splitBetween.length : 0),
         paidBy: {
           _id: expense.paidBy?._id || expense.paidBy || '',
           name: expense.paidBy?.name || expense.paidByName || 'Unknown',
@@ -186,6 +201,16 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
 
   const handleSearch = () => {
     fetchExpenses();
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+    try {
+      const payload = encodeURIComponent(JSON.stringify(expense));
+      router.push(`/group/add-expense?id=${groupId}&expenseId=${expense._id}&expenseData=${payload}` as any);
+    } catch (error) {
+      console.error('Error opening edit screen:', error);
+      Alert.alert('Error', 'Unable to open edit expense screen');
+    }
   };
 
   const renderFilterBar = () => (
@@ -351,9 +376,8 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
           <ExpenseItem
             expense={item}
             currentUserId={currentUserId}
-            onPress={() => {
-              // TODO: Navigate to expense detail
-            }}
+            onPress={() => handleEditExpense(item)}
+            onEdit={() => handleEditExpense(item)}
             onDelete={() => handleDeleteExpense(item._id)}
           />
         )}

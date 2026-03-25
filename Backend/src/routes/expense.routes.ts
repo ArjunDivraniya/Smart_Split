@@ -31,14 +31,14 @@ router.get('/group/:id/balances', getGroupBalances);
 /**
  * @route   PUT /api/expenses/:id
  * @desc    Update an expense
- * @access  Private (Only expense creator)
+ * @access  Private (Payer or group creator)
  */
 router.put('/:id', updateExpense);
 
 /**
  * @route   DELETE /api/expenses/:id
  * @desc    Delete an expense
- * @access  Private (Only expense creator)
+ * @access  Private (Payer or group creator)
  */
 router.delete('/:id', deleteExpense);
 

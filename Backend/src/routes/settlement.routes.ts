@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { getGroupSettlements, recordGroupSettlement } from '../controllers/group.controller';
+import { recordSettlement } from '../controllers/settlement.controller';
 
 const router = Router();
 
@@ -19,5 +20,12 @@ router.get('/group/:id', getGroupSettlements);
  * @access Private
  */
 router.post('/group/:id', recordGroupSettlement);
+
+/**
+ * @route POST /api/settlements
+ * @desc Record a settlement payment (group-scoped or across groups)
+ * @access Private
+ */
+router.post('/', recordSettlement);
 
 export default router;

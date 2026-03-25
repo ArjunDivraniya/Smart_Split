@@ -9,6 +9,7 @@ interface ExpenseItemProps {
     _id: string;
     description: string;
     amount: number;
+    splitCount?: number;
     paidBy: {
       _id: string;
       name: string;
@@ -34,6 +35,8 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const isPaidByCurrentUser = expense.paidBy._id === currentUserId;
+  const payerName = isPaidByCurrentUser ? 'You' : expense.paidBy?.name || 'Unknown';
+  const splitCount = Number(expense.splitCount || 0);
   const formattedDate = new Date(expense.date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -77,7 +80,7 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
         <Text style={[styles.description, { color: colors.text }]}>{expense.description}</Text>
         <View style={styles.metaRow}>
           <Text style={[styles.paidBy, { color: colors.icon }]}>
-            {isPaidByCurrentUser ? 'You paid' : `${expense.paidBy.name} paid`}
+            {`${payerName} paid`}
           </Text>
           <Text style={[styles.date, { color: colors.icon }]}> • {formattedDate}</Text>
           {expense.category && (
@@ -86,6 +89,9 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
             </View>
           )}
         </View>
+        {splitCount > 0 && (
+          <Text style={[styles.splitInfo, { color: colors.icon }]}>Split among {splitCount} people</Text>
+        )}
         {expense.notes && (
           <Text style={[styles.notes, { color: colors.icon }]} numberOfLines={1}>
             {expense.notes}
@@ -201,6 +207,10 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  splitInfo: {
+    fontSize: 12,
+    marginTop: 4,
   },
   rightContainer: {
     alignItems: 'flex-end',

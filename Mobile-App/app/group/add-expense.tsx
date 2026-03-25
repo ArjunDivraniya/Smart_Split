@@ -39,7 +39,8 @@ export default function AddExpenseScreen() {
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const router = useRouter();
-  const { id: groupId } = useLocalSearchParams();
+  const { id: groupId, expenseId, expenseData } = useLocalSearchParams();
+  const isEditMode = Boolean(expenseId);
 
   // Form state
   const [amount, setAmount] = useState('');
@@ -113,15 +114,56 @@ export default function AddExpenseScreen() {
       }
 
       setGroupMembers(members);
-      
-      // Select all members by default for equal split
-      setSelectedMembers(
-        members.map((m) => ({
-          userId: m.userId,
-          userName: m.userName,
-          value: 0,
-        }))
-      );
+
+      const defaultSelected = members.map((m) => ({
+        userId: m.userId,
+        userName: m.userName,
+        value: 0,
+      }));
+
+      if (isEditMode && typeof expenseData === 'string') {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(expenseData));
+          const parsedSplitType: SplitType = ['equally', 'unequally', 'percentage', 'shares'].includes(parsed?.splitType)
+            ? parsed.splitType
+            : 'equally';
+
+          const selectedIds = new Set(
+            Array.isArray(parsed?.splitBetween)
+              ? parsed.splitBetween
+                  .map((item: any) => (typeof item === 'string' ? item : item?.userId || item?._id || ''))
+                  .filter(Boolean)
+              : []
+          );
+
+          const baseMembers = defaultSelected.filter((m) => selectedIds.size === 0 || selectedIds.has(m.userId));
+          const withValues = baseMembers.map((m) => {
+            let value = 0;
+            if (parsedSplitType === 'shares') {
+              value = Number(parsed?.splitShares?.[m.userId] || 1);
+            } else if (parsedSplitType === 'percentage') {
+              value = Number(parsed?.splitPercentages?.[m.userId] || 0);
+            } else if (parsedSplitType === 'unequally') {
+              value = Number(parsed?.splitAmounts?.[m.userId] || 0);
+            }
+            return { ...m, value };
+          });
+
+          setAmount(String(parsed?.amount ?? ''));
+          setDescription(parsed?.description || '');
+          setCategory(parsed?.category || 'Food');
+          setDate(parsed?.date ? new Date(parsed.date) : new Date());
+          setPaidBy(parsed?.paidBy?._id || parsed?.paidBy || userId);
+          setSplitType(parsedSplitType);
+          setNotes(parsed?.notes || '');
+          setSelectedMembers(withValues.length > 0 ? withValues : defaultSelected);
+        } catch {
+          setSelectedMembers(defaultSelected);
+        }
+      } else {
+        // Default for add mode
+        setSelectedMembers(defaultSelected);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       Alert.alert('Error', 'Failed to load group data');
@@ -253,9 +295,13 @@ export default function AddExpenseScreen() {
         });
       }
 
-      await apiService.groups.addExpense(groupId as string, requestBody);
+      if (isEditMode && typeof expenseId === 'string') {
+        await apiService.expenses.update(expenseId, requestBody);
+      } else {
+        await apiService.groups.addExpense(groupId as string, requestBody);
+      }
 
-      Alert.alert('Success', 'Expense added successfully', [
+      Alert.alert('Success', isEditMode ? 'Expense updated successfully' : 'Expense added successfully', [
         {
           text: 'OK',
           onPress: () => router.back(),
@@ -298,7 +344,7 @@ export default function AddExpenseScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Add Expense</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{isEditMode ? 'Edit Expense' : 'Add Expense'}</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -449,7 +495,7 @@ export default function AddExpenseScreen() {
           ) : (
             <>
               <Ionicons name="checkmark-circle" size={24} color="#ffffff" />
-              <Text style={styles.saveButtonText}>Save Expense</Text>
+              <Text style={styles.saveButtonText}>{isEditMode ? 'Update Expense' : 'Save Expense'}</Text>
             </>
           )}
         </TouchableOpacity>

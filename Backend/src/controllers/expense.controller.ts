@@ -179,37 +179,107 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
     const userId = req.userId;
     const { id } = req.params;
 
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const expense = await Expense.findById(id);
     if (!expense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
 
-    if (expense.paidBy.toString() !== userId) {
-      return res.status(403).json({ message: 'Only the expense creator can edit this expense' });
+    const isPaidByUser = expense.paidBy.toString() === userId;
+    let isGroupCreator = false;
+
+    if (!isPaidByUser && expense.group) {
+      const group = await Group.findById(expense.group).select('createdBy').lean();
+      isGroupCreator = Boolean(group?.createdBy && group.createdBy.toString() === userId);
     }
 
-    const { title, amount, category, splitBetween, splitType, splitAmounts, splitPercentages, splitShares, receiptUrl, notes } = req.body;
-
-    if (!title || !amount || !splitBetween || splitBetween.length === 0) {
-      return res.status(400).json({ message: 'Please fill in all fields' });
+    if (!isPaidByUser && !isGroupCreator) {
+      return res.status(403).json({ message: 'Only the payer or group creator can edit this expense' });
     }
 
-    expense.title = title;
-    expense.amount = Number(amount);
-    expense.category = category;
-    expense.splitBetween = splitBetween;
-    expense.splitType = splitType || 'equally';
+    const {
+      amount,
+      description,
+      title,
+      category,
+      splitType,
+      splitBetween,
+      date,
+      notes,
+      receiptImage,
+      receiptUrl,
+      splitAmounts,
+      splitPercentages,
+      splitShares,
+    } = req.body || {};
+
+    const nextTitleRaw = description !== undefined ? description : title;
+    if (nextTitleRaw !== undefined) {
+      const nextTitle = String(nextTitleRaw).trim();
+      if (!nextTitle) {
+        return res.status(400).json({ message: 'Description cannot be empty' });
+      }
+      expense.title = nextTitle;
+    }
+
+    if (amount !== undefined) {
+      const parsedAmount = Number(amount);
+      if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ message: 'Amount must be a positive number' });
+      }
+      expense.amount = parsedAmount;
+    }
+
+    if (category !== undefined) {
+      expense.category = category;
+    }
+
+    if (splitType !== undefined) {
+      const allowedSplitTypes = ['equally', 'unequally', 'percentage', 'shares'];
+      if (!allowedSplitTypes.includes(splitType)) {
+        return res.status(400).json({ message: 'Invalid splitType value' });
+      }
+      expense.splitType = splitType;
+    }
+
+    if (splitBetween !== undefined) {
+      if (!Array.isArray(splitBetween) || splitBetween.length === 0) {
+        return res.status(400).json({ message: 'splitBetween must contain at least one member' });
+      }
+      expense.splitBetween = splitBetween;
+    }
+
+    if (date !== undefined) {
+      const parsedDate = new Date(date);
+      if (Number.isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid date value' });
+      }
+      expense.date = parsedDate;
+    }
 
     if (splitAmounts) expense.splitAmounts = splitAmounts;
     if (splitPercentages) expense.splitPercentages = splitPercentages;
     if (splitShares) expense.splitShares = splitShares;
-    if (receiptUrl !== undefined) expense.receiptUrl = receiptUrl;
+    const resolvedReceipt = receiptImage !== undefined ? receiptImage : receiptUrl;
+    if (resolvedReceipt !== undefined) expense.receiptUrl = resolvedReceipt;
     if (notes !== undefined) expense.notes = notes;
 
     await expense.save();
 
     if (expense.trip) {
-      await sendNotification(splitBetween, userId!, expense.trip.toString(), `Updated expense "${title}" to ₹${amount}`, 'expense');
+      const notifyTargets = Array.isArray(expense.splitBetween)
+        ? expense.splitBetween.map((memberId: any) => memberId.toString())
+        : [];
+      await sendNotification(
+        notifyTargets,
+        userId,
+        expense.trip.toString(),
+        `Updated expense "${expense.title}" to ₹${Number(expense.amount).toFixed(2)}`,
+        'expense'
+      );
     }
 
     return res.status(200).json({
@@ -229,13 +299,25 @@ export const deleteExpense = async (req: AuthRequest, res: Response) => {
     const userId = req.userId;
     const { id } = req.params;
 
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const expense = await Expense.findById(id);
     if (!expense) {
       return res.status(404).json({ message: 'Expense not found' });
     }
 
-    if (expense.paidBy.toString() !== userId) {
-      return res.status(403).json({ message: 'Only the expense creator can delete this expense' });
+    const isPaidByUser = expense.paidBy.toString() === userId;
+    let isGroupCreator = false;
+
+    if (!isPaidByUser && expense.group) {
+      const group = await Group.findById(expense.group).select('createdBy').lean();
+      isGroupCreator = Boolean(group?.createdBy && group.createdBy.toString() === userId);
+    }
+
+    if (!isPaidByUser && !isGroupCreator) {
+      return res.status(403).json({ message: 'Only the payer or group creator can delete this expense' });
     }
 
     const tripId = expense.trip;
