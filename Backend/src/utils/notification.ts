@@ -5,7 +5,7 @@ export async function sendNotification(
   senderId: string,
   tripId: string,
   message: string,
-  type: 'invite' | 'expense' | 'activity' | 'system'
+  type: 'invite' | 'expense' | 'activity' | 'system' | 'settled' | 'expense_added'
 ) {
   try {
     // Filter out the sender so they don't notify themselves

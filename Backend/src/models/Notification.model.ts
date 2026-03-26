@@ -5,7 +5,7 @@ export interface INotification extends Document {
   sender?: mongoose.Types.ObjectId;
   trip?: mongoose.Types.ObjectId;
   message: string;
-  type: 'invite' | 'expense' | 'activity' | 'system';
+  type: 'invite' | 'expense' | 'activity' | 'system' | 'settled' | 'expense_added';
   isRead: boolean;
   createdAt: Date;
 }
@@ -30,7 +30,7 @@ const NotificationSchema: Schema = new Schema({
   },
   type: {
     type: String,
-    enum: ['invite', 'expense', 'activity', 'system'],
+    enum: ['invite', 'expense', 'activity', 'system', 'settled', 'expense_added'],
     default: 'system',
   },
   isRead: {
