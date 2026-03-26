@@ -200,7 +200,12 @@ export default function GroupDetailScreen() {
   };
 
   const handleAddExpense = () => {
-    router.push(`/group/add-expense?id=${id}`);
+    const targetGroupId = normalizeId(id || group?.id || group?._id);
+    if (!targetGroupId) {
+      Alert.alert('Error', 'Unable to open add expense. Group ID is missing.');
+      return;
+    }
+    router.push(`/group/add-expense?id=${encodeURIComponent(targetGroupId)}`);
   };
 
   const groupId = normalizeId(id || group?.id || group?._id);
@@ -327,7 +332,7 @@ export default function GroupDetailScreen() {
       case 'expenses':
         return (
           <ExpensesTab
-            groupId={id as string}
+            groupId={groupId}
             currentUserId={currentUserId}
             onAddExpense={handleAddExpense}
           />
@@ -335,7 +340,7 @@ export default function GroupDetailScreen() {
       case 'balances':
         return (
           <BalancesTab
-            groupId={id as string}
+            groupId={groupId}
             currentUserId={currentUserId}
             currentUserName={currentUserName}
           />
@@ -343,14 +348,14 @@ export default function GroupDetailScreen() {
       case 'timeline':
         return (
           <TimelineTab
-            groupId={id as string}
+            groupId={groupId}
             currentUserId={currentUserId}
           />
         );
       case 'summary':
         return (
           <SummaryTab
-            groupId={id as string}
+            groupId={groupId}
             currentUserId={currentUserId}
           />
         );

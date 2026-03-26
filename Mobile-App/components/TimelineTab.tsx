@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { ExpenseItem } from '@/components/ExpenseItem';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const toSafeKey = (value: unknown, fallback: string): string => {
   if (value === null || value === undefined) {
@@ -43,6 +45,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   groupId,
   currentUserId,
 }) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
   const [timelineData, setTimelineData] = useState<TimelineDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -140,21 +144,21 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
 
     return (
       <TouchableOpacity
-        style={styles.dayHeader}
+        style={[styles.dayHeader, { backgroundColor: colors.card, borderColor: colors.elevated }]}
         onPress={() => toggleDay(day.date)}
         activeOpacity={0.7}
       >
         <View style={styles.dayHeaderLeft}>
           <View style={styles.dayDot} />
           <View style={styles.dayHeaderText}>
-            <Text style={styles.dayName}>{dayName}</Text>
-            <Text style={styles.dateStr}>{dateStr}</Text>
+            <Text style={[styles.dayName, { color: colors.text }]}>{dayName}</Text>
+            <Text style={[styles.dateStr, { color: colors.icon }]}>{dateStr}</Text>
           </View>
         </View>
 
         <View style={styles.dayHeaderRight}>
           <View style={styles.dayStats}>
-            <Text style={styles.expenseCount}>{day.expenses.length} expense{day.expenses.length > 1 ? 's' : ''}</Text>
+            <Text style={[styles.expenseCount, { color: colors.icon }]}>{day.expenses.length} expense{day.expenses.length > 1 ? 's' : ''}</Text>
             <Text style={styles.dayTotal}>₹{day.totalAmount.toFixed(2)}</Text>
           </View>
           <Ionicons
@@ -195,8 +199,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="calendar-outline" size={64} color="#cbd5e1" />
-      <Text style={styles.emptyTitle}>No timeline yet</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>No timeline yet</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.icon }]}>
         Expenses will appear here organized by date
       </Text>
     </View>
@@ -214,20 +218,20 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     const activeDays = timelineData.length;
 
     return (
-      <View style={styles.summaryCard}>
+      <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
         <View style={styles.summaryColumn}>
           <Text style={styles.summaryValue}>{activeDays}</Text>
-          <Text style={styles.summaryLabel}>Days</Text>
+          <Text style={[styles.summaryLabel, { color: colors.icon }]}>Days</Text>
         </View>
-        <View style={styles.summaryDivider} />
+        <View style={[styles.summaryDivider, { backgroundColor: colors.elevated }]} />
         <View style={styles.summaryColumn}>
           <Text style={styles.summaryValue}>{totalExpenses}</Text>
-          <Text style={styles.summaryLabel}>Expenses</Text>
+          <Text style={[styles.summaryLabel, { color: colors.icon }]}>Expenses</Text>
         </View>
-        <View style={styles.summaryDivider} />
+        <View style={[styles.summaryDivider, { backgroundColor: colors.elevated }]} />
         <View style={styles.summaryColumn}>
           <Text style={styles.summaryValue}>₹{totalAmount.toFixed(0)}</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
+          <Text style={[styles.summaryLabel, { color: colors.icon }]}>Total</Text>
         </View>
       </View>
     );
@@ -242,7 +246,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={timelineData}
         keyExtractor={(item) => item.date}
@@ -270,6 +274,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     margin: 16,
     padding: 20,
     borderRadius: 16,
@@ -305,6 +310,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     paddingVertical: 16,
     paddingHorizontal: 16,
     marginHorizontal: 16,
