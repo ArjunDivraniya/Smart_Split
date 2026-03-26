@@ -10,11 +10,14 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '@/src/services/api';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AmountInput } from '@/components/expenses/AmountInput';
@@ -22,6 +25,7 @@ import { CategoryPicker } from '@/components/expenses/CategoryPicker';
 import { SplitTypeSelector } from '@/src/components/groups/SplitTypeSelector';
 import { MemberSelector } from '@/components/expenses/MemberSelector';
 import { SplitPreview } from '@/src/components/groups/SplitPreview';
+import { MemberPicker } from '@/src/components/groups/MemberPicker';
 import {
   SplitType,
   Participant,
@@ -35,12 +39,27 @@ interface GroupMember {
   userName: string;
 }
 
-export default function AddExpenseScreen() {
+type PaymentMethod = 'cash' | 'upi' | 'card';
+
+interface ExpenseFormViewProps {
+  groupId: string;
+  expenseId?: string;
+  expenseData?: string;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+export function ExpenseFormView({
+  groupId,
+  expenseId,
+  expenseData,
+  onClose,
+  onSuccess,
+}: ExpenseFormViewProps) {
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
-  const router = useRouter();
-  const { id: groupId, expenseId, expenseData } = useLocalSearchParams();
   const isEditMode = Boolean(expenseId);
+  const screenHeight = Dimensions.get('window').height;
 
   // Form state
   const [amount, setAmount] = useState('');
@@ -51,6 +70,8 @@ export default function AddExpenseScreen() {
   const [splitType, setSplitType] = useState<SplitType>('equally');
   const [selectedMembers, setSelectedMembers] = useState<Participant[]>([]);
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [receiptUrl, setReceiptUrl] = useState('');
 
   // Group data
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
@@ -156,6 +177,10 @@ export default function AddExpenseScreen() {
           setPaidBy(parsed?.paidBy?._id || parsed?.paidBy || userId);
           setSplitType(parsedSplitType);
           setNotes(parsed?.notes || '');
+          setPaymentMethod(
+            parsed?.paymentMethod === 'upi' || parsed?.paymentMethod === 'card' ? parsed.paymentMethod : 'cash'
+          );
+          setReceiptUrl(parsed?.receiptUrl || '');
           setSelectedMembers(withValues.length > 0 ? withValues : defaultSelected);
         } catch {
           setSelectedMembers(defaultSelected);
@@ -167,7 +192,7 @@ export default function AddExpenseScreen() {
     } catch (error) {
       console.error('Error loading data:', error);
       Alert.alert('Error', 'Failed to load group data');
-      router.back();
+      onClose();
     } finally {
       setLoading(false);
     }
@@ -196,6 +221,28 @@ export default function AddExpenseScreen() {
         m.userId === userId ? { ...m, value } : m
       )
     );
+  };
+
+  const handleSelectAllMembers = () => {
+    const defaultValue = splitType === 'shares' ? 1 : 0;
+    const selectedMap = new Map(selectedMembers.map((m) => [m.userId, m]));
+
+    const allSelected = groupMembers.map((member) => {
+      const existing = selectedMap.get(member.userId);
+      return (
+        existing || {
+          userId: member.userId,
+          userName: member.userName,
+          value: defaultValue,
+        }
+      );
+    });
+
+    setSelectedMembers(allSelected);
+  };
+
+  const handleDeselectAllMembers = () => {
+    setSelectedMembers([]);
   };
 
   const handleSplitTypeChange = (type: SplitType) => {
@@ -247,6 +294,28 @@ export default function AddExpenseScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const pickReceiptImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Required', 'Please allow media library access to upload receipt.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setReceiptUrl(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert('Error', 'Unable to pick image.');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       Alert.alert('Validation Error', 'Please fix the errors before submitting');
@@ -270,11 +339,13 @@ export default function AddExpenseScreen() {
         description: description.trim(),
         category,
         paidBy,
+        paymentMethod,
         splitType,
         splitBetween: selectedMembers.map((m) => m.userId),
         groupId: groupId as string,
         date: date.toISOString(),
         notes: notes.trim(),
+        receiptUrl: receiptUrl || undefined,
       };
 
       // Add split-specific data
@@ -304,7 +375,10 @@ export default function AddExpenseScreen() {
       Alert.alert('Success', isEditMode ? 'Expense updated successfully' : 'Expense added successfully', [
         {
           text: 'OK',
-          onPress: () => router.back(),
+          onPress: () => {
+            onSuccess?.();
+            onClose();
+          },
         },
       ]);
     } catch (error: any) {
@@ -336,7 +410,12 @@ export default function AddExpenseScreen() {
     splitResults = null;
   }
   const splitValidation = validateSplit(splitType, numAmount, selectedMembers);
-  const paidByMember = groupMembers.find((m) => m.userId === paidBy);
+  const isFormBaseValid =
+    numAmount > 0 && Boolean(description.trim()) && Boolean(paidBy) && selectedMembers.length > 0;
+  const canSave = !submitting && isFormBaseValid && splitValidation.valid;
+  const footerHint = !canSave
+    ? splitValidation.error || 'Complete all required fields to enable save'
+    : '';
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
@@ -346,11 +425,13 @@ export default function AddExpenseScreen() {
       >
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.elevated }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close" size={28} color={colors.text} />
+        <TouchableOpacity onPress={onClose}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{isEditMode ? 'Edit Expense' : 'Add Expense'}</Text>
-        <View style={{ width: 28 }} />
+        <TouchableOpacity onPress={handleSubmit} disabled={!canSave} style={styles.headerSaveWrap}>
+          <Text style={[styles.headerSaveText, { color: canSave ? colors.violet : colors.icon }]}>Save</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -358,13 +439,16 @@ export default function AddExpenseScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Amount Input */}
-        <AmountInput
-          value={amount}
-          onChange={setAmount}
-          error={errors.amount}
-        />
+        {/* Section 1 - Amount */}
+        <View style={[styles.amountSection, { minHeight: screenHeight * 0.3 }]}>
+          <AmountInput
+            value={amount}
+            onChange={setAmount}
+            error={errors.amount}
+          />
+        </View>
 
+        {/* Section 2 - Details */}
         <CategoryPicker
           selected={category}
           onSelect={setCategory}
@@ -444,12 +528,57 @@ export default function AddExpenseScreen() {
           )}
         </View>
 
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>Payment Method</Text>
+          <View style={styles.paymentMethodsRow}>
+            {([
+              { key: 'cash', label: 'Cash', icon: 'cash-outline' },
+              { key: 'upi', label: 'UPI', icon: 'phone-portrait-outline' },
+              { key: 'card', label: 'Card', icon: 'card-outline' },
+            ] as const).map((method) => {
+              const selected = paymentMethod === method.key;
+              return (
+                <TouchableOpacity
+                  key={method.key}
+                  style={[
+                    styles.paymentMethodBtn,
+                    {
+                      backgroundColor: selected ? `${colors.violet}22` : colors.background,
+                      borderColor: selected ? colors.violet : colors.elevated,
+                    },
+                  ]}
+                  onPress={() => setPaymentMethod(method.key)}
+                >
+                  <Ionicons
+                    name={method.icon as any}
+                    size={16}
+                    color={selected ? colors.violet : colors.icon}
+                  />
+                  <Text style={[styles.paymentMethodText, { color: selected ? colors.violet : colors.text }]}>
+                    {method.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Section 3 - Split */}
         {/* Split Type */}
         <SplitTypeSelector
           selected={splitType}
           onSelect={handleSplitTypeChange}
           totalAmount={numAmount}
           participants={selectedMembers}
+        />
+
+        <MemberPicker
+          members={groupMembers}
+          selectedMemberIds={selectedMembers.map((m) => m.userId)}
+          currentUserId={currentUserId}
+          onToggle={handleMemberToggle}
+          onSelectAll={handleSelectAllMembers}
+          onDeselectAll={handleDeselectAllMembers}
         />
 
         {/* Member Selector */}
@@ -472,6 +601,25 @@ export default function AddExpenseScreen() {
           currentUserId={currentUserId}
           validationError={!splitValidation.valid ? splitValidation.error : undefined}
         />
+
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>Receipt (Optional)</Text>
+          <TouchableOpacity
+            style={[styles.receiptButton, { backgroundColor: colors.background, borderColor: colors.elevated }]}
+            onPress={pickReceiptImage}
+          >
+            <Ionicons name="image-outline" size={18} color={colors.violet} />
+            <Text style={[styles.receiptButtonText, { color: colors.text }]}>Upload Receipt Photo</Text>
+          </TouchableOpacity>
+          {receiptUrl ? (
+            <View style={styles.receiptPreviewWrap}>
+              <Image source={{ uri: receiptUrl }} style={styles.receiptPreview} />
+              <TouchableOpacity style={styles.removeReceiptBtn} onPress={() => setReceiptUrl('')}>
+                <Ionicons name="close-circle" size={22} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
 
         {/* Notes */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
@@ -497,9 +645,9 @@ export default function AddExpenseScreen() {
       {/* Save Button */}
       <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.elevated }]}> 
         <TouchableOpacity
-          style={[styles.saveButton, (submitting || !splitValidation.valid) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
           onPress={handleSubmit}
-          disabled={submitting || !splitValidation.valid}
+          disabled={!canSave}
         >
           {submitting ? (
             <ActivityIndicator color="#ffffff" />
@@ -510,9 +658,26 @@ export default function AddExpenseScreen() {
             </>
           )}
         </TouchableOpacity>
+        {!canSave && (
+          <Text style={styles.footerHintText}>{footerHint}</Text>
+        )}
       </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+export default function AddExpenseScreen() {
+  const router = useRouter();
+  const { id: routeGroupId, expenseId, expenseData } = useLocalSearchParams();
+
+  return (
+    <ExpenseFormView
+      groupId={String(routeGroupId || '')}
+      expenseId={typeof expenseId === 'string' ? expenseId : undefined}
+      expenseData={typeof expenseData === 'string' ? expenseData : undefined}
+      onClose={() => router.back()}
+    />
   );
 }
 
@@ -545,11 +710,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
   },
+  headerSaveWrap: {
+    minWidth: 42,
+    alignItems: 'flex-end',
+  },
+  headerSaveText: {
+    fontSize: 15,
+    fontFamily: 'DMSans_700Bold',
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: 24,
+  },
+  amountSection: {
+    justifyContent: 'center',
   },
   section: {
     backgroundColor: '#ffffff',
@@ -610,6 +786,24 @@ const styles = StyleSheet.create({
   },
   paidByList: {
     gap: 10,
+  },
+  paymentMethodsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  paymentMethodBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  paymentMethodText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
   },
   paidByOption: {
     flexDirection: 'row',
@@ -684,5 +878,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  footerHintText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#ef4444',
+    textAlign: 'center',
+    fontFamily: 'DMSans_700Bold',
+  },
+  receiptButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  receiptButtonText: {
+    fontSize: 14,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  receiptPreviewWrap: {
+    marginTop: 12,
+    position: 'relative',
+  },
+  receiptPreview: {
+    width: '100%',
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: '#111827',
+  },
+  removeReceiptBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 12,
   },
 });

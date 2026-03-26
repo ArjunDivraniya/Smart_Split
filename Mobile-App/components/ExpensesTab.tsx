@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -35,6 +35,8 @@ interface ExpensesTabProps {
   groupId: string;
   currentUserId: string;
   onAddExpense: () => void;
+  onEditExpense?: (expense: Expense) => void;
+  refreshKey?: number;
 }
 
 interface Expense {
@@ -69,8 +71,9 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   groupId,
   currentUserId,
   onAddExpense,
+  onEditExpense,
+  refreshKey,
 }) => {
-  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -91,7 +94,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
       setLoading(true);
       fetchExpenses();
     }
-  }, [groupId]);
+  }, [groupId, refreshKey]);
 
   // Refetch when filters/sort/search change
   useEffect(() => {
@@ -204,13 +207,12 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   };
 
   const handleEditExpense = (expense: Expense) => {
-    try {
-      const payload = encodeURIComponent(JSON.stringify(expense));
-      router.push(`/group/add-expense?id=${groupId}&expenseId=${expense._id}&expenseData=${payload}` as any);
-    } catch (error) {
-      console.error('Error opening edit screen:', error);
-      Alert.alert('Error', 'Unable to open edit expense screen');
+    if (onEditExpense) {
+      onEditExpense(expense);
+      return;
     }
+
+    Alert.alert('Unavailable', 'Edit action is not available right now.');
   };
 
   const renderFilterBar = () => (

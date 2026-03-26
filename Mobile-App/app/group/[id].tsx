@@ -28,6 +28,7 @@ import { MembersBottomSheet } from '@/src/components/groups/MembersBottomSheet';
 import { useAuth } from '@/src/context/AuthContext';
 import api from '@/src/services/api';
 import { addMember } from '@/src/services/groups.service';
+import { ExpenseFormView } from '@/app/group/add-expense';
 
 interface Expense {
   id: string;
@@ -93,6 +94,10 @@ export default function GroupDetailScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [membersSheetVisible, setMembersSheetVisible] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState('');
+  const [expenseSheetVisible, setExpenseSheetVisible] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | undefined>(undefined);
+  const [editingExpenseData, setEditingExpenseData] = useState<string | undefined>(undefined);
+  const [expensesRefreshKey, setExpensesRefreshKey] = useState(0);
 
   // Floating emoji animation
   const floatAnim = useRef(new Animated.Value(0)).current;
@@ -210,7 +215,28 @@ export default function GroupDetailScreen() {
       Alert.alert('Error', 'Unable to open add expense. Group ID is missing.');
       return;
     }
-    router.push(`/group/add-expense?id=${encodeURIComponent(targetGroupId)}`);
+    setEditingExpenseId(undefined);
+    setEditingExpenseData(undefined);
+    setExpenseSheetVisible(true);
+  };
+
+  const handleEditExpense = (expense: any) => {
+    try {
+      setEditingExpenseId(expense?._id || expense?.id || undefined);
+      setEditingExpenseData(encodeURIComponent(JSON.stringify(expense || {})));
+      setExpenseSheetVisible(true);
+    } catch {
+      Alert.alert('Error', 'Unable to open edit expense');
+    }
+  };
+
+  const handleCloseExpenseSheet = () => {
+    setExpenseSheetVisible(false);
+  };
+
+  const handleExpenseSaved = async () => {
+    setExpensesRefreshKey((prev) => prev + 1);
+    await fetchGroupDetails();
   };
 
   const groupId = normalizeId(id || group?.id || group?._id);
@@ -352,6 +378,8 @@ export default function GroupDetailScreen() {
             groupId={groupId}
             currentUserId={currentUserId}
             onAddExpense={handleAddExpense}
+            onEditExpense={handleEditExpense}
+            refreshKey={expensesRefreshKey}
           />
         );
       case 'balances':
@@ -929,6 +957,26 @@ export default function GroupDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={expenseSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseExpenseSheet}
+      >
+        <View style={styles.expenseSheetBackdrop}>
+          <TouchableOpacity style={styles.expenseSheetOverlay} activeOpacity={1} onPress={handleCloseExpenseSheet} />
+          <View style={[styles.expenseSheetCard, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
+            <ExpenseFormView
+              groupId={groupId}
+              expenseId={editingExpenseId}
+              expenseData={editingExpenseData}
+              onClose={handleCloseExpenseSheet}
+              onSuccess={handleExpenseSaved}
+            />
+          </View>
+        </View>
+      </Modal>
       </View>
     </SafeAreaView>
   );
@@ -1241,6 +1289,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'flex-end',
+  },
+  expenseSheetBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  expenseSheetOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  expenseSheetCard: {
+    height: '94%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   modalCard: {
     borderTopLeftRadius: 18,
