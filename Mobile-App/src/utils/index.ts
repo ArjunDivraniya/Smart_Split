@@ -5,3 +5,4 @@
 
 export * from './helpers';
 export { default } from './helpers';
+export * from './splitCalculator';

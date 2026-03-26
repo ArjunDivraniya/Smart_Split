@@ -70,13 +70,16 @@ export const calculatePercentageSplit = (amount: number, percentages: number[]):
 
 /**
  * calculateExactSplit(members[], amounts[])
- * Validates shape and (optionally) validates sum equals provided total amount.
+ * Validates shape and validates sum equals provided total amount.
  */
 export const calculateExactSplit = (
   members: Array<string | Participant>,
   amounts: number[],
-  totalAmount?: number
+  totalAmount: number
 ): number[] => {
+  if (totalAmount < 0) {
+    throw new Error('Amount cannot be negative');
+  }
   if (!members.length) {
     throw new Error('Members are required');
   }
@@ -89,12 +92,10 @@ export const calculateExactSplit = (
 
   const normalized = amounts.map((a) => roundTo2(a));
 
-  if (typeof totalAmount === 'number') {
-    const computed = roundTo2(sum(normalized));
-    const expected = roundTo2(totalAmount);
-    if (Math.abs(computed - expected) > 0.01) {
-      throw new Error(`Exact amounts must sum to ${expected} (currently ${computed})`);
-    }
+  const computed = roundTo2(sum(normalized));
+  const expected = roundTo2(totalAmount);
+  if (Math.abs(computed - expected) > 0.01) {
+    throw new Error(`Exact amounts must sum to ${expected} (currently ${computed})`);
   }
 
   return normalized;
