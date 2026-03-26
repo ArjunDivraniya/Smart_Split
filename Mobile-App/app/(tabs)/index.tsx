@@ -178,6 +178,30 @@ export default function DashboardScreen() {
         ]);
       }
 
+        // 4b. Fetch user settlements
+        try {
+          const settlementsResponse = await apiService.settlements.getUserSettlements();
+          const settlements = settlementsResponse.data?.data || [];
+          if (Array.isArray(settlements) && settlements.length > 0) {
+            // Convert settlements to activity format
+            const settlementActivities = settlements.slice(0, 3).map((settlement: any, index: number) => ({
+              id: `settlement-${index}`,
+              name: `${settlement.fromUserName} → ${settlement.toUserName}`,
+              description: `Settlement of ₹${settlement.amount.toFixed(2)}`,
+              amount: settlement.amount,
+              type: 'settlement',
+              date: settlement.createdAt,
+              avatarLabel: '💰',
+              avatarColor: 'rgba(34, 197, 94, 0.2)',
+            }));
+          
+            // Merge with recent activity
+            setRecentActivity(prev => [...settlementActivities, ...prev].slice(0, 10));
+          }
+        } catch (error) {
+          console.log('Could not fetch settlements:', error);
+        }
+
       // 5. Fetch dashboard insights (top category)
       try {
         const insightsResponse = await apiService.analytics.getDashboardInsights();

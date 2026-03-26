@@ -36,6 +36,15 @@ interface Summary {
   }>;
 }
 
+interface SettlementHistory {
+  id: string;
+  fromUserName: string;
+  toUserName: string;
+  amount: number;
+  note?: string;
+  createdAt?: string;
+}
+
 const CATEGORY_COLORS: Record<string, string> = {
   Food: '#f59e0b',
   Transport: '#3b82f6',
@@ -55,19 +64,20 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [settlementHistory, setSettlementHistory] = useState<SettlementHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (groupId) {
       setLoading(true);
-      fetchSummary();
+      Promise.all([fetchSummary(), fetchSettlementHistory()]);
     }
   }, [groupId]);
 
   useFocusEffect(
     useCallback(() => {
       if (groupId) {
-        fetchSummary();
+        Promise.all([fetchSummary(), fetchSettlementHistory()]);
       }
     }, [groupId])
   );
@@ -119,6 +129,27 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
       setSummary(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSettlementHistory = async () => {
+    try {
+      const response = await apiService.settlements.getGroupHistory(groupId);
+      const data = response?.data?.data || response?.data || [];
+      
+      const settlements: SettlementHistory[] = (Array.isArray(data) ? data : []).map((item: any, index: number) => ({
+        id: item.id || item._id || `settlement-${index}`,
+        fromUserName: item.fromUserName || item.fromUser?.name || 'Unknown',
+        toUserName: item.toUserName || item.toUser?.name || 'Unknown',
+        amount: Number(item.amount || 0),
+        note: item.note || '',
+        createdAt: item.createdAt,
+      }));
+      
+      setSettlementHistory(settlements);
+    } catch (error) {
+      console.error('Error fetching settlement history:', error);
+      setSettlementHistory([]);
     }
   };
 
@@ -299,6 +330,59 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
     );
   };
 
+  const renderSettlementHistory = () => {
+    if (settlementHistory.length === 0) {
+      return (
+        <View style={[styles.emptyHistory, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Ionicons name="swap-horizontal-outline" size={48} color="#cbd5e1" />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No settlements yet</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.icon }]}>Settlements will appear here</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.listContainer, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+        <Text style={[styles.listTitle, { color: colors.text }]}>Settlement History</Text>
+        {settlementHistory.slice(0, 10).map((settlement, index) => (
+          <View key={settlement.id} style={[styles.listItem, { borderBottomColor: colors.elevated }]}>
+            <View style={styles.listItemLeft}>
+              <View style={styles.settlementAvatars}>
+                <View style={[styles.avatar, { backgroundColor: '#6366f1' }]}>
+                  <Text style={styles.avatarText}>{settlement.fromUserName.charAt(0).toUpperCase()}</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={16} color={colors.icon} style={styles.arrow} />
+                <View style={[styles.avatar, { backgroundColor: '#22c55e' }]}>
+                  <Text style={styles.avatarText}>{settlement.toUserName.charAt(0).toUpperCase()}</Text>
+                </View>
+              </View>
+              <View style={styles.settlementInfo}>
+                <Text style={[styles.settlementFromTo, { color: colors.text }]}>
+                  {settlement.fromUserName} → {settlement.toUserName}
+                </Text>
+                {settlement.note && (
+                  <Text style={[styles.settlementNote, { color: colors.icon }]} numberOfLines={1}>
+                    {settlement.note}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <View style={styles.listItemRight}>
+              <Text style={[styles.settleAmount, { color: colors.text }]}>
+                ₹{settlement.amount.toFixed(2)}
+              </Text>
+              {settlement.createdAt && (
+                <Text style={[styles.settlementDate, { color: colors.icon }]}>
+                  {new Date(settlement.createdAt).toLocaleDateString()}
+                </Text>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -325,6 +409,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
       {renderCategoryChart()}
       {renderMemberContributions()}
       {renderCategoryList()}
+      {renderSettlementHistory()}
     </ScrollView>
   );
 };
@@ -540,4 +625,56 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 2,
   },
+    emptyHistory: {
+      backgroundColor: '#ffffff',
+      marginHorizontal: 16,
+      marginBottom: 16,
+      padding: 40,
+      borderRadius: 16,
+      alignItems: 'center',
+      borderWidth: 1,
+    },
+    settlementAvatars: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    avatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: '#ffffff',
+    },
+    arrow: {
+      marginHorizontal: 8,
+    },
+    settlementInfo: {
+      flex: 1,
+    },
+    settlementFromTo: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#1e293b',
+    },
+    settlementNote: {
+      fontSize: 12,
+      color: '#94a3b8',
+      marginTop: 2,
+    },
+    settleAmount: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#1e293b',
+    },
+    settlementDate: {
+      fontSize: 11,
+      color: '#94a3b8',
+      marginTop: 2,
+    },
 });

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiService, setAuthToken, clearAuthToken } from '../services/api';
+import { apiService, setAuthToken, setRefreshToken, clearAuthToken, getRefreshToken } from '../services/api';
 import { STORAGE_KEYS } from '../constants/categories';
 
 // User Interface
@@ -47,15 +47,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true);
-      
-      // Check if token exists
+
       const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
-      
+      const refreshToken = await getRefreshToken();
+
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         console.log('✅ User authenticated from storage');
+        return;
+      }
+
+      // If access token is missing/expired but refresh token + user exist,
+      // refresh session silently and keep user logged in.
+      if (!token && refreshToken && userData) {
+        try {
+          const refreshResponse = await apiService.auth.refresh(refreshToken);
+          const newToken = refreshResponse?.data?.token;
+          const rotatedRefreshToken = refreshResponse?.data?.refreshToken;
+
+          if (newToken) {
+            await setAuthToken(newToken);
+            if (rotatedRefreshToken) {
+              await setRefreshToken(rotatedRefreshToken);
+            }
+
+            const parsedUser = JSON.parse(userData);
+            setUser(parsedUser);
+            console.log('✅ Session restored using refresh token');
+            return;
+          }
+        } catch (refreshError) {
+          console.error('Refresh during startup failed:', refreshError);
+          await clearAuthToken();
+          await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
+          setUser(null);
+        }
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
@@ -68,10 +96,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await apiService.auth.login({ email, password });
-      const { token, user: userData } = response.data;
+      const { token, refreshToken, user: userData } = response.data;
       
       // Store token and user data
       await setAuthToken(token);
+      if (refreshToken) {
+        await setRefreshToken(refreshToken);
+      }
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
       
       setUser(userData);
@@ -111,10 +142,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         profileImage,
       });
       
-      const { token, user: userData } = response.data;
+      const { token, refreshToken, user: userData } = response.data;
       
       // Store token and user data
       await setAuthToken(token);
+      if (refreshToken) {
+        await setRefreshToken(refreshToken);
+      }
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
       
       setUser(userData);
@@ -157,7 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshUser = async () => {
     try {
       const response = await apiService.user.getProfile();
-      const userData = response.data.user;
+      const userData = response?.data?.data || response?.data?.user || response?.data;
       
       setUser(userData);
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));

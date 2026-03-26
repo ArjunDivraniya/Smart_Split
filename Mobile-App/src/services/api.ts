@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { STORAGE_KEYS } from '@/src/constants/categories';
 
 const getDevBaseUrl = (): string => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -44,6 +45,9 @@ const BASE_URL = __DEV__
 
 console.log('🔗 API Base URL:', BASE_URL);
 
+const AUTH_TOKEN_KEY = STORAGE_KEYS.AUTH_TOKEN;
+const REFRESH_TOKEN_KEY = '@refresh_token';
+
 // Create Axios instance
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -58,7 +62,7 @@ api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
       // Get token from AsyncStorage
-      const token = await AsyncStorage.getItem('@auth_token');
+      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       
       if (token && config.headers) {
         // Attach token to Authorization header
@@ -87,29 +91,63 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     if (error.response) {
       const { status, data } = error.response;
-      console.error(`❌ API Error: ${error.config?.url} - Status ${status}`);
-      
+      const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+      const requestUrl = originalRequest?.url || '';
+      const isRefreshRequest = requestUrl.includes('/auth/refresh');
+
+      console.error(`❌ API Error: ${requestUrl} - Status ${status}`);
+
+      if (status === 401 && !isRefreshRequest && originalRequest && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+        if (refreshToken) {
+          try {
+            const refreshResponse = await axios.post(
+              `${BASE_URL}/auth/refresh`,
+              { refreshToken },
+              {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 30000,
+              }
+            );
+
+            const newAccessToken = refreshResponse?.data?.token;
+            const newRefreshToken = refreshResponse?.data?.refreshToken;
+
+            if (newAccessToken) {
+              await AsyncStorage.setItem(AUTH_TOKEN_KEY, newAccessToken);
+              if (newRefreshToken) {
+                await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+              }
+
+              originalRequest.headers = originalRequest.headers || {};
+              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+              return api(originalRequest);
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+          }
+        }
+
+        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY, STORAGE_KEYS.USER_DATA]);
+        console.log('Unauthorized - session cleared after refresh failure');
+      }
+
       // Handle specific error codes
       switch (status) {
-        case 401:
-          // Unauthorized - Clear token and redirect to login
-          console.log('Unauthorized - Clearing token');
-          await AsyncStorage.removeItem('@auth_token');
-          // You can trigger navigation to login screen here via navigation ref
-          break;
-          
         case 403:
           console.error('Forbidden - Access denied');
           break;
-          
+
         case 404:
           console.error('Not found');
           break;
-          
+
         case 500:
           console.error('Server error');
           break;
-          
+
         default:
           console.error('API error:', data);
       }
@@ -118,7 +156,7 @@ api.interceptors.response.use(
     } else {
       console.error('Request setup error:', error.message);
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -135,6 +173,9 @@ export const apiService = {
     
     googleLogin: (data: { email: string; name: string; googleId: string; profileImage?: string }) =>
       api.post('/auth/google-login', data),
+
+    refresh: (refreshToken: string) =>
+      api.post('/auth/refresh', { refreshToken }),
     
     logout: () =>
       api.post('/auth/logout'),
@@ -143,6 +184,9 @@ export const apiService = {
   // User endpoints
   user: {
     getMe: () =>
+      api.get('/user/me'),
+
+    getProfile: () =>
       api.get('/user/me'),
     
     updateProfile: (data: any) =>
@@ -301,6 +345,15 @@ export const apiService = {
       api.get(`/groups/${groupId}/summary`),
   },
 
+  // Settlement endpoints (cross-group)
+  settlements: {
+    getGroupHistory: (groupId: string) =>
+      api.get(`/settlements/group/${groupId}`),
+    
+    getUserSettlements: () =>
+      api.get(`/settlements/user`),
+  },
+
   // Expense endpoints (group-specific)
   groupExpenses: {
     getAll: (groupId: string, params?: { paid?: string; category?: string; search?: string; sortBy?: string; sortOrder?: string }) =>
@@ -314,17 +367,26 @@ export const apiService = {
 // Helper function to store auth token
 export const setAuthToken = async (token: string) => {
   try {
-    await AsyncStorage.setItem('@auth_token', token);
+    await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
     console.log('✅ Auth token stored');
   } catch (error) {
     console.error('Error storing auth token:', error);
   }
 };
 
+export const setRefreshToken = async (refreshToken: string) => {
+  try {
+    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    console.log('✅ Refresh token stored');
+  } catch (error) {
+    console.error('Error storing refresh token:', error);
+  }
+};
+
 // Helper function to get auth token
 export const getAuthToken = async (): Promise<string | null> => {
   try {
-    const token = await AsyncStorage.getItem('@auth_token');
+    const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
     return token;
   } catch (error) {
     console.error('Error getting auth token:', error);
@@ -332,13 +394,23 @@ export const getAuthToken = async (): Promise<string | null> => {
   }
 };
 
+export const getRefreshToken = async (): Promise<string | null> => {
+  try {
+    const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+    return refreshToken;
+  } catch (error) {
+    console.error('Error getting refresh token:', error);
+    return null;
+  }
+};
+
 // Helper function to clear auth token
 export const clearAuthToken = async () => {
   try {
-    await AsyncStorage.removeItem('@auth_token');
-    console.log('✅ Auth token cleared');
+    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY]);
+    console.log('✅ Auth tokens cleared');
   } catch (error) {
-    console.error('Error clearing auth token:', error);
+    console.error('Error clearing auth tokens:', error);
   }
 };
 

@@ -12,3 +12,11 @@ export {
 	deleteGroup,
 	addMember,
 } from './groups.service';
+export {
+	expensesService,
+	addExpense,
+	getGroupExpenses,
+	getGroupBalances,
+	updateExpense,
+	deleteExpense,
+} from './expenses.service';

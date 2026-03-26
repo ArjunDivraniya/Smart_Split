@@ -2,7 +2,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { makeRedirectUri } from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiService, setAuthToken } from '@/src/services/api';
+import { apiService, setAuthToken, setRefreshToken } from '@/src/services/api';
 import { STORAGE_KEYS } from '@/src/constants/categories';
 import type { TokenResponse } from 'expo-auth-session';
 
@@ -92,6 +92,7 @@ export const handleGoogleSignIn = async (
     });
 
     const token = backendResponse.data?.token;
+    const refreshToken = backendResponse.data?.refreshToken;
     const user = backendResponse.data?.user;
 
     if (!token) {
@@ -103,6 +104,9 @@ export const handleGoogleSignIn = async (
 
     // Store token and user data
     await setAuthToken(token);
+    if (refreshToken) {
+      await setRefreshToken(refreshToken);
+    }
     if (user) {
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
     }

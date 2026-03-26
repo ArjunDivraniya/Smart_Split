@@ -113,6 +113,7 @@ export const login = async (req: Request, res: Response) => {
       message: 'Login successful',
       success: true,
       token,
+      refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -172,6 +173,7 @@ export const googleLogin = async (req: Request, res: Response) => {
       message: 'Google login successful',
       success: true,
       token,
+      refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -233,6 +235,7 @@ export const refresh = async (req: Request, res: Response) => {
       message: 'Token refreshed successfully',
       success: true,
       token: newAccessToken,
+      refreshToken: newRefreshToken,
     });
   } catch (error: any) {
     clearAuthCookies(res);
