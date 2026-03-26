@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -42,6 +42,13 @@ export const SettlementModal: React.FC<SettlementModalProps> = ({
   const [amount, setAmount] = useState(suggestedAmount.toFixed(2));
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setAmount(suggestedAmount.toFixed(2));
+      setNote('');
+    }
+  }, [visible, suggestedAmount]);
 
   const handleSubmit = async () => {
     const parsedAmount = parseFloat(amount);

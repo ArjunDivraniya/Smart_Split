@@ -2,6 +2,7 @@ import { Response } from 'express';
 import Expense from '../models/Expense.model';
 import Trip from '../models/Trip.model';
 import Group from '../models/Group.model';
+import Settlement from '../models/Settlement.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { sendNotification } from '../utils/notification';
 
@@ -130,6 +131,49 @@ const buildBalances = (expenses: any[], usersMap: Record<string, string>) => {
     netBalance: Number(item.netBalance.toFixed(2)),
     paid: Number(item.paid.toFixed(2)),
     owedShare: Number(item.owedShare.toFixed(2)),
+  }));
+};
+
+const applyCompletedSettlementsToBalances = (
+  balances: Array<{ userId: string; userName: string; netBalance: number; paid: number; owedShare: number }>,
+  settlements: any[]
+) => {
+  const balancesByUser = new Map(
+    balances.map((row) => [
+      row.userId,
+      {
+        ...row,
+        netBalance: Number(row.netBalance || 0),
+      },
+    ])
+  );
+
+  (settlements || []).forEach((settlement: any) => {
+    const fromUserId = toStringId(settlement.fromUser);
+    const toUserId = toStringId(settlement.toUser);
+    const amount = Number(settlement.amount || 0);
+
+    if (!fromUserId || !toUserId || Number.isNaN(amount) || amount <= 0) {
+      return;
+    }
+
+    const fromRow = balancesByUser.get(fromUserId);
+    const toRow = balancesByUser.get(toUserId);
+
+    if (fromRow) {
+      fromRow.netBalance = Number((fromRow.netBalance + amount).toFixed(2));
+      balancesByUser.set(fromUserId, fromRow);
+    }
+
+    if (toRow) {
+      toRow.netBalance = Number((toRow.netBalance - amount).toFixed(2));
+      balancesByUser.set(toUserId, toRow);
+    }
+  });
+
+  return Array.from(balancesByUser.values()).map((row) => ({
+    ...row,
+    netBalance: Number(row.netBalance.toFixed(2)),
   }));
 };
 
@@ -458,7 +502,12 @@ export const getGroupBalances = async (req: AuthRequest, res: Response) => {
     }
 
     const expenses = await Expense.find({ group: id }).lean();
-    const balances = buildBalances(expenses, usersMap);
+    const settlementHistory = await Settlement.find({ group: id, status: 'completed' })
+      .select('fromUser toUser amount')
+      .lean();
+
+    const rawBalances = buildBalances(expenses, usersMap);
+    const balances = applyCompletedSettlementsToBalances(rawBalances, settlementHistory);
 
     const response = balances.map((item) => {
       const relationAmount = userId === item.userId ? 0 : Number(item.netBalance.toFixed(2));

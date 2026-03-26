@@ -175,6 +175,49 @@ const optimizeSettlementGraph = (balanceRows: Array<{ userId: string; userName: 
   return settlements;
 };
 
+const applyCompletedSettlementsToBalanceRows = (
+  balanceRows: Array<{ userId: string; userName: string; netBalance: number; paid: number; owedShare: number }>,
+  settlements: any[]
+) => {
+  const balancesByUser = new Map(
+    balanceRows.map((row) => [
+      row.userId,
+      {
+        ...row,
+        netBalance: Number(row.netBalance || 0),
+      },
+    ])
+  );
+
+  (settlements || []).forEach((settlement: any) => {
+    const fromUserId = toStringId(settlement.fromUser);
+    const toUserId = toStringId(settlement.toUser);
+    const amount = Number(settlement.amount || 0);
+
+    if (!fromUserId || !toUserId || Number.isNaN(amount) || amount <= 0) {
+      return;
+    }
+
+    const fromRow = balancesByUser.get(fromUserId);
+    const toRow = balancesByUser.get(toUserId);
+
+    if (fromRow) {
+      fromRow.netBalance = Number((fromRow.netBalance + amount).toFixed(2));
+      balancesByUser.set(fromUserId, fromRow);
+    }
+
+    if (toRow) {
+      toRow.netBalance = Number((toRow.netBalance - amount).toFixed(2));
+      balancesByUser.set(toUserId, toRow);
+    }
+  });
+
+  return Array.from(balancesByUser.values()).map((row) => ({
+    ...row,
+    netBalance: Number(row.netBalance.toFixed(2)),
+  }));
+};
+
 // Create a new group (unified schema supports both regular groups and trip groups)
 export const createGroup = async (req: Request, res: Response) => {
   try {
@@ -836,8 +879,7 @@ export const getGroupSettlements = async (req: Request, res: Response) => {
     }
 
     const expenses = await Expense.find({ group: id }).lean();
-    const balances = buildBalanceRows(expenses, usersMap);
-    const optimizedSettlements = optimizeSettlementGraph(balances);
+    const rawBalances = buildBalanceRows(expenses, usersMap);
 
     const settlementHistory = await Settlement.find({ group: id, status: 'completed' })
       .populate('fromUser', 'name email')
@@ -845,6 +887,9 @@ export const getGroupSettlements = async (req: Request, res: Response) => {
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
+
+    const balances = applyCompletedSettlementsToBalanceRows(rawBalances, settlementHistory);
+    const optimizedSettlements = optimizeSettlementGraph(balances);
 
     res.status(200).json({
       success: true,

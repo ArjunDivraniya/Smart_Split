@@ -51,6 +51,15 @@ interface Settlement {
   amount: number;
 }
 
+interface SettlementHistoryItem {
+  id: string;
+  fromUserName: string;
+  toUserName: string;
+  amount: number;
+  note?: string;
+  createdAt?: string;
+}
+
 interface SettlementModalState {
   visible: boolean;
   fromUser: { id: string; name: string };
@@ -67,10 +76,9 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   const colors = Colors[colorScheme];
   const [balances, setBalances] = useState<Balance[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [settlementHistory, setSettlementHistory] = useState<any[]>([]);
+  const [settlementHistory, setSettlementHistory] = useState<SettlementHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showOptimized, setShowOptimized] = useState(true);
   const [modalState, setModalState] = useState<SettlementModalState>({
     visible: false,
     fromUser: { id: '', name: '' },
@@ -125,8 +133,37 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
       const response = await apiService.groups.getSettlements(groupId);
       const data = response?.data?.data || response?.data || {};
       // Support both legacy and current backend response shapes.
-      setSettlements(data.optimizedSettlements || data.optimized || []);
-      setSettlementHistory(data.settlements || data.history || []);
+      const rawOptimized = Array.isArray(data.optimizedSettlements)
+        ? data.optimizedSettlements
+        : Array.isArray(data.optimized)
+        ? data.optimized
+        : [];
+
+      const normalizedOptimized: Settlement[] = rawOptimized
+        .map((item: any) => ({
+          from: String(item.from || item.fromUserId || item.fromUser || ''),
+          to: String(item.to || item.toUserId || item.toUser || ''),
+          amount: Number(item.amount || 0),
+        }))
+        .filter((item: Settlement) => Boolean(item.from) && Boolean(item.to) && item.amount > 0);
+
+      const rawHistory = Array.isArray(data.settlements)
+        ? data.settlements
+        : Array.isArray(data.history)
+        ? data.history
+        : [];
+
+      const normalizedHistory: SettlementHistoryItem[] = rawHistory.map((item: any, index: number) => ({
+        id: toSafeKey(item.id || item._id, `history-${index}-${item.createdAt || Date.now()}`),
+        fromUserName: item.fromUserName || item.fromUser?.name || 'Unknown',
+        toUserName: item.toUserName || item.toUser?.name || 'Unknown',
+        amount: Number(item.amount || 0),
+        note: item.note || '',
+        createdAt: item.createdAt,
+      }));
+
+      setSettlements(normalizedOptimized);
+      setSettlementHistory(normalizedHistory);
     } catch (error) {
       console.error('Error fetching settlements:', error);
     }
@@ -323,14 +360,16 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     </View>
   );
 
-  const renderHistoryItem = ({ item }: { item: any }) => {
-    const fromName = item.fromUser?.name || 'Unknown';
-    const toName = item.toUser?.name || 'Unknown';
-    const date = new Date(item.createdAt).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const renderHistoryItem = ({ item }: { item: SettlementHistoryItem }) => {
+    const fromName = item.fromUserName || 'Unknown';
+    const toName = item.toUserName || 'Unknown';
+    const date = item.createdAt
+      ? new Date(item.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : 'Recently';
 
     return (
       <View style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
@@ -344,7 +383,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
           <Text style={[styles.historyDate, { color: colors.icon }]}>{date}</Text>
           {item.note && <Text style={[styles.historyNote, { color: colors.icon }]}>{item.note}</Text>}
         </View>
-        <Text style={styles.historyAmount}>₹{item.amount.toFixed(2)}</Text>
+        <Text style={styles.historyAmount}>₹{Number(item.amount || 0).toFixed(2)}</Text>
       </View>
     );
   };
@@ -375,7 +414,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>Settlement History</Text>
                 </View>
                 {settlementHistory.map((item) => (
-                  <View key={toSafeKey(item._id, `history-${item.from}-${item.to}-${item.createdAt}`)}>
+                  <View key={item.id}>
                     {renderHistoryItem({ item })}
                   </View>
                 ))}
