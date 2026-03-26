@@ -5,6 +5,13 @@ export interface ISettlement extends Document {
   fromUser: mongoose.Types.ObjectId;
   toUser: mongoose.Types.ObjectId;
   amount: number;
+  type: 'full' | 'partial';
+  amountPaid: number;
+  remaining: number;
+  dueDate?: Date;
+  remindedAt?: Date;
+  remindCount: number;
+  source: 'group' | 'personal' | 'direct';
   method: 'cash' | 'upi' | 'bank';
   note?: string;
   createdBy: mongoose.Types.ObjectId;
@@ -35,6 +42,36 @@ const SettlementSchema: Schema = new Schema(
       required: true,
       min: 0,
     },
+    type: {
+      type: String,
+      enum: ['full', 'partial'],
+      default: 'full',
+    },
+    amountPaid: {
+      type: Number,
+      default: 0,
+    },
+    remaining: {
+      type: Number,
+      default: 0,
+    },
+    dueDate: {
+      type: Date,
+      required: false,
+    },
+    remindedAt: {
+      type: Date,
+      required: false,
+    },
+    remindCount: {
+      type: Number,
+      default: 0,
+    },
+    source: {
+      type: String,
+      enum: ['group', 'personal', 'direct'],
+      default: 'group',
+    },
     method: {
       type: String,
       enum: ['cash', 'upi', 'bank'],
@@ -57,6 +94,15 @@ const SettlementSchema: Schema = new Schema(
   },
   { timestamps: true }
 );
+
+SettlementSchema.pre('save', function () {
+  const settlement = this as unknown as ISettlement;
+  settlement.remaining = Number(settlement.amount || 0) - Number(settlement.amountPaid || 0);
+
+  if (settlement.remaining <= 0) {
+    settlement.status = 'completed';
+  }
+});
 
 SettlementSchema.index({ group: 1, createdAt: -1 });
 

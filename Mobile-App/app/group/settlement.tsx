@@ -1,8 +1,9 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Easing,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,16 +14,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiService } from '@/src/services/api';
 
 interface Suggestion {
-  from: string;
-  to: string;
+  fromUserId: string;
+  toUserId: string;
+  fromUserName: string;
+  toUserName: string;
   amount: number;
-  fromName: string;
-  toName: string;
 }
 
 interface GroupMember {
@@ -30,6 +32,8 @@ interface GroupMember {
   name: string;
   upiId?: string;
 }
+
+const SUCCESS_DURATION_MS = 1500;
 
 export default function SettlementScreen() {
   const colorScheme = useColorScheme() ?? 'dark';
@@ -40,17 +44,21 @@ export default function SettlementScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const successScale = useRef(new Animated.Value(0.6)).current;
+
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const successScale = useRef(new Animated.Value(0.72)).current;
 
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [currentUserId, setCurrentUserId] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
+  const [fromUserId, setFromUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'cash' | 'bank'>('upi');
   const [note, setNote] = useState('');
 
+  const fromUser = useMemo(() => members.find((m) => m.id === fromUserId), [members, fromUserId]);
   const toUser = useMemo(() => members.find((m) => m.id === toUserId), [members, toUserId]);
 
   React.useEffect(() => {
@@ -67,10 +75,13 @@ export default function SettlementScreen() {
         const userData = userRes?.data?.data || userRes?.data || {};
         const me = userData?.user || userData;
         const meId = String(me?._id || me?.id || '');
+
         setCurrentUserId(meId);
+        setFromUserId(meId);
 
         const group = groupRes?.data?.data || groupRes?.data || {};
         const creator = typeof group.createdBy === 'object' ? group.createdBy : null;
+
         const allMembers: GroupMember[] = [];
 
         if (creator?._id) {
@@ -98,35 +109,51 @@ export default function SettlementScreen() {
 
         const settlementData = settleRes?.data?.data || {};
         const optimized = Array.isArray(settlementData.optimized) ? settlementData.optimized : [];
-        const named: Suggestion[] = optimized.map((s: any) => {
-          const from = String(s.from || '');
-          const to = String(s.to || '');
-          const fromName = allMembers.find((m) => m.id === from)?.name || 'Member';
-          const toName = allMembers.find((m) => m.id === to)?.name || 'Member';
-          return {
-            from,
-            to,
-            fromName,
-            toName,
-            amount: Number(s.amount || 0),
-          };
-        }).filter((s: Suggestion) => s.amount > 0);
 
-        setSuggestions(named);
+        const normalizedSuggestions: Suggestion[] = optimized
+          .map((item: any) => {
+            const fromUserId = String(item.fromUserId || item.from || '');
+            const toUserId = String(item.toUserId || item.to || '');
+            const amount = Number(item.amount || 0);
 
-        const mySuggestion = named.find((s) => s.from === meId || s.to === meId);
+            const fromUserName =
+              item.fromUserName || allMembers.find((m) => m.id === fromUserId)?.name || 'Member';
+            const toUserName =
+              item.toUserName || allMembers.find((m) => m.id === toUserId)?.name || 'Member';
+
+            return {
+              fromUserId,
+              toUserId,
+              fromUserName,
+              toUserName,
+              amount,
+            };
+          })
+          .filter((item: Suggestion) => item.fromUserId && item.toUserId && item.amount > 0);
+
+        setSuggestions(normalizedSuggestions);
+
+        const mySuggestion = normalizedSuggestions.find(
+          (item) => item.fromUserId === meId || item.toUserId === meId
+        );
+
         if (mySuggestion) {
-          if (mySuggestion.from === meId) {
-            setToUserId(mySuggestion.to);
-          } else {
-            setToUserId(mySuggestion.from);
-          }
+          setFromUserId(mySuggestion.fromUserId);
+          setToUserId(mySuggestion.toUserId);
           setAmount(String(mySuggestion.amount.toFixed(2)));
-        } else {
-          const defaultTo = allMembers.find((m) => m.id !== meId);
-          if (defaultTo) {
-            setToUserId(defaultTo.id);
-          }
+          return;
+        }
+
+        if (normalizedSuggestions[0]) {
+          setFromUserId(normalizedSuggestions[0].fromUserId);
+          setToUserId(normalizedSuggestions[0].toUserId);
+          setAmount(String(normalizedSuggestions[0].amount.toFixed(2)));
+          return;
+        }
+
+        const defaultTo = allMembers.find((member) => member.id !== meId);
+        if (defaultTo) {
+          setToUserId(defaultTo.id);
         }
       } catch {
         Alert.alert('Error', 'Failed to load settlement data.');
@@ -139,25 +166,70 @@ export default function SettlementScreen() {
     load();
   }, [groupId, router]);
 
-  const handleSelectSuggestion = (s: Suggestion) => {
-    if (s.from === currentUserId) {
-      setToUserId(s.to);
-      setAmount(String(s.amount.toFixed(2)));
-      setNote(`Settlement with ${s.toName}`);
-    } else if (s.to === currentUserId) {
-      setToUserId(s.from);
-      setAmount(String(s.amount.toFixed(2)));
-      setNote(`Settlement with ${s.fromName}`);
+  React.useEffect(() => {
+    if (toUserId && fromUserId === toUserId) {
+      const fallback = members.find((member) => member.id !== fromUserId);
+      setToUserId(fallback?.id || '');
     }
+  }, [fromUserId, toUserId, members]);
+
+  const handleSelectSuggestion = (suggestion: Suggestion) => {
+    setFromUserId(suggestion.fromUserId);
+    setToUserId(suggestion.toUserId);
+    setAmount(String(suggestion.amount.toFixed(2)));
+    setNote(`Settlement via ${paymentMethod.toUpperCase()}`);
   };
 
-  const canSubmit = !!toUserId && Number(amount) > 0 && !submitting;
+  const canSubmit =
+    !!fromUserId &&
+    !!toUserId &&
+    fromUserId !== toUserId &&
+    Number(amount) > 0 &&
+    !submitting;
 
   const copyUpiId = async () => {
     if (!toUser?.upiId) {
       return;
     }
-    Alert.alert('UPI ID', `Copy this UPI ID: ${toUser.upiId}`);
+
+    try {
+      await Clipboard.setStringAsync(toUser.upiId);
+      Alert.alert('Copied', `${toUser.name}'s UPI ID copied.`);
+    } catch {
+      Alert.alert('UPI ID', toUser.upiId);
+    }
+  };
+
+  const showSuccessAnimation = () => {
+    setShowSuccess(true);
+    successOpacity.setValue(0);
+    successScale.setValue(0.72);
+
+    Animated.parallel([
+      Animated.timing(successOpacity, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.spring(successScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 110,
+      }),
+    ]).start(() => {
+      Animated.timing(successOpacity, {
+        toValue: 0,
+        duration: 220,
+        delay: SUCCESS_DURATION_MS - 400,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }).start(() => {
+        setShowSuccess(false);
+        router.back();
+      });
+    });
   };
 
   const confirmSettlement = async () => {
@@ -167,25 +239,15 @@ export default function SettlementScreen() {
 
     try {
       setSubmitting(true);
+
       await apiService.groups.recordSettlement(String(groupId || ''), {
-        fromUserId: currentUserId,
+        fromUserId,
         toUserId,
         amount: Number(amount),
         note: `${paymentMethod.toUpperCase()}${note ? ` - ${note}` : ''}`,
       });
 
-      setShowSuccess(true);
-      successScale.setValue(0.6);
-      Animated.spring(successScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 6,
-      }).start();
-
-      setTimeout(() => {
-        setShowSuccess(false);
-        router.back();
-      }, 1500);
+      showSuccessAnimation();
     } catch (error: any) {
       Alert.alert('Error', error?.response?.data?.error || 'Failed to record settlement.');
     } finally {
@@ -205,70 +267,114 @@ export default function SettlementScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <View style={[styles.header, { borderBottomColor: colors.elevated }]}> 
+      <View style={[styles.header, { borderBottomColor: colors.elevated }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Settle Up</Text>
-        <View style={{ width: 24 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Settlement Suggestions</Text>
+          <Text style={[styles.sectionHint, { color: colors.icon }]}>Minimum-cash-flow optimization</Text>
+
           {suggestions.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.icon }]}>Everyone is already settled.</Text>
           ) : (
-            suggestions.map((s, idx) => {
-              const isMeFrom = s.from === currentUserId;
-              const text = isMeFrom
-                ? `You pay ${s.toName} ₹${s.amount.toFixed(2)}`
-                : s.to === currentUserId
-                ? `${s.fromName} pays you ₹${s.amount.toFixed(2)}`
-                : `${s.fromName} pays ${s.toName} ₹${s.amount.toFixed(2)}`;
+            suggestions.map((item, index) => {
+              const involvesMe = item.fromUserId === currentUserId || item.toUserId === currentUserId;
+
+              const title =
+                item.fromUserId === currentUserId
+                  ? `You pay ${item.toUserName} ₹${item.amount.toFixed(2)}`
+                  : item.toUserId === currentUserId
+                  ? `${item.fromUserName} pays you ₹${item.amount.toFixed(2)}`
+                  : `${item.fromUserName} pays ${item.toUserName} ₹${item.amount.toFixed(2)}`;
+
+              const isSelected =
+                fromUserId === item.fromUserId &&
+                toUserId === item.toUserId &&
+                Number(amount || 0).toFixed(2) === item.amount.toFixed(2);
 
               return (
                 <TouchableOpacity
-                  key={`${s.from}-${s.to}-${idx}`}
-                  style={[styles.suggestionCard, { backgroundColor: colors.background, borderColor: colors.elevated }]}
-                  onPress={() => handleSelectSuggestion(s)}
+                  key={`${item.fromUserId}-${item.toUserId}-${index}`}
+                  style={[
+                    styles.suggestionCard,
+                    {
+                      backgroundColor: colors.background,
+                      borderColor: isSelected ? colors.mint : colors.elevated,
+                    },
+                  ]}
+                  onPress={() => handleSelectSuggestion(item)}
                 >
-                  <Ionicons name="swap-horizontal" size={16} color={colors.violet} />
-                  <Text style={[styles.suggestionText, { color: colors.text }]}>{text}</Text>
+                  <Ionicons name="swap-horizontal" size={16} color={involvesMe ? colors.violet : colors.icon} />
+                  <View style={styles.suggestionTextWrap}>
+                    <Text style={[styles.suggestionText, { color: colors.text }]}>{title}</Text>
+                    {involvesMe ? <Text style={[styles.suggestionMeta, { color: colors.mint }]}>Tap to prefill</Text> : null}
+                  </View>
                 </TouchableOpacity>
               );
             })
           )}
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Settlement Form</Text>
 
           <View style={styles.rowLine}>
             <Text style={[styles.label, { color: colors.icon }]}>From</Text>
-            <Text style={[styles.valueText, { color: colors.text }]}>You</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toChipsWrap}>
+              {members.map((member) => {
+                const selected = fromUserId === member.id;
+                return (
+                  <TouchableOpacity
+                    key={member.id}
+                    style={[
+                      styles.toChip,
+                      {
+                        backgroundColor: selected ? `${colors.violet}22` : colors.background,
+                        borderColor: selected ? colors.violet : colors.elevated,
+                      },
+                    ]}
+                    onPress={() => setFromUserId(member.id)}
+                  >
+                    <Text style={[styles.toChipText, { color: selected ? colors.violet : colors.text }]}>
+                      {member.id === currentUserId ? 'You' : member.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           <View style={styles.rowLine}>
             <Text style={[styles.label, { color: colors.icon }]}>To</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toChipsWrap}>
               {members
-                .filter((m) => m.id !== currentUserId)
-                .map((m) => (
-                  <TouchableOpacity
-                    key={m.id}
-                    style={[
-                      styles.toChip,
-                      {
-                        backgroundColor: toUserId === m.id ? `${colors.violet}22` : colors.background,
-                        borderColor: toUserId === m.id ? colors.violet : colors.elevated,
-                      },
-                    ]}
-                    onPress={() => setToUserId(m.id)}
-                  >
-                    <Text style={[styles.toChipText, { color: toUserId === m.id ? colors.violet : colors.text }]}>{m.name}</Text>
-                  </TouchableOpacity>
-                ))}
+                .filter((member) => member.id !== fromUserId)
+                .map((member) => {
+                  const selected = toUserId === member.id;
+                  return (
+                    <TouchableOpacity
+                      key={member.id}
+                      style={[
+                        styles.toChip,
+                        {
+                          backgroundColor: selected ? `${colors.violet}22` : colors.background,
+                          borderColor: selected ? colors.violet : colors.elevated,
+                        },
+                      ]}
+                      onPress={() => setToUserId(member.id)}
+                    >
+                      <Text style={[styles.toChipText, { color: selected ? colors.violet : colors.text }]}> 
+                        {member.id === currentUserId ? 'You' : member.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
           </View>
 
@@ -280,7 +386,14 @@ export default function SettlementScreen() {
               keyboardType="numeric"
               placeholder="0.00"
               placeholderTextColor={colors.icon}
-              style={[styles.input, { color: colors.text, borderColor: colors.elevated, backgroundColor: colors.background }]}
+              style={[
+                styles.input,
+                {
+                  color: colors.text,
+                  borderColor: colors.elevated,
+                  backgroundColor: colors.background,
+                },
+              ]}
             />
           </View>
 
@@ -303,16 +416,18 @@ export default function SettlementScreen() {
                   ]}
                   onPress={() => setPaymentMethod(item.key)}
                 >
-                  <Text style={[styles.methodText, { color: paymentMethod === item.key ? colors.mint : colors.text }]}>{item.label}</Text>
+                  <Text style={[styles.methodText, { color: paymentMethod === item.key ? colors.mint : colors.text }]}> 
+                    {item.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
           {paymentMethod === 'upi' && toUser?.upiId ? (
-            <View style={[styles.upiBox, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
+            <View style={[styles.upiBox, { backgroundColor: colors.background, borderColor: colors.elevated }]}>
               <Text style={[styles.upiText, { color: colors.text }]}>{toUser.upiId}</Text>
-              <TouchableOpacity onPress={copyUpiId} style={[styles.copyBtn, { borderColor: colors.elevated }]}> 
+              <TouchableOpacity onPress={copyUpiId} style={[styles.copyBtn, { borderColor: colors.elevated }]}>
                 <Ionicons name="copy-outline" size={14} color={colors.violet} />
                 <Text style={[styles.copyBtnText, { color: colors.violet }]}>Copy</Text>
               </TouchableOpacity>
@@ -326,15 +441,26 @@ export default function SettlementScreen() {
               onChangeText={setNote}
               placeholder="Optional note"
               placeholderTextColor={colors.icon}
-              style={[styles.input, { color: colors.text, borderColor: colors.elevated, backgroundColor: colors.background }]}
+              style={[
+                styles.input,
+                {
+                  color: colors.text,
+                  borderColor: colors.elevated,
+                  backgroundColor: colors.background,
+                },
+              ]}
             />
           </View>
+
+          <Text style={[styles.helperText, { color: colors.icon }]}>
+            {fromUser?.name || 'From'} {'->'} {toUser?.name || 'To'}
+          </Text>
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.elevated }]}> 
+      <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.elevated }]}>
         <TouchableOpacity
-          style={[styles.confirmBtn, { backgroundColor: canSubmit ? colors.mint : colors.elevated }]}
+          style={[styles.confirmBtn, { backgroundColor: canSubmit ? '#1AB26B' : colors.elevated }]}
           onPress={confirmSettlement}
           disabled={!canSubmit}
         >
@@ -343,12 +469,13 @@ export default function SettlementScreen() {
       </View>
 
       {showSuccess ? (
-        <View style={styles.successOverlay}>
-          <Animated.View style={[styles.successCard, { transform: [{ scale: successScale }] }]}> 
-            <Ionicons name="checkmark-circle" size={82} color="#22C55E" />
-            <Text style={styles.successText}>Settlement Completed</Text>
+        <Animated.View style={[styles.successOverlay, { opacity: successOpacity }]}>
+          <Animated.View style={[styles.successIconWrap, { transform: [{ scale: successScale }] }]}> 
+            <Ionicons name="checkmark" size={64} color="#16A34A" />
           </Animated.View>
-        </View>
+          <Animated.Text style={[styles.successTitle, { opacity: successOpacity }]}>Settled!</Animated.Text>
+          <Animated.Text style={[styles.successSubtitle, { opacity: successOpacity }]}>Balances updated successfully</Animated.Text>
+        </Animated.View>
       ) : null}
     </SafeAreaView>
   );
@@ -369,6 +496,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'DMSans_700Bold',
   },
+  headerSpacer: {
+    width: 24,
+  },
   content: {
     padding: 16,
     gap: 12,
@@ -382,6 +512,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontFamily: 'DMSans_700Bold',
+  },
+  sectionHint: {
+    fontSize: 12,
+    marginTop: 2,
     marginBottom: 10,
   },
   suggestionCard: {
@@ -394,9 +528,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  suggestionTextWrap: {
+    flex: 1,
+  },
   suggestionText: {
     fontSize: 13,
     flex: 1,
+  },
+  suggestionMeta: {
+    marginTop: 4,
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
   },
   emptyText: {
     fontSize: 13,
@@ -407,10 +549,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     marginBottom: 6,
-  },
-  valueText: {
-    fontSize: 14,
-    fontFamily: 'DMSans_600SemiBold',
   },
   toChipsWrap: {
     gap: 8,
@@ -478,13 +616,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'DMSans_700Bold',
   },
+  helperText: {
+    fontSize: 12,
+  },
   footer: {
     borderTopWidth: 1,
     padding: 16,
   },
   confirmBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   confirmBtnText: {
@@ -494,21 +635,29 @@ const styles = StyleSheet.create({
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: '#16A34A',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  successCard: {
-    width: 220,
-    borderRadius: 18,
+  successIconWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 120,
     backgroundColor: '#ffffff',
-    padding: 20,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  successText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: '#16A34A',
+  successTitle: {
+    marginTop: 18,
+    fontSize: 30,
+    color: '#ffffff',
     fontFamily: 'DMSans_700Bold',
+  },
+  successSubtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    color: '#E8FFF2',
+    fontFamily: 'DMSans_600SemiBold',
   },
 });
