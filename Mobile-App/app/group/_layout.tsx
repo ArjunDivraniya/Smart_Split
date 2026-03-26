@@ -17,6 +17,20 @@ export default function GroupLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="expense/[id]"
+        options={{
+          title: 'Expense Details',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="settlement"
+        options={{
+          title: 'Settle Up',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -35,6 +35,7 @@ interface ExpensesTabProps {
   groupId: string;
   currentUserId: string;
   onAddExpense: () => void;
+  onViewExpense?: (expense: Expense) => void;
   onEditExpense?: (expense: Expense) => void;
   refreshKey?: number;
 }
@@ -71,6 +72,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   groupId,
   currentUserId,
   onAddExpense,
+  onViewExpense,
   onEditExpense,
   refreshKey,
 }) => {
@@ -378,7 +380,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
           <ExpenseItem
             expense={item}
             currentUserId={currentUserId}
-            onPress={() => handleEditExpense(item)}
+            onPress={() => (onViewExpense ? onViewExpense(item) : handleEditExpense(item))}
             onEdit={() => handleEditExpense(item)}
             onDelete={() => handleDeleteExpense(item._id)}
           />

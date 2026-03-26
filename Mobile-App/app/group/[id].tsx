@@ -11,8 +11,8 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -158,6 +158,14 @@ export default function GroupDetailScreen() {
     }
   }, [id]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        fetchGroupDetails();
+      }
+    }, [id])
+  );
+
   useEffect(() => {
     // Reset timeline tab if group is not a trip
     if (group && activeTab === 'timeline') {
@@ -227,6 +235,25 @@ export default function GroupDetailScreen() {
       setExpenseSheetVisible(true);
     } catch {
       Alert.alert('Error', 'Unable to open edit expense');
+    }
+  };
+
+  const handleViewExpense = (expense: any) => {
+    try {
+      const expenseId = normalizeId(expense?._id || expense?.id);
+      if (!expenseId) {
+        Alert.alert('Error', 'Unable to open expense details.');
+        return;
+      }
+
+      const payload = encodeURIComponent(JSON.stringify(expense || {}));
+      router.push(
+        `/group/expense/${expenseId}?groupId=${encodeURIComponent(groupId)}&expenseData=${payload}&currentUserId=${encodeURIComponent(
+          signedInUserId || ''
+        )}&isCreator=${isCreator ? '1' : '0'}` as any
+      );
+    } catch {
+      Alert.alert('Error', 'Unable to open expense details.');
     }
   };
 
@@ -378,6 +405,7 @@ export default function GroupDetailScreen() {
             groupId={groupId}
             currentUserId={currentUserId}
             onAddExpense={handleAddExpense}
+            onViewExpense={handleViewExpense}
             onEditExpense={handleEditExpense}
             refreshKey={expensesRefreshKey}
           />
@@ -564,7 +592,11 @@ export default function GroupDetailScreen() {
   };
 
   const handleSettleUpQuickAction = () => {
-    setActiveTab('balances');
+    if (!groupId) {
+      Alert.alert('Error', 'Unable to open settlement screen. Group ID is missing.');
+      return;
+    }
+    router.push(`/group/settlement?id=${encodeURIComponent(groupId)}` as any);
   };
 
   const handleMembersQuickAction = () => {
