@@ -18,10 +18,10 @@ import { apiService } from '@/src/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AmountInput } from '@/components/expenses/AmountInput';
-import { CategorySelector } from '@/components/expenses/CategorySelector';
-import { SplitTypeSelector } from '@/components/expenses/SplitTypeSelector';
+import { CategoryPicker } from '@/components/expenses/CategoryPicker';
+import { SplitTypeSelector } from '@/src/components/groups/SplitTypeSelector';
 import { MemberSelector } from '@/components/expenses/MemberSelector';
-import { SplitPreview } from '@/components/expenses/SplitPreview';
+import { SplitPreview } from '@/src/components/groups/SplitPreview';
 import {
   SplitType,
   Participant,
@@ -329,7 +329,12 @@ export default function AddExpenseScreen() {
   }
 
   const numAmount = parseFloat(amount) || 0;
-  const splitResults = numAmount > 0 ? calculateSplit(splitType, numAmount, selectedMembers) : null;
+  let splitResults: ReturnType<typeof calculateSplit> | null = null;
+  try {
+    splitResults = numAmount > 0 ? calculateSplit(splitType, numAmount, selectedMembers) : null;
+  } catch {
+    splitResults = null;
+  }
   const splitValidation = validateSplit(splitType, numAmount, selectedMembers);
   const paidByMember = groupMembers.find((m) => m.userId === paidBy);
 
@@ -360,6 +365,12 @@ export default function AddExpenseScreen() {
           error={errors.amount}
         />
 
+        <CategoryPicker
+          selected={category}
+          onSelect={setCategory}
+          description={description}
+        />
+
         {/* Description */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
           <Text style={[styles.sectionLabel, { color: colors.text }]}>Description</Text>
@@ -378,9 +389,6 @@ export default function AddExpenseScreen() {
             <Text style={styles.errorText}>{errors.description}</Text>
           )}
         </View>
-
-        {/* Category */}
-        <CategorySelector selected={category} onSelect={setCategory} />
 
         {/* Date Picker */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
@@ -437,7 +445,12 @@ export default function AddExpenseScreen() {
         </View>
 
         {/* Split Type */}
-        <SplitTypeSelector selected={splitType} onSelect={handleSplitTypeChange} />
+        <SplitTypeSelector
+          selected={splitType}
+          onSelect={handleSplitTypeChange}
+          totalAmount={numAmount}
+          participants={selectedMembers}
+        />
 
         {/* Member Selector */}
         <MemberSelector
@@ -455,8 +468,6 @@ export default function AddExpenseScreen() {
         {/* Split Preview */}
         <SplitPreview
           splitResults={splitResults}
-          paidByUserId={paidBy}
-          paidByUserName={paidByMember?.userName || 'Unknown'}
           totalAmount={numAmount}
           currentUserId={currentUserId}
           validationError={!splitValidation.valid ? splitValidation.error : undefined}

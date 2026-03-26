@@ -30,6 +30,34 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
   const renderValueInput = (userId: string) => {
     if (splitType === 'equally') return null;
 
+    if (splitType === 'shares') {
+      const currentShares = Math.max(0, Math.floor(getValue(userId)));
+      return (
+        <View style={[styles.sharesStepper, { backgroundColor: colors.background, borderColor: colors.elevated }]}> 
+          <TouchableOpacity
+            style={[styles.stepperBtn, { borderRightColor: colors.elevated }]}
+            onPress={() => onValueChange(userId, Math.max(0, currentShares - 1))}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="remove" size={16} color={colors.text} />
+          </TouchableOpacity>
+
+          <View style={styles.stepperValueWrap}>
+            <Text style={[styles.stepperValue, { color: colors.text }]}>{currentShares}</Text>
+            <Text style={[styles.stepperLabel, { color: colors.icon }]}>share{currentShares === 1 ? '' : 's'}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.stepperBtn, { borderLeftColor: colors.elevated }]}
+            onPress={() => onValueChange(userId, currentShares + 1)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add" size={16} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     let placeholder = '';
     let suffix = '';
 
@@ -41,10 +69,6 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
       case 'unequally':
         placeholder = '0';
         suffix = '₹';
-        break;
-      case 'shares':
-        placeholder = '1';
-        suffix = 'shares';
         break;
     }
 
@@ -275,6 +299,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748b',
     marginLeft: 6,
+  },
+  sharesStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    minWidth: 126,
+    overflow: 'hidden',
+  },
+  stepperBtn: {
+    width: 34,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: '#e2e8f0',
+  },
+  stepperValueWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  stepperValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  stepperLabel: {
+    fontSize: 10,
+    marginTop: 1,
   },
   selectAllButton: {
     flexDirection: 'row',
