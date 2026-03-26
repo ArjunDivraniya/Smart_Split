@@ -7,6 +7,13 @@ import Settlement from '../models/Settlement.model';
 import Notification from '../models/Notification.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 
+const toStringId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value._id) return String(value._id);
+  return String(value);
+};
+
 // Get Settlement Calculations
 export const getSettlements = async (req: AuthRequest, res: Response) => {
   try {
@@ -224,5 +231,81 @@ export const recordSettlement = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Record settlement error:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to record settlement' });
+  }
+};
+
+// Get settlement history for a specific group
+export const getGroupSettlementHistory = async (req: AuthRequest, res: Response) => {
+  try {
+    const requesterId = req.userId;
+    const { groupId } = req.params;
+
+    if (!requesterId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    if (!groupId) {
+      return res.status(400).json({ success: false, message: 'groupId is required' });
+    }
+
+    const group = await Group.findById(groupId)
+      .populate('createdBy', '_id')
+      .populate('members.userId', '_id')
+      .lean();
+
+    if (!group) {
+      return res.status(404).json({ success: false, message: 'Group not found' });
+    }
+
+    const memberIds = new Set<string>([
+      toStringId(group.createdBy),
+      ...((group.members || []).map((m: any) => toStringId(m.userId))),
+    ]);
+
+    if (!memberIds.has(String(requesterId))) {
+      return res.status(403).json({ success: false, message: 'Not authorized to view this group settlements' });
+    }
+
+    const settlements = await Settlement.find({ group: groupId, status: 'completed' })
+      .populate('fromUser', '_id name email profileImage')
+      .populate('toUser', '_id name email profileImage')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: settlements,
+    });
+  } catch (error: any) {
+    console.error('Get group settlements history error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to fetch group settlements' });
+  }
+};
+
+// Get all settlements involving current user across all groups
+export const getUserSettlements = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const settlements = await Settlement.find({
+      $or: [{ fromUser: userId }, { toUser: userId }],
+    })
+      .populate('fromUser', '_id name email profileImage')
+      .populate('toUser', '_id name email profileImage')
+      .populate('group', '_id name type emoji')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: settlements,
+    });
+  } catch (error: any) {
+    console.error('Get user settlements error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to fetch user settlements' });
   }
 };

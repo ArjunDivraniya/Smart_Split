@@ -1183,6 +1183,29 @@ export const addGroupExpense = async (req: Request, res: Response) => {
       });
     }
 
+    if (group.type === 'trip') {
+      const isCompleted = group.status === 'completed' || group.isActive === false;
+      if (isCompleted) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot add expense to a completed trip',
+        });
+      }
+
+      if (group.tripEndDate) {
+        const tripEnd = new Date(group.tripEndDate);
+        tripEnd.setHours(23, 59, 59, 999);
+        const now = new Date();
+
+        if (now.getTime() > tripEnd.getTime()) {
+          return res.status(400).json({
+            success: false,
+            error: 'Trip has ended. New expenses are not allowed after trip end date',
+          });
+        }
+      }
+    }
+
     const participantIds = Array.isArray(splitBetween)
       ? splitBetween
       : Array.isArray(splitAmong)

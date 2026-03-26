@@ -200,6 +200,11 @@ export default function GroupDetailScreen() {
   };
 
   const handleAddExpense = () => {
+    if (!canAddExpense) {
+      Alert.alert('Trip Ended', addExpenseBlockedReason);
+      return;
+    }
+
     const targetGroupId = normalizeId(id || group?.id || group?._id);
     if (!targetGroupId) {
       Alert.alert('Error', 'Unable to open add expense. Group ID is missing.');
@@ -221,6 +226,18 @@ export default function GroupDetailScreen() {
   }
 
   const isTrip = group.type === GroupType.TRIP;
+  const isCompletedOrInactive = group.status === 'completed' || group.isActive === false;
+  const tripEndDate = group.tripEndDate ? new Date(group.tripEndDate) : null;
+  const isTripPastEndDate = Boolean(
+    isTrip &&
+      tripEndDate &&
+      new Date().getTime() > new Date(tripEndDate.setHours(23, 59, 59, 999)).getTime()
+  );
+  const canAddExpense = !(isTrip && (isCompletedOrInactive || isTripPastEndDate));
+  const addExpenseBlockedReason = isCompletedOrInactive
+    ? 'This trip is completed. You cannot add new expenses.'
+    : 'This trip has ended. You cannot add expenses after the end date.';
+
   const typeInfo = GROUP_TYPE_MAP[group.type] || GROUP_TYPE_MAP[GroupType.CUSTOM];
   const authUserId = normalizeId((user as any)?._id || user?.id || (user as any)?.userId);
   const groupCreatorId = normalizeId(
@@ -711,12 +728,17 @@ export default function GroupDetailScreen() {
       <View style={[styles.quickActionsStickyContainer, { backgroundColor: `${colors.violet}08` }]}>
         <View style={styles.quickActionsRow}>
           <TouchableOpacity
-            style={[styles.quickActionPrimary, { backgroundColor: colors.violet }]}
+            style={[
+              styles.quickActionPrimary,
+              { backgroundColor: canAddExpense ? colors.violet : colors.elevated },
+              !canAddExpense && styles.quickActionDisabled,
+            ]}
             onPress={handleAddExpense}
+            disabled={!canAddExpense}
             activeOpacity={0.9}
           >
             <Ionicons name="add" size={16} color="#ffffff" />
-            <Text style={styles.quickActionPrimaryText}>Add Expense</Text>
+            <Text style={styles.quickActionPrimaryText}>{canAddExpense ? 'Add Expense' : 'Trip Ended'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1163,6 +1185,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontFamily: 'DMSans_600SemiBold',
+  },
+  quickActionDisabled: {
+    opacity: 0.7,
   },
   quickActionSecondary: {
     flex: 1,

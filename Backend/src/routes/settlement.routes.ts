@@ -1,18 +1,25 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { getGroupSettlements, recordGroupSettlement } from '../controllers/group.controller';
-import { recordSettlement } from '../controllers/settlement.controller';
+import { recordGroupSettlement } from '../controllers/group.controller';
+import { getGroupSettlementHistory, getUserSettlements, recordSettlement } from '../controllers/settlement.controller';
 
 const router = Router();
 
 router.use(authenticateToken);
 
 /**
- * @route GET /api/settlements/group/:id
- * @desc Get optimized settlements for group
+ * @route GET /api/settlements/user
+ * @desc Get all settlements involving current user (newest first)
  * @access Private
  */
-router.get('/group/:id', getGroupSettlements);
+router.get('/user', getUserSettlements);
+
+/**
+ * @route GET /api/settlements/group/:groupId
+ * @desc Get settlement history for a group (newest first)
+ * @access Private
+ */
+router.get('/group/:groupId', getGroupSettlementHistory);
 
 /**
  * @route POST /api/settlements/group/:id
