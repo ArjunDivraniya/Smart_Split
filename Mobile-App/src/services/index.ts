@@ -20,3 +20,9 @@ export {
 	updateExpense,
 	deleteExpense,
 } from './expenses.service';
+export {
+	settlementsService,
+	createSettlement,
+	getGroupSettlements,
+	getUserSettlements,
+} from './settlements.service';

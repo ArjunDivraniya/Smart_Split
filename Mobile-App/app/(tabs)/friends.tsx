@@ -7,7 +7,7 @@ import {
     ActivityIndicator,
     RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '@/src/services/api';
@@ -26,6 +26,7 @@ interface Settlement {
 export default function FriendsScreen() {
     const colorScheme = useColorScheme() ?? 'dark';
     const colors = Colors[colorScheme];
+    const insets = useSafeAreaInsets();
 
         const [settlements, setSettlements] = useState<Settlement[]>([]);
         const [loading, setLoading] = useState(true);
@@ -74,7 +75,7 @@ export default function FriendsScreen() {
     return (
                 <SafeAreaView
                     style={[styles.container, { backgroundColor: colors.background }]}
-                    edges={['left', 'right', 'bottom']}
+                    edges={['top', 'left', 'right', 'bottom']}
                 >
                     <View style={[styles.header, { borderBottomColor: colors.elevated }]}>
                         <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -92,7 +93,10 @@ export default function FriendsScreen() {
                     ) : settlements.length === 0 ? (
                         <ScrollView
                             style={styles.scrollView}
-                            contentContainerStyle={styles.emptyContainer}
+                            contentContainerStyle={[
+                                styles.emptyContainer,
+                                { paddingBottom: 110 + insets.bottom },
+                            ]}
                             refreshControl={
                                 <RefreshControl
                                     refreshing={refreshing}
@@ -112,7 +116,10 @@ export default function FriendsScreen() {
                     ) : (
                         <ScrollView
                             style={styles.scrollView}
-                            contentContainerStyle={styles.listContent}
+                            contentContainerStyle={[
+                                styles.listContent,
+                                { paddingBottom: 110 + insets.bottom },
+                            ]}
                             refreshControl={
                                 <RefreshControl
                                     refreshing={refreshing}

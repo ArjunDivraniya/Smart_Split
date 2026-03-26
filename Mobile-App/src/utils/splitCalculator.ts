@@ -1,11 +1,11 @@
-// Split calculation utilities for expense splitting
+// Pure split calculation utilities (no UI / no API calls)
 
 export type SplitType = 'equally' | 'unequally' | 'percentage' | 'shares';
 
 export interface Participant {
   userId: string;
   userName: string;
-  value?: number; // Used for percentage, exact amount, or shares
+  value?: number; // percentage, exact amount, or shares based on split type
 }
 
 export interface SplitResult {
@@ -15,122 +15,172 @@ export interface SplitResult {
   percentage: number;
 }
 
-/**
- * Calculate equal split among participants
- */
-export const calculateEqualSplit = (
-  amount: number,
-  participants: Participant[]
-): SplitResult[] => {
-  if (participants.length === 0) return [];
-  
-  const shareAmount = amount / participants.length;
-  const percentage = 100 / participants.length;
+const roundTo2 = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
-  return participants.map((p) => ({
-    userId: p.userId,
-    userName: p.userName,
-    amount: shareAmount,
-    percentage,
-  }));
-};
+const sum = (values: number[]): number => values.reduce((acc, v) => acc + v, 0);
 
 /**
- * Calculate percentage-based split
- * @returns Split results or null if percentages don't sum to 100
+ * calculateEqualSplit(amount, memberCount)
+ * Example: 100 split in 3 => [33, 33, 34]
  */
-export const calculatePercentageSplit = (
-  amount: number,
-  participants: Participant[]
-): SplitResult[] | null => {
-  const totalPercentage = participants.reduce((sum, p) => sum + (p.value || 0), 0);
-  
-  // Validate: must equal 100%
-  if (Math.abs(totalPercentage - 100) > 0.01) {
-    return null;
+export const calculateEqualSplit = (amount: number, memberCount: number): number[] => {
+  if (amount <= 0 || memberCount <= 0) {
+    throw new Error('Amount and memberCount must be greater than 0');
   }
 
-  return participants.map((p) => ({
-    userId: p.userId,
-    userName: p.userName,
-    amount: (amount * (p.value || 0)) / 100,
-    percentage: p.value || 0,
-  }));
+  // Use integer paise to avoid floating precision drift.
+  const totalPaise = Math.round(amount * 100);
+  const basePaise = Math.floor(totalPaise / memberCount);
+  const remainderPaise = totalPaise - basePaise * memberCount;
+
+  const parts = Array.from({ length: memberCount }, () => basePaise);
+  // Per requirement, last member gets remainder.
+  parts[memberCount - 1] += remainderPaise;
+
+  return parts.map((paise) => paise / 100);
 };
 
 /**
- * Calculate exact amount split
- * @returns Split results or null if amounts don't sum to total
+ * calculatePercentageSplit(amount, percentages[])
+ * Validates percentages sum to 100.
+ */
+export const calculatePercentageSplit = (amount: number, percentages: number[]): number[] => {
+  if (amount < 0) {
+    throw new Error('Amount cannot be negative');
+  }
+  if (!percentages.length) {
+    throw new Error('Percentages are required');
+  }
+  if (percentages.some((p) => p < 0)) {
+    throw new Error('Percentages cannot be negative');
+  }
+
+  const totalPercentage = roundTo2(sum(percentages));
+  if (Math.abs(totalPercentage - 100) > 0.01) {
+    throw new Error(`Percentages must sum to 100 (currently ${totalPercentage})`);
+  }
+
+  const results = percentages.map((p) => roundTo2((amount * p) / 100));
+  // Keep total exact by adjusting final member with remainder.
+  const running = roundTo2(sum(results.slice(0, -1)));
+  results[results.length - 1] = roundTo2(amount - running);
+
+  return results;
+};
+
+/**
+ * calculateExactSplit(members[], amounts[])
+ * Validates shape and (optionally) validates sum equals provided total amount.
  */
 export const calculateExactSplit = (
-  amount: number,
-  participants: Participant[]
-): SplitResult[] | null => {
-  const totalAmount = participants.reduce((sum, p) => sum + (p.value || 0), 0);
-  
-  // Validate: must equal total amount
-  if (Math.abs(totalAmount - amount) > 0.01) {
-    return null;
+  members: Array<string | Participant>,
+  amounts: number[],
+  totalAmount?: number
+): number[] => {
+  if (!members.length) {
+    throw new Error('Members are required');
+  }
+  if (members.length !== amounts.length) {
+    throw new Error('Members and amounts length must match');
+  }
+  if (amounts.some((a) => a < 0)) {
+    throw new Error('Amounts cannot be negative');
   }
 
-  return participants.map((p) => ({
-    userId: p.userId,
-    userName: p.userName,
-    amount: p.value || 0,
-    percentage: ((p.value || 0) / amount) * 100,
-  }));
+  const normalized = amounts.map((a) => roundTo2(a));
+
+  if (typeof totalAmount === 'number') {
+    const computed = roundTo2(sum(normalized));
+    const expected = roundTo2(totalAmount);
+    if (Math.abs(computed - expected) > 0.01) {
+      throw new Error(`Exact amounts must sum to ${expected} (currently ${computed})`);
+    }
+  }
+
+  return normalized;
 };
 
 /**
- * Calculate shares-based split
+ * calculateSharesSplit(amount, shares[])
+ * Proportional split based on share units.
  */
-export const calculateSharesSplit = (
-  amount: number,
-  participants: Participant[]
-): SplitResult[] => {
-  const totalShares = participants.reduce((sum, p) => sum + (p.value || 0), 0);
-  
-  if (totalShares === 0) return [];
+export const calculateSharesSplit = (amount: number, shares: number[]): number[] => {
+  if (amount < 0) {
+    throw new Error('Amount cannot be negative');
+  }
+  if (!shares.length) {
+    throw new Error('Shares are required');
+  }
+  if (shares.some((s) => s < 0)) {
+    throw new Error('Shares cannot be negative');
+  }
 
-  return participants.map((p) => {
-    const shares = p.value || 0;
-    const shareAmount = (amount * shares) / totalShares;
-    const percentage = (shares / totalShares) * 100;
+  const totalShares = sum(shares);
+  if (totalShares <= 0) {
+    throw new Error('At least one share must be greater than 0');
+  }
 
-    return {
-      userId: p.userId,
-      userName: p.userName,
-      amount: shareAmount,
-      percentage,
-    };
-  });
+  const results = shares.map((s) => roundTo2((amount * s) / totalShares));
+  const running = roundTo2(sum(results.slice(0, -1)));
+  results[results.length - 1] = roundTo2(amount - running);
+
+  return results;
 };
 
 /**
- * Main split calculator - delegates to appropriate method
+ * Compatibility wrapper used by Add Expense screen.
  */
 export const calculateSplit = (
   splitType: SplitType,
   amount: number,
   participants: Participant[]
-): SplitResult[] | null => {
+): SplitResult[] => {
+  if (!participants.length) {
+    return [];
+  }
+
+  let amounts: number[] = [];
+
   switch (splitType) {
     case 'equally':
-      return calculateEqualSplit(amount, participants);
+      amounts = calculateEqualSplit(amount, participants.length);
+      break;
     case 'percentage':
-      return calculatePercentageSplit(amount, participants);
+      amounts = calculatePercentageSplit(
+        amount,
+        participants.map((p) => Number(p.value || 0))
+      );
+      break;
     case 'unequally':
-      return calculateExactSplit(amount, participants);
+      amounts = calculateExactSplit(
+        participants,
+        participants.map((p) => Number(p.value || 0)),
+        amount
+      );
+      break;
     case 'shares':
-      return calculateSharesSplit(amount, participants);
+      amounts = calculateSharesSplit(
+        amount,
+        participants.map((p) => Number(p.value || 0))
+      );
+      break;
     default:
-      return null;
+      amounts = [];
   }
+
+  return participants.map((participant, index) => {
+    const memberAmount = roundTo2(amounts[index] || 0);
+    const percentage = amount > 0 ? roundTo2((memberAmount / amount) * 100) : 0;
+
+    return {
+      userId: participant.userId,
+      userName: participant.userName,
+      amount: memberAmount,
+      percentage,
+    };
+  });
 };
 
-/**
- * Validate split before submitting
- */
 export const validateSplit = (
   splitType: SplitType,
   amount: number,
@@ -140,46 +190,42 @@ export const validateSplit = (
     return { valid: false, error: 'Amount must be greater than 0' };
   }
 
-  if (participants.length === 0) {
+  if (!participants.length) {
     return { valid: false, error: 'At least one participant is required' };
   }
 
-  switch (splitType) {
-    case 'equally':
-      return { valid: true };
-
-    case 'percentage': {
-      const total = participants.reduce((sum, p) => sum + (p.value || 0), 0);
-      if (Math.abs(total - 100) > 0.01) {
-        return { valid: false, error: `Percentages must sum to 100% (currently ${total.toFixed(1)}%)` };
-      }
-      return { valid: true };
+  try {
+    switch (splitType) {
+      case 'equally':
+        calculateEqualSplit(amount, participants.length);
+        return { valid: true };
+      case 'percentage':
+        calculatePercentageSplit(
+          amount,
+          participants.map((p) => Number(p.value || 0))
+        );
+        return { valid: true };
+      case 'unequally':
+        calculateExactSplit(
+          participants,
+          participants.map((p) => Number(p.value || 0)),
+          amount
+        );
+        return { valid: true };
+      case 'shares':
+        calculateSharesSplit(
+          amount,
+          participants.map((p) => Number(p.value || 0))
+        );
+        return { valid: true };
+      default:
+        return { valid: false, error: 'Invalid split type' };
     }
-
-    case 'unequally': {
-      const total = participants.reduce((sum, p) => sum + (p.value || 0), 0);
-      if (Math.abs(total - amount) > 0.01) {
-        return { valid: false, error: `Amounts must sum to ₹${amount} (currently ₹${total.toFixed(2)})` };
-      }
-      return { valid: true };
-    }
-
-    case 'shares': {
-      const hasShares = participants.some((p) => (p.value || 0) > 0);
-      if (!hasShares) {
-        return { valid: false, error: 'At least one participant must have shares' };
-      }
-      return { valid: true };
-    }
-
-    default:
-      return { valid: false, error: 'Invalid split type' };
+  } catch (error: any) {
+    return { valid: false, error: error?.message || 'Invalid split values' };
   }
 };
 
-/**
- * Format amount with commas and 2 decimal places
- */
 export const formatAmount = (amount: number): string => {
   return amount.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
@@ -187,9 +233,6 @@ export const formatAmount = (amount: number): string => {
   });
 };
 
-/**
- * Get user's share info (useful for "You paid X, you get Y back" messages)
- */
 export const getUserShareInfo = (
   currentUserId: string,
   paidByUserId: string,
