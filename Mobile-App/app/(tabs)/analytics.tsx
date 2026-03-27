@@ -1,4 +1,5 @@
 import { StyleSheet, View, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -7,10 +8,10 @@ export default function AnalyticsScreen() {
     const colors = Colors[colorScheme];
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
             <Text style={[styles.title, { color: colors.text }]}>Analytics Screen</Text>
             <Text style={[styles.subtitle, { color: colors.icon }]}>View your spending patterns</Text>
-        </View>
+        </SafeAreaView>
     );
 }
 

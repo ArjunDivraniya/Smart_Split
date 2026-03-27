@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Linking,
@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import SettlementHeader from '@/src/components/settlements/SettlementHeader';
 import StatusFilterBar from '@/src/components/settlements/StatusFilterBar';
 import ViewToggle from '@/src/components/settlements/ViewToggle';
@@ -31,8 +32,45 @@ const FALLBACK_SUMMARY = {
 
 const isPersistedSettlementId = (id?: string): boolean => /^[a-f\d]{24}$/i.test(String(id || ''));
 
+const buildSettlementDeepLink = (
+  settlement: Settlement,
+  recipientDirection: 'you_owe' | 'they_owe'
+): string => {
+  const queryParams: Record<string, string> = {
+    friendId: settlement.friend.id,
+    direction: recipientDirection,
+    action: recipientDirection === 'you_owe' ? 'pay' : 'view',
+  };
+
+  if (settlement.group?.id) {
+    queryParams.groupId = settlement.group.id;
+  }
+
+  return ExpoLinking.createURL('/settlements', { queryParams });
+};
+
+const appendDeepLinkToWhatsAppUrl = (whatsappUrl: string, deepLink: string): string => {
+  try {
+    const parsed = new URL(whatsappUrl);
+    const existingText = parsed.searchParams.get('text') || '';
+    const withLink = existingText
+      ? `${existingText}\n\nOpen in SmartSplit: ${deepLink}`
+      : `Open in SmartSplit: ${deepLink}`;
+    parsed.searchParams.set('text', withLink);
+    return parsed.toString();
+  } catch {
+    return whatsappUrl;
+  }
+};
+
 export default function SettlementsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    friendId?: string;
+    direction?: string;
+    action?: string;
+    filter?: string;
+  }>();
   const { user } = useAuth();
 
   const {
@@ -55,7 +93,10 @@ export default function SettlementsScreen() {
 
   const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
   const [partialVisible, setPartialVisible] = useState(false);
+  const hasHandledDeepLinkRef = useRef(false);
   const refreshSettlements = fetchSettlements;
+
+  const deepLinkFriendId = String(params.friendId || '').trim();
 
   const currentUserId = String(
     (user as any)?.id || (user as any)?._id || (user as any)?.userId || ''
@@ -75,6 +116,58 @@ export default function SettlementsScreen() {
       done,
     };
   }, [settlements]);
+
+  useEffect(() => {
+    const directionParam = String(params.direction || '').trim();
+    if (directionParam === 'you_owe' || directionParam === 'they_owe' || directionParam === 'all') {
+      setActiveDirection(directionParam as 'all' | 'you_owe' | 'they_owe');
+    }
+
+    const filterParam = String(params.filter || '').trim();
+    if (filterParam === 'all' || filterParam === 'pending' || filterParam === 'overdue' || filterParam === 'partial') {
+      setActiveFilter(filterParam as any);
+    }
+  }, [params.direction, params.filter, setActiveDirection, setActiveFilter]);
+
+  const linkFilteredSettlements = useMemo(() => {
+    if (!deepLinkFriendId) {
+      return filteredSettlements;
+    }
+
+    return filteredSettlements.filter((item) => item.friend.id === deepLinkFriendId);
+  }, [deepLinkFriendId, filteredSettlements]);
+
+  const linkGroupedByGroup = useMemo(() => {
+    return linkFilteredSettlements.reduce<Record<string, Settlement[]>>((acc, settlement) => {
+      const key = settlement.group?.id || 'direct';
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(settlement);
+      return acc;
+    }, {});
+  }, [linkFilteredSettlements]);
+
+  useEffect(() => {
+    if (hasHandledDeepLinkRef.current || loading) {
+      return;
+    }
+
+    const action = String(params.action || '').trim();
+    if (action !== 'pay') {
+      hasHandledDeepLinkRef.current = true;
+      return;
+    }
+
+    const payable = linkFilteredSettlements.find(
+      (item) => item.direction === 'you_owe' && item.status !== 'completed'
+    );
+
+    hasHandledDeepLinkRef.current = true;
+    if (payable) {
+      handlePayNow(payable);
+    }
+  }, [loading, params.action, linkFilteredSettlements]);
 
   const handleSettleAll = () => {
     router.push('/(tabs)/friends' as any);
@@ -115,10 +208,12 @@ export default function SettlementsScreen() {
   const handleShare = async (settlement: Settlement) => {
     const amount = Number(settlement.remaining || settlement.amount || 0).toFixed(2);
     const groupName = settlement.group?.name || 'Personal';
+    const recipientDirection = settlement.direction === 'you_owe' ? 'they_owe' : 'you_owe';
+    const deepLink = buildSettlementDeepLink(settlement, recipientDirection);
     const message =
       settlement.direction === 'you_owe'
-        ? `Hi ${settlement.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.`
-        : `Hi ${settlement.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.`;
+        ? `Hi ${settlement.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.\n\nOpen in SmartSplit: ${deepLink}`
+        : `Hi ${settlement.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.\n\nOpen in SmartSplit: ${deepLink}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     const canOpen = await Linking.canOpenURL(whatsappUrl);
@@ -141,9 +236,13 @@ export default function SettlementsScreen() {
       return;
     }
 
-    const canOpen = await Linking.canOpenURL(reminder.whatsappUrl);
+    const recipientDirection = settlement.direction === 'you_owe' ? 'they_owe' : 'you_owe';
+    const deepLink = buildSettlementDeepLink(settlement, recipientDirection);
+    const whatsappWithLink = appendDeepLinkToWhatsAppUrl(reminder.whatsappUrl, deepLink);
+
+    const canOpen = await Linking.canOpenURL(whatsappWithLink);
     if (canOpen) {
-      await Linking.openURL(reminder.whatsappUrl);
+      await Linking.openURL(whatsappWithLink);
       return;
     }
 
@@ -252,7 +351,7 @@ export default function SettlementsScreen() {
         <View style={styles.viewWrap}>
           {activeView === 'combined' ? (
             <CombinedView
-              settlements={filteredSettlements}
+              settlements={linkFilteredSettlements}
               activeFilter={activeFilter}
               currentUserId={currentUserId}
               refreshing={loading}
@@ -265,7 +364,7 @@ export default function SettlementsScreen() {
             />
           ) : (
             <ByGroupView
-              groupedSettlements={groupedByGroup}
+              groupedSettlements={linkGroupedByGroup}
               currentUserId={currentUserId}
               refreshing={loading}
               onRefresh={refreshSettlements}
