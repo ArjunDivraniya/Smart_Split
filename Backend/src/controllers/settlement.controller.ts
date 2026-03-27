@@ -494,7 +494,10 @@ export const getPendingSettlements = async (req: AuthRequest, res: Response) => 
       const completedSettlements = await Settlement.find({
         group: groupId,
         status: 'completed',
-        $or: [{ fromUser: userId }, { toUser: userId }],
+        $and: [
+          { $or: [{ fromUser: userId }, { toUser: userId }] },
+          { $or: [{ type: { $ne: 'partial' } }, { remaining: { $lte: MIN_BALANCE_THRESHOLD } }] },
+        ],
       })
         .select('_id fromUser toUser amount createdAt')
         .lean();
@@ -607,6 +610,7 @@ export const getPendingSettlements = async (req: AuthRequest, res: Response) => 
       const completedQuery: Record<string, any> = {
         status: 'completed',
         $or: [{ fromUser: userId }, { toUser: userId }],
+        $and: [{ $or: [{ type: { $ne: 'partial' } }, { remaining: { $lte: MIN_BALANCE_THRESHOLD } }] }],
       };
 
       if (groupIdFilter) {

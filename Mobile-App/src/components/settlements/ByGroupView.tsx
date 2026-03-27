@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SettlementCard from '@/src/components/settlements/SettlementCard';
 import { Settlement } from '@/src/types/settlement.types';
 
 interface ByGroupViewProps {
   groupedSettlements: Record<string, Settlement[]>;
   currentUserId: string;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   onPayNow: (settlement: Settlement) => void;
   onPayPartial: (settlement: Settlement) => void;
+  onShare: (settlement: Settlement) => void;
   onRemind: (settlement: Settlement) => void;
   onMarkReceived: (settlement: Settlement) => void;
 }
@@ -24,8 +27,11 @@ const formatAmount = (value: number): string => `Rs ${Math.abs(value).toFixed(2)
 export function ByGroupView({
   groupedSettlements,
   currentUserId,
+  refreshing = false,
+  onRefresh,
   onPayNow,
   onPayPartial,
+  onShare,
   onRemind,
   onMarkReceived,
 }: ByGroupViewProps) {
@@ -94,6 +100,7 @@ export function ByGroupView({
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor='#7C5CFC' />}
       showsVerticalScrollIndicator={false}
     >
       {groups.map((group) => {
@@ -138,6 +145,7 @@ export function ByGroupView({
                       expanded={expandedId === settlement.id}
                       onPayNow={onPayNow}
                       onPayPartial={onPayPartial}
+                      onShare={onShare}
                       onRemind={onRemind}
                       onMarkReceived={onMarkReceived}
                       onExpand={() => setExpandedId(expandedId === settlement.id ? null : settlement.id)}

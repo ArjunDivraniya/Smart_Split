@@ -9,8 +9,11 @@ interface CombinedViewProps {
   settlements: Settlement[];
   currentUserId: string;
   activeFilter?: FilterValue;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   onPayNow: (settlement: Settlement) => void;
   onPayPartial: (settlement: Settlement) => void;
+  onShare: (settlement: Settlement) => void;
   onRemind: (settlement: Settlement) => void;
   onMarkReceived: (settlement: Settlement) => void;
 }
@@ -112,8 +115,11 @@ export function CombinedView({
   settlements,
   currentUserId,
   activeFilter = 'all',
+  refreshing = false,
+  onRefresh,
   onPayNow,
   onPayPartial,
+  onShare,
   onRemind,
   onMarkReceived,
 }: CombinedViewProps) {
@@ -172,6 +178,7 @@ export function CombinedView({
               expanded={expandedId === item.id}
               onPayNow={onPayNow}
               onPayPartial={onPayPartial}
+              onShare={onShare}
               onRemind={onRemind}
               onMarkReceived={onMarkReceived}
               onExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
@@ -186,6 +193,8 @@ export function CombinedView({
           <Text style={styles.emptySubtitle}>{emptyContent.subtitle}</Text>
         </View>
       }
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       showsVerticalScrollIndicator={false}
     />
   );

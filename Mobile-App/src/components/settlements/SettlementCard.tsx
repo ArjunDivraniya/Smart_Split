@@ -34,6 +34,7 @@ interface SettlementCardProps {
   expanded?: boolean;
   onPayNow: (settlement: Settlement) => void;
   onPayPartial: (settlement: Settlement) => void;
+  onShare: (settlement: Settlement) => void;
   onRemind: (settlement: Settlement) => void;
   onMarkReceived: (settlement: Settlement) => void;
   onExpand: (settlement: Settlement) => void;
@@ -56,12 +57,15 @@ const formatExactDate = (value: string): string => {
   });
 };
 
+const isPersistedSettlementId = (id?: string): boolean => /^[a-f\d]{24}$/i.test(String(id || ''));
+
 export function SettlementCard({
   settlement,
   currentUserId,
   expanded = false,
   onPayNow,
   onPayPartial,
+  onShare,
   onRemind,
   onMarkReceived,
   onExpand,
@@ -96,7 +100,8 @@ export function SettlementCard({
 
   const groupLabel = settlement.group?.name || 'Personal';
   const groupEmoji = settlement.group?.emoji || '👤';
-  const canShowActions = Boolean(currentUserId);
+  const canShowActions = settlement.status !== 'completed';
+  const hasPersistedRecord = isPersistedSettlementId(settlement.id);
 
   return (
     <View style={[styles.card, isOverdue ? styles.cardOverdue : null]}>
@@ -169,6 +174,14 @@ export function SettlementCard({
                 >
                   <Text style={styles.btnGhostText}>Pay Partial</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.btn, styles.btnGhost]}
+                  onPress={() => onShare(settlement)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.btnGhostText}>Share</Text>
+                </TouchableOpacity>
               </>
             ) : (
               <>
@@ -187,13 +200,15 @@ export function SettlementCard({
                   </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.btn, styles.btnMint]}
-                  onPress={() => onMarkReceived(settlement)}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.btnMintText}>Mark Received</Text>
-                </TouchableOpacity>
+                {hasPersistedRecord ? (
+                  <TouchableOpacity
+                    style={[styles.btn, styles.btnMint]}
+                    onPress={() => onMarkReceived(settlement)}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={styles.btnMintText}>Mark Received</Text>
+                  </TouchableOpacity>
+                ) : null}
               </>
             )}
           </View>

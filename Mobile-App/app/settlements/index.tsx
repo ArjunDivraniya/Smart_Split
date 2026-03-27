@@ -2,8 +2,6 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Linking,
-  RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -31,6 +29,8 @@ const FALLBACK_SUMMARY = {
   partialCount: 0,
 };
 
+const isPersistedSettlementId = (id?: string): boolean => /^[a-f\d]{24}$/i.test(String(id || ''));
+
 export default function SettlementsScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -57,7 +57,9 @@ export default function SettlementsScreen() {
   const [partialVisible, setPartialVisible] = useState(false);
   const refreshSettlements = fetchSettlements;
 
-  const currentUserId = String((user as any)?.id || (user as any)?._id || '');
+  const currentUserId = String(
+    (user as any)?.id || (user as any)?._id || (user as any)?.userId || ''
+  );
 
   const counts = useMemo(() => {
     const pending = settlements.filter((item) => item.status === 'pending').length;
@@ -94,11 +96,46 @@ export default function SettlementsScreen() {
   };
 
   const handlePayPartial = (settlement: Settlement) => {
+    if (!isPersistedSettlementId(settlement.id)) {
+      Alert.alert(
+        'Record payment',
+        'This item is from an outstanding balance. Record a payment first.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue', onPress: () => handlePayNow(settlement) },
+        ]
+      );
+      return;
+    }
+
     setSelectedSettlement(settlement);
     setPartialVisible(true);
   };
 
+  const handleShare = async (settlement: Settlement) => {
+    const amount = Number(settlement.remaining || settlement.amount || 0).toFixed(2);
+    const groupName = settlement.group?.name || 'Personal';
+    const message =
+      settlement.direction === 'you_owe'
+        ? `Hi ${settlement.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.`
+        : `Hi ${settlement.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+    const canOpen = await Linking.canOpenURL(whatsappUrl);
+    if (!canOpen) {
+      Alert.alert('Unable to open WhatsApp', 'Please check if WhatsApp is installed.');
+      return;
+    }
+
+    await Linking.openURL(whatsappUrl);
+  };
+
   const handleRemind = async (settlement: Settlement) => {
+    if (!isPersistedSettlementId(settlement.id)) {
+      await handleShare(settlement);
+      return;
+    }
+
     const reminder = await remindFriend(settlement.id);
     if (!reminder?.whatsappUrl) {
       return;
@@ -114,6 +151,14 @@ export default function SettlementsScreen() {
   };
 
   const handleMarkReceived = (settlement: Settlement) => {
+    if (!isPersistedSettlementId(settlement.id)) {
+      Alert.alert(
+        'Cannot mark received yet',
+        'This item does not have a payment record yet. Ask your friend to record payment first.'
+      );
+      return;
+    }
+
     Alert.alert(
       'Confirm Received',
       `Mark ${settlement.friend.name}'s payment as received?`,
@@ -144,7 +189,12 @@ export default function SettlementsScreen() {
       return;
     }
 
-    await settlePartial(selectedSettlement.id, data);
+    const updated = await settlePartial(selectedSettlement.id, data);
+    if (!updated) {
+      Alert.alert('Update failed', 'Partial payment could not be saved. Please try again.');
+      return;
+    }
+
     handleClosePartial();
   };
 
@@ -183,17 +233,7 @@ export default function SettlementsScreen() {
         <View style={styles.backBtnPlaceholder} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.contentContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={refreshSettlements}
-            tintColor='#7C5CFC'
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.contentContainer}>
         <SettlementHeader summary={summary || FALLBACK_SUMMARY} onSettleAll={handleSettleAll} />
 
         <StatusFilterBar
@@ -215,8 +255,11 @@ export default function SettlementsScreen() {
               settlements={filteredSettlements}
               activeFilter={activeFilter}
               currentUserId={currentUserId}
+              refreshing={loading}
+              onRefresh={refreshSettlements}
               onPayNow={handlePayNow}
               onPayPartial={handlePayPartial}
+              onShare={handleShare}
               onRemind={handleRemind}
               onMarkReceived={handleMarkReceived}
             />
@@ -224,14 +267,17 @@ export default function SettlementsScreen() {
             <ByGroupView
               groupedSettlements={groupedByGroup}
               currentUserId={currentUserId}
+              refreshing={loading}
+              onRefresh={refreshSettlements}
               onPayNow={handlePayNow}
               onPayPartial={handlePayPartial}
+              onShare={handleShare}
               onRemind={handleRemind}
               onMarkReceived={handleMarkReceived}
             />
           )}
         </View>
-      </ScrollView>
+      </View>
 
       <PartialPayModal
         visible={partialVisible}
@@ -275,11 +321,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   contentContainer: {
+    flex: 1,
     padding: 16,
     gap: 14,
-    paddingBottom: 120,
   },
   viewWrap: {
+    flex: 1,
     minHeight: 320,
   },
   skeletonWrap: {
