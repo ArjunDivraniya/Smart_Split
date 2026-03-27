@@ -136,11 +136,18 @@ export default function ProfileScreen() {
       title: 'Account & Financial Settings',
       items: [
         {
+          id: 'personal-expenses',
+          title: 'Personal Expenses',
+          icon: 'receipt',
+          iconColor: COLORS.amber,
+          route: '/personal',
+        },
+        {
           id: 'budget',
           title: 'Budget & Goals',
           icon: 'wallet',
           iconColor: COLORS.mint,
-          route: '/profile/budget',
+          route: '/budget',
         },
         {
           id: 'payment',
@@ -304,7 +311,7 @@ export default function ProfileScreen() {
             <Text style={styles.headerTitle}>Profile</Text>
             <TouchableOpacity
               style={styles.editButton}
-              onPress={() => router.push('/profile/budget')}
+              onPress={() => router.push('/budget' as any)}
               activeOpacity={0.7}
             >
               <Ionicons name="create-outline" size={20} color={COLORS.violetLight} />

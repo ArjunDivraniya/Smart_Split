@@ -18,10 +18,28 @@ export default function GroupLayout() {
         }}
       />
       <Stack.Screen
+        name="add-expense"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="select-expense"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
         name="expense/[id]"
         options={{
           title: 'Expense Details',
           headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
         }}
       />
       <Stack.Screen

@@ -4,11 +4,13 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useRouter } from 'expo-router';
 import { AddExpenseModal } from './AddExpenseModal';
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const colorScheme = useColorScheme() ?? 'dark';
     const colors = Colors[colorScheme];
+    const router = useRouter();
     const [modalVisible, setModalVisible] = useState(false);
 
     const openAddSheet = () => {
@@ -17,12 +19,12 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
     const handleAddPersonal = () => {
         setModalVisible(false);
-        navigation.navigate('add');
+        router.push('/personal/add');
     };
 
     const handleAddGroup = () => {
         setModalVisible(false);
-        navigation.navigate('groups');
+        router.push('/(tabs)/groups?mode=add-expense');
     };
 
     return (

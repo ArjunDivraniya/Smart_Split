@@ -15,6 +15,8 @@ import analyticsRoutes from './routes/analytics.routes';
 import profileRoutes from './routes/profile.routes';
 import groupRoutes from './routes/group.routes';
 import settlementRoutes from './routes/settlement.routes';
+import personalExpenseRoutes from './routes/personalExpense.routes';
+import friendsRoutes from './routes/friends.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -88,6 +90,9 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/settlements', settlementRoutes);
+app.use('/api/personal-expenses', personalExpenseRoutes);
+app.use('/api/friends', friendsRoutes);
+app.use('/api/budgets', require('./routes/budgets').default);
 
 // 404 Handler
 app.use((req, res) => {

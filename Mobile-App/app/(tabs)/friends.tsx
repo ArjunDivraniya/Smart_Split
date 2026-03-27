@@ -1,478 +1,393 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-    StyleSheet,
-    View,
-    Text,
-    ScrollView,
-    ActivityIndicator,
-    RefreshControl,
-    TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { apiService } from '@/src/services/api';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useSettlements } from '@/src/hooks/useSettlements';
-import { useAuth } from '@/src/context';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 
-interface Settlement {
-    id: string;
-    fromUserId?: string;
-    toUserId?: string;
-    fromUserName: string;
-    toUserName: string;
-    amount: number;
-    note?: string;
-    createdAt?: string;
-}
+import { getFriendBalances } from '@/src/services/friends.service';
+import { getPendingSettlements } from '@/src/services/settlements.service';
+import { COLORS as ThemeColors } from '@/src/constants/theme';
+import type { FriendBalanceItem } from '@/src/types/friends.types';
+import FriendCard from '@/src/components/friends/FriendCard';
 
-interface FriendCardSummary {
-    friendId: string;
-    friendName: string;
-    netBalance: number;
-    transactionCount: number;
+const COLORS = {
+  bg: '#0F0F1A',
+  card: '#14141F',
+  border: 'rgba(255,255,255,0.06)',
+  textPrimary: '#F0F0FF',
+  textSecondary: '#8888AA',
+  textMuted: '#55556A',
+  accent: ThemeColors.primary,
+  violetLight: '#9B7FFF',
+  mint: '#00E5B0',
+  coral: '#FF5F7E',
+};
+
+const currency = (value: number): string => `₹${Math.abs(Number(value || 0)).toLocaleString('en-IN')}`;
+
+interface CountRow {
+  pending: number;
+  overdue: number;
 }
 
 export default function FriendsScreen() {
-    const router = useRouter();
-    const colorScheme = useColorScheme() ?? 'dark';
-    const colors = Colors[colorScheme];
-    const insets = useSafeAreaInsets();
-    const { user } = useAuth();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
-    const { settlements: pendingSettlements, summary: pendingSummary } = useSettlements();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [friends, setFriends] = useState<FriendBalanceItem[]>([]);
+  const [countsByFriend, setCountsByFriend] = useState<Record<string, CountRow>>({});
 
-        const [settlements, setSettlements] = useState<Settlement[]>([]);
-        const [loading, setLoading] = useState(true);
-        const [refreshing, setRefreshing] = useState(false);
+  const loadBalances = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getFriendBalances();
+      setFriends(data);
 
-        const currentUserId = String((user as any)?.id || (user as any)?._id || '');
+      const apiHasCounts = data.some(
+        (item) => item.pendingCount !== undefined || item.overdueCount !== undefined
+      );
 
-        useEffect(() => {
-                fetchUserSettlements();
-        }, []);
+      if (apiHasCounts) {
+        const mapped = data.reduce<Record<string, CountRow>>((acc, item) => {
+          const key = String(item.friendId || '');
+          if (!key) return acc;
+          acc[key] = {
+            pending: Number(item.pendingCount || 0),
+            overdue: Number(item.overdueCount || 0),
+          };
+          return acc;
+        }, {});
+        setCountsByFriend(mapped);
+      } else {
+        const pendingResponse = await getPendingSettlements();
+        const settlements = Array.isArray(pendingResponse?.settlements) ? pendingResponse.settlements : [];
 
-        useFocusEffect(
-            useCallback(() => {
-                fetchUserSettlements();
-            }, [])
-        );
+        const mapped = settlements.reduce<Record<string, CountRow>>((acc, item: any) => {
+          const friendId = String(item?.friend?.id || '');
+          if (!friendId) {
+            return acc;
+          }
 
-        const fetchUserSettlements = async () => {
-            try {
-                setLoading(true);
-                const response = await apiService.settlements.getUserSettlements();
-                const data = response?.data?.data || response?.data || [];
-        
-                const normalizedSettlements = (Array.isArray(data) ? data : []).map((item: any, index: number) => ({
-                    id: item.id || item._id || `settlement-${index}`,
-                    fromUserId: String(item.fromUser?._id || item.fromUser?.id || item.fromUserId || ''),
-                    toUserId: String(item.toUser?._id || item.toUser?.id || item.toUserId || ''),
-                    fromUserName: item.fromUserName || item.fromUser?.name || 'Unknown',
-                    toUserName: item.toUserName || item.toUser?.name || 'Unknown',
-                    amount: Number(item.amount || 0),
-                    note: item.note || '',
-                    createdAt: item.createdAt,
-                }));
-        
-                setSettlements(normalizedSettlements);
-            } catch (error) {
-                console.error('Error fetching settlements:', error);
-                setSettlements([]);
-            } finally {
-                setLoading(false);
-                setRefreshing(false);
-            }
-        };
+          const prev = acc[friendId] || { pending: 0, overdue: 0 };
+          prev.pending += 1;
+          if (String(item?.status || '').toLowerCase() === 'overdue') {
+            prev.overdue += 1;
+          }
+          acc[friendId] = prev;
+          return acc;
+        }, {});
 
-        const onRefresh = () => {
-            setRefreshing(true);
-            fetchUserSettlements();
-        };
+        setCountsByFriend(mapped);
+      }
+    } catch (error) {
+      console.error('Failed to fetch friend balances:', error);
+      setFriends([]);
+      setCountsByFriend({});
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-        const friendCards: FriendCardSummary[] = React.useMemo(() => {
-            const map = new Map<string, FriendCardSummary>();
+  useFocusEffect(
+    useCallback(() => {
+      loadBalances();
+    }, [loadBalances])
+  );
 
-            settlements.forEach((item) => {
-                const fromId = String(item.fromUserId || '');
-                const toId = String(item.toUserId || '');
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadBalances();
+  }, [loadBalances]);
 
-                let friendId = '';
-                let friendName = '';
-                let delta = 0;
+  const summary = useMemo(() => {
+    let totalYouOwe = 0;
+    let totalYouGet = 0;
 
-                if (currentUserId && fromId === currentUserId) {
-                    friendId = toId || item.toUserName;
-                    friendName = item.toUserName;
-                    delta = -Number(item.amount || 0);
-                } else if (currentUserId && toId === currentUserId) {
-                    friendId = fromId || item.fromUserName;
-                    friendName = item.fromUserName;
-                    delta = Number(item.amount || 0);
-                } else {
-                    friendId = toId || item.toUserName;
-                    friendName = item.toUserName;
-                    delta = Number(item.amount || 0);
-                }
+    friends.forEach((item) => {
+      const value = Number(item.netBalance || 0);
+      if (value < 0) {
+        totalYouOwe += Math.abs(value);
+      } else {
+        totalYouGet += value;
+      }
+    });
 
-                const key = String(friendId || friendName || 'Unknown');
-                const existing = map.get(key);
-                if (!existing) {
-                    map.set(key, {
-                        friendId: key,
-                        friendName: friendName || 'Unknown',
-                        netBalance: delta,
-                        transactionCount: 1,
-                    });
-                    return;
-                }
+    return {
+      totalYouOwe,
+      totalYouGet,
+    };
+  }, [friends]);
 
-                existing.netBalance += delta;
-                existing.transactionCount += 1;
-            });
+  const handleOpenFriend = useCallback(
+    (friend: FriendBalanceItem) => {
+      router.push({
+        pathname: '/friends/[id]' as any,
+        params: {
+          id: friend.friendId,
+          name: friend.name,
+          netBalance: String(friend.netBalance || 0),
+        },
+      });
+    },
+    [router]
+  );
 
-            return Array.from(map.values()).sort((a, b) => Math.abs(b.netBalance) - Math.abs(a.netBalance));
-        }, [settlements, currentUserId]);
+  const handleQuickSettle = useCallback(
+    (friend: FriendBalanceItem) => {
+      const amount = Math.abs(Number(friend.netBalance || 0));
+      if (amount <= 0) {
+        return;
+      }
 
-        const pendingByFriend = React.useMemo(() => {
-            const map = new Map<string, { pending: number; overdue: number }>();
+      router.push({
+        pathname: '/friends/settle' as any,
+        params: {
+          friendId: friend.friendId,
+          friendName: friend.name,
+          amount: String(amount),
+        },
+      });
+    },
+    [router]
+  );
 
-            pendingSettlements.forEach((item) => {
-                const friendId = String(item.friend?.id || '');
-                if (!friendId) {
-                    return;
-                }
-
-                const prev = map.get(friendId) || { pending: 0, overdue: 0 };
-                prev.pending += 1;
-                if (item.status === 'overdue') {
-                    prev.overdue += 1;
-                }
-                map.set(friendId, prev);
-            });
-
-            return map;
-        }, [pendingSettlements]);
+  const renderRightActions = (friend: FriendBalanceItem) => {
+    if (friend.netBalance >= 0) {
+      return (
+        <View style={styles.swipeWrap}>
+          <TouchableOpacity style={[styles.swipeAction, styles.swipeView]} onPress={() => handleOpenFriend(friend)}>
+            <Ionicons name="eye-outline" size={18} color="#101020" />
+            <Text style={styles.swipeTextDark}>View</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
 
     return (
-                <SafeAreaView
-                    style={[styles.container, { backgroundColor: colors.background }]}
-                    edges={['top', 'left', 'right', 'bottom']}
-                >
-                    <View style={[styles.header, { borderBottomColor: colors.elevated }]}>
-                        <View>
-                            <Text style={[styles.headerTitle, { color: colors.text }]}>Friends</Text>
-                            <Text style={[styles.headerSubtitle, { color: colors.icon }]}>Manage balances and settlements</Text>
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.settlementsPill}
-                            onPress={() => router.push('/settlements' as any)}
-                            activeOpacity={0.9}
-                        >
-                            <Text style={styles.settlementsPillText}>Settlements</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {loading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color="#6366f1" />
-                        </View>
-                    ) : friendCards.length === 0 ? (
-                        <ScrollView
-                            style={styles.scrollView}
-                            contentContainerStyle={[
-                                styles.emptyContainer,
-                                { paddingBottom: 110 + insets.bottom },
-                            ]}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={onRefresh}
-                                    tintColor="#6366f1"
-                                />
-                            }
-                        >
-                            <Ionicons name="swap-horizontal-outline" size={64} color={colors.icon} />
-                            <Text style={[styles.emptyTitle, { color: colors.text }]}>No friends to show</Text>
-                            <Text style={[styles.emptySubtitle, { color: colors.icon }]}>Settlement activity will appear here</Text>
-                        </ScrollView>
-                    ) : (
-                        <ScrollView
-                            style={styles.scrollView}
-                            contentContainerStyle={[
-                                styles.listContent,
-                                { paddingBottom: 24 + insets.bottom },
-                            ]}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={onRefresh}
-                                    tintColor="#6366f1"
-                                />
-                            }
-                        >
-                            {friendCards.map((friend) => {
-                                const badge = pendingByFriend.get(friend.friendId) || { pending: 0, overdue: 0 };
-                                const amountColor = friend.netBalance >= 0 ? '#22c55e' : '#ff5f7e';
-
-                                return (
-                                <TouchableOpacity
-                                    key={friend.friendId}
-                                    style={[
-                                        styles.settlementCard,
-                                        {
-                                            backgroundColor: colors.card,
-                                            borderColor: colors.elevated,
-                                        },
-                                    ]}
-                                    onPress={() =>
-                                        router.push({
-                                            pathname: '/friends/[id]' as any,
-                                            params: { id: friend.friendId, name: friend.friendName },
-                                        })
-                                    }
-                                    activeOpacity={0.88}
-                                >
-                                    <View style={styles.settlementLeft}>
-                                        <View style={styles.avatarRow}>
-                                            <View style={[styles.avatar, { backgroundColor: '#6366f1' }]}>
-                                                <Text style={styles.avatarText}>
-                                                    {friend.friendName.charAt(0).toUpperCase()}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text
-                                                style={[styles.settlementNames, { color: colors.text }]}
-                                                numberOfLines={1}
-                                            >
-                                                {friend.friendName}
-                                            </Text>
-                                            <Text style={[styles.settlementDate, { color: colors.icon }]}> 
-                                                {friend.transactionCount} transaction{friend.transactionCount !== 1 ? 's' : ''}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    <View style={styles.settlementRight}>
-                                        <Text style={[styles.settlementAmount, { color: amountColor }]}>
-                                            ₹{Math.abs(friend.netBalance).toFixed(2)}
-                                        </Text>
-
-                                        <View style={styles.badgesRow}>
-                                            <Text style={[styles.pendingBadgeText, { color: colors.icon }]}>
-                                                {badge.pending} pending
-                                            </Text>
-                                            {badge.overdue > 0 ? (
-                                                <Text style={styles.overdueBadgeText}>⚠️ {badge.overdue} overdue</Text>
-                                            ) : null}
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-                                );
-                            })}
-
-                            <View
-                                style={[
-                                    styles.summaryStrip,
-                                    {
-                                        backgroundColor: colors.card,
-                                        borderColor: colors.elevated,
-                                    },
-                                ]}
-                            >
-                                <Text style={[styles.summaryLabel, { color: colors.icon }]}>📊 Across all friends</Text>
-
-                                <View style={styles.summaryValuesRow}>
-                                    <Text style={styles.summaryOweText}>
-                                        You owe ₹{Number(pendingSummary?.totalYouOwe || 0).toFixed(2)}
-                                    </Text>
-                                    <Text style={styles.summaryGetText}>
-                                        You get ₹{Number(pendingSummary?.totalYouGet || 0).toFixed(2)}
-                                    </Text>
-                                </View>
-
-                                <TouchableOpacity onPress={() => router.push('/settlements' as any)} activeOpacity={0.9}>
-                                    <Text style={styles.summaryLinkText}>View All Settlements →</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
-                    )}
-                </SafeAreaView>
+      <View style={styles.swipeWrap}>
+        <TouchableOpacity style={[styles.swipeAction, styles.swipeSettle]} onPress={() => handleQuickSettle(friend)}>
+          <Ionicons name="cash-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.swipeTextLight}>Settle</Text>
+        </TouchableOpacity>
+      </View>
     );
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Friends</Text>
+        <TouchableOpacity
+          style={styles.settlementsPill}
+          onPress={() => router.push('/settlements' as any)}
+          activeOpacity={0.86}
+        >
+          <Text style={styles.settlementsPillText}>Settlements →</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 22 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />}
+        >
+          {friends.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="people-outline" size={34} color={COLORS.textSecondary} />
+              <Text style={styles.emptyTitle}>No friend balances yet</Text>
+              <Text style={styles.emptySub}>Balances will appear once you split expenses in groups.</Text>
+            </View>
+          ) : (
+            friends.map((friend) => {
+              const friendCounts = countsByFriend[String(friend.friendId || '')] || { pending: 0, overdue: 0 };
+              return (
+                <Swipeable
+                  key={friend.friendId}
+                  renderRightActions={() => renderRightActions(friend)}
+                  overshootRight={false}
+                  rightThreshold={32}
+                >
+                  <FriendCard
+                    friend={friend}
+                    pendingCount={friendCounts.pending}
+                    overdueCount={friendCounts.overdue}
+                    onPress={() => handleOpenFriend(friend)}
+                  />
+                </Swipeable>
+              );
+            })
+          )}
+
+          <View style={styles.bottomSummaryCard}>
+            <Text style={styles.bottomSummaryLabel}>📊 Across all friends</Text>
+            <View style={styles.bottomSummaryValuesRow}>
+              <Text style={styles.bottomSummaryOwe}>You owe {currency(summary.totalYouOwe)}</Text>
+              <Text style={styles.bottomSummaryGet}>You get {currency(summary.totalYouGet)}</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/settlements' as any)} activeOpacity={0.86}>
+              <Text style={styles.bottomSummaryLink}>View All Settlements →</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-        header: {
-            paddingHorizontal: 16,
-            paddingVertical: 16,
-            borderBottomWidth: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-        },
-        headerTitle: {
-            fontSize: 28,
-            fontWeight: '800',
-            fontFamily: 'Syne',
-            marginBottom: 4,
-        },
-        headerSubtitle: {
-            fontSize: 14,
-            fontWeight: '500',
-        },
-        settlementsPill: {
-            borderRadius: 999,
-            paddingHorizontal: 12,
-            paddingVertical: 7,
-            backgroundColor: 'rgba(124,92,252,0.14)',
-        },
-        settlementsPillText: {
-            color: '#9B7FFF',
-            fontSize: 12,
-            fontFamily: 'DMSans_700Bold',
-        },
-        scrollView: {
-            flex: 1,
-        },
-        listContent: {
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            gap: 12,
-        },
-        loadingContainer: {
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-        },
-        emptyContainer: {
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: 32,
-        },
-    title: {
-        fontSize: 24,
-        fontWeight: '800',
-        fontFamily: 'Syne',
-    },
-        emptyTitle: {
-            fontSize: 20,
-            fontWeight: '700',
-            marginTop: 16,
-        },
-    subtitle: {
-        fontSize: 16,
-        marginTop: 8,
-        },
-        emptySubtitle: {
-            fontSize: 14,
-            marginTop: 8,
-            textAlign: 'center',
-        },
-        settlementCard: {
-            flexDirection: 'row',
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-        },
-        settlementLeft: {
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-        },
-        avatarRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-        },
-        avatar: {
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            alignItems: 'center',
-            justifyContent: 'center',
-        },
-        avatarText: {
-            fontSize: 11,
-            fontWeight: '700',
-            color: '#ffffff',
-        },
-        settlementNames: {
-            fontSize: 14,
-            fontWeight: '600',
-            marginBottom: 2,
-        },
-        settlementNote: {
-            fontSize: 12,
-            marginBottom: 2,
-        },
-        settlementDate: {
-            fontSize: 11,
-        },
-        settlementRight: {
-            alignItems: 'flex-end',
-            marginLeft: 8,
-        },
-        settlementAmount: {
-            fontSize: 16,
-            fontWeight: '700',
-        },
-        badgesRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            marginTop: 4,
-        },
-        pendingBadgeText: {
-            fontSize: 11,
-            fontFamily: 'DMSans_500Medium',
-        },
-        overdueBadgeText: {
-            color: '#FF5F7E',
-            fontSize: 11,
-            fontFamily: 'DMSans_700Bold',
-        },
-        summaryStrip: {
-            marginTop: 6,
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-        },
-        summaryLabel: {
-            fontSize: 12,
-            fontFamily: 'DMSans_600SemiBold',
-            marginBottom: 8,
-        },
-        summaryValuesRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: 8,
-            gap: 12,
-        },
-        summaryOweText: {
-            color: '#FF5F7E',
-            fontSize: 13,
-            fontFamily: 'Syne_700Bold',
-            flex: 1,
-        },
-        summaryGetText: {
-            color: '#00E5B0',
-            fontSize: 13,
-            fontFamily: 'Syne_700Bold',
-            textAlign: 'right',
-            flex: 1,
-        },
-        summaryLinkText: {
-            color: '#9B7FFF',
-            fontSize: 12,
-            fontFamily: 'DMSans_700Bold',
-    },
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 28,
+    fontFamily: 'Syne_700Bold',
+  },
+  settlementsPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(124,92,252,0.3)',
+    backgroundColor: 'rgba(124,92,252,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  settlementsPillText: {
+    color: '#9B7FFF',
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+  },
+  loaderWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    gap: 12,
+  },
+  emptyCard: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    marginTop: 10,
+    color: COLORS.textPrimary,
+    fontSize: 16,
+    fontFamily: 'DMSans_700Bold',
+  },
+  emptySub: {
+    marginTop: 4,
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    textAlign: 'center',
+    fontFamily: 'DMSans_500Medium',
+  },
+  bottomSummaryCard: {
+    backgroundColor: '#14141F',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  bottomSummaryLabel: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontFamily: 'DMSans_500Medium',
+    marginBottom: 8,
+  },
+  bottomSummaryValuesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 8,
+  },
+  bottomSummaryOwe: {
+    color: COLORS.coral,
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    flex: 1,
+  },
+  bottomSummaryGet: {
+    color: COLORS.mint,
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    flex: 1,
+    textAlign: 'right',
+  },
+  bottomSummaryLink: {
+    color: COLORS.violetLight,
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+  },
+  swipeWrap: {
+    justifyContent: 'center',
+    marginLeft: 10,
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  swipeAction: {
+    width: 88,
+    height: 62,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  swipeSettle: {
+    backgroundColor: 'rgba(255,95,126,0.9)',
+    borderColor: 'rgba(255,95,126,1)',
+  },
+  swipeView: {
+    backgroundColor: 'rgba(0,229,176,0.9)',
+    borderColor: 'rgba(0,229,176,1)',
+  },
+  swipeTextLight: {
+    marginTop: 4,
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+  },
+  swipeTextDark: {
+    marginTop: 4,
+    color: '#101020',
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+  },
 });

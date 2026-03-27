@@ -3,7 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useMemo, useState, useCallback } from 'react';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GroupCard } from '../../src/components/groups/GroupCard';
 import { Group, GroupType } from '@/src/types/group.types';
@@ -41,7 +41,9 @@ export default function GroupsScreen() {
     const colorScheme = useColorScheme() ?? 'dark';
     const colors = Colors[colorScheme];
     const router = useRouter();
+    const { mode } = useLocalSearchParams<{ mode?: string }>();
     const insets = useSafeAreaInsets();
+    const isExpensePickerMode = mode === 'add-expense';
 
     const { groups, loading, error, refreshGroups, deleteGroup } = useGroups();
     const [selectedFilter, setSelectedFilter] = useState<GroupFilter>('all');
@@ -94,6 +96,12 @@ export default function GroupsScreen() {
         if (!groupId) {
             return;
         }
+
+        if (isExpensePickerMode) {
+            router.push(`/group/add-expense?id=${encodeURIComponent(String(groupId))}` as any);
+            return;
+        }
+
         router.push(`/group/${groupId}` as any);
     };
 
@@ -171,9 +179,13 @@ export default function GroupsScreen() {
         <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={[styles.header, { borderBottomColor: colors.elevated }]}> 
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Groups</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>
+                        {isExpensePickerMode ? 'Select Group' : 'Groups'}
+                    </Text>
                     <Text style={[styles.headerSubtitle, { color: colors.icon }]}>
-                        {filteredGroups.length} {filteredGroups.length === 1 ? 'group' : 'groups'}
+                        {isExpensePickerMode
+                            ? 'Choose a group to add expense'
+                            : `${filteredGroups.length} ${filteredGroups.length === 1 ? 'group' : 'groups'}`}
                     </Text>
                 </View>
 
@@ -253,11 +265,11 @@ export default function GroupsScreen() {
                             bottom: (Platform.OS === 'ios' ? 98 : 82) + insets.bottom,
                         },
                     ]}
-                    onPress={handleCreateGroup}
+                    onPress={isExpensePickerMode ? () => router.push('/(tabs)/groups') : handleCreateGroup}
                     activeOpacity={0.9}
                 >
-                    <Ionicons name="add" size={22} color="#FFF" />
-                    <Text style={styles.fabButtonText}>New Group</Text>
+                    <Ionicons name={isExpensePickerMode ? 'list' : 'add'} size={22} color="#FFF" />
+                    <Text style={styles.fabButtonText}>{isExpensePickerMode ? 'View Groups' : 'New Group'}</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

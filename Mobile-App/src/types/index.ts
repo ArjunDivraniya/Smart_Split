@@ -272,6 +272,10 @@ export interface InputProps {
   icon?: string;
 }
 
+export * from './friends.types';
+export * from './budget.types';
+export * from './personal.types';
+
 export interface CardProps {
   children: React.ReactNode;
   onPress?: () => void;
@@ -338,6 +342,23 @@ export interface AppError {
   message: string;
   details?: any;
 }
+
+// ==================== Personal Expense Types ====================
+export {
+  type PersonalExpense,
+  type CreateExpensePayload,
+  type UpdateExpensePayload,
+  type PaginationMeta,
+  type GetExpensesResponse,
+  type ExpenseSummary,
+  type GetSummaryResponse,
+  type CreateExpenseResponse,
+  type UpdateExpenseResponse,
+  type DeleteExpenseResponse,
+  type ExpenseCategory,
+  type PaymentMethod,
+  type RecurringType,
+} from './personal.types';
 
 export default {
   User,

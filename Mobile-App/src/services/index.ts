@@ -26,3 +26,22 @@ export {
 	getGroupSettlements,
 	getUserSettlements,
 } from './settlements.service';
+export {
+	getExpenses,
+	addExpense as addPersonalExpense,
+	updateExpense as updatePersonalExpense,
+	deleteExpense as deletePersonalExpense,
+	getSummary as getPersonalExpenseSummary,
+} from './personal.service';
+export {
+	friendsService,
+	getFriendBalances,
+	getFriendHistory,
+} from './friends.service';
+export {
+	budgetService,
+	getBudgetStatus,
+	createBudget,
+	updateBudget,
+	deleteBudget,
+} from './budget.service';

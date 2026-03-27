@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -11,229 +9,160 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSettlements } from '@/src/hooks/useSettlements';
-import { getSettlementHistory } from '@/src/services/settlements.service';
-import { Settlement } from '@/src/types/settlement.types';
 
-interface HistorySettlement {
-  _id?: string;
-  id?: string;
-  amount: number;
-  createdAt: string;
-  note?: string;
-  group?: {
-    _id?: string;
-    id?: string;
-    name?: string;
-    emoji?: string;
-  };
-  fromUser?: {
-    _id?: string;
-    id?: string;
-    name?: string;
-  };
-  toUser?: {
-    _id?: string;
-    id?: string;
-    name?: string;
-  };
-}
+import { getFriendHistory } from '@/src/services/friends.service';
+import type { FriendHistoryItem } from '@/src/types/friends.types';
 
-const formatAmount = (value: number): string => `₹${Math.abs(Number(value || 0)).toFixed(2)}`;
+const COLORS = {
+  bg: '#0F0F1A',
+  card: '#17172A',
+  border: 'rgba(255,255,255,0.09)',
+  textPrimary: '#F3F3FF',
+  textSecondary: '#AAAAC4',
+  mint: '#00E5B0',
+  coral: '#FF5F7E',
+  violet: '#7C5CFC',
+};
+
+const currency = (value: number): string => `₹${Math.abs(Number(value || 0)).toLocaleString('en-IN')}`;
+
+const formatDate = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown date';
+  }
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
 
 export default function FriendDetailScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string; name?: string }>();
+  const params = useLocalSearchParams<{ id?: string; name?: string; netBalance?: string }>();
+
   const friendId = String(params.id || '');
-  const friendNameFromRoute = String(params.name || 'Friend');
+  const friendName = String(params.name || 'Friend');
+  const netBalance = Number(params.netBalance || 0);
 
-  const {
-    settlements,
-    fetchSettlements,
-    loading,
-    remindFriend,
-  } = useSettlements();
-
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [historyItems, setHistoryItems] = useState<HistorySettlement[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyItems, setHistoryItems] = useState<FriendHistoryItem[]>([]);
 
-  const friendSettlements = useMemo(() => {
-    return settlements.filter(
-      (settlement) => settlement.friend.id === friendId && settlement.status !== 'completed'
-    );
-  }, [settlements, friendId]);
+  const loadHistory = useCallback(async () => {
+    if (!friendId) {
+      setHistoryItems([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
-  const summary = useMemo(() => {
-    return friendSettlements.reduce(
-      (acc, item) => {
-        const value = Number(item.remaining || item.amount || 0);
-        if (item.direction === 'you_owe') {
-          acc.youOwe += value;
-        } else {
-          acc.youGet += value;
-        }
-        return acc;
-      },
-      { youOwe: 0, youGet: 0 }
-    );
-  }, [friendSettlements]);
-
-  const friendDisplayName = useMemo(() => {
-    return friendSettlements[0]?.friend?.name || friendNameFromRoute || 'Friend';
-  }, [friendSettlements, friendNameFromRoute]);
-
-  const fetchHistory = async () => {
     try {
-      setHistoryLoading(true);
-      const response = await getSettlementHistory({ friendId, limit: 50, page: 1 });
-      setHistoryItems(Array.isArray(response?.settlements) ? (response.settlements as HistorySettlement[]) : []);
+      setLoading(true);
+      const data = await getFriendHistory(friendId);
+      setHistoryItems(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Failed to fetch friend settlement history:', error);
+      console.error('Failed to fetch friend history:', error);
       setHistoryItems([]);
     } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchHistory();
-  }, [friendId]);
-
-  const onRefresh = async () => {
-    try {
-      setRefreshing(true);
-      await Promise.all([fetchSettlements(), fetchHistory()]);
-    } finally {
+      setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [friendId]);
 
-  const handlePay = (settlement: Settlement) => {
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [loadHistory])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadHistory();
+  }, [loadHistory]);
+
+  const netLabel = useMemo(() => (netBalance >= 0 ? 'You get' : 'You owe'), [netBalance]);
+  const netColor = useMemo(() => (netBalance >= 0 ? COLORS.mint : COLORS.coral), [netBalance]);
+
+  const handleSettle = () => {
+    const amount = Math.abs(netBalance);
+    if (!amount && netBalance < 0) {
+      return;
+    }
+
+    if (netBalance >= 0) {
+      router.push({
+        pathname: '/settlements' as any,
+        params: {
+          friendId,
+          direction: 'they_owe',
+        },
+      });
+      return;
+    }
+
     router.push({
       pathname: '/friends/settle' as any,
       params: {
-        settlementId: settlement.id,
-        friendId: settlement.friend.id,
-        friendName: settlement.friend.name,
-        amount: String(settlement.remaining || settlement.amount),
-        direction: settlement.direction,
-        groupId: settlement.group?.id || '',
+        friendId,
+        friendName,
+        amount: String(amount),
       },
     });
   };
 
-  const handleRemind = async (settlement: Settlement) => {
-    const result = await remindFriend(settlement.id);
-    if (!result?.whatsappUrl) {
-      Alert.alert('Unable to send reminder', 'No reminder link could be generated.');
-      return;
-    }
-
-    const canOpen = await Linking.canOpenURL(result.whatsappUrl);
-    if (!canOpen) {
-      Alert.alert('WhatsApp not available', 'Please install WhatsApp to send reminder.');
-      return;
-    }
-
-    await Linking.openURL(result.whatsappUrl);
-  };
-
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
-          <Ionicons name='chevron-back' size={20} color='#F0F0FF' />
+          <Ionicons name="chevron-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{friendDisplayName}</Text>
-        <View style={styles.backBtnPlaceholder} />
+        <Text style={styles.headerTitle} numberOfLines={1}>{friendName}</Text>
+        <View style={styles.backPlaceholder} />
       </View>
 
       <ScrollView
-        style={styles.scrollView}
+        style={styles.scroll}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor='#7C5CFC' />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.violet} />}
       >
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Balance Summary</Text>
-          <View style={styles.summaryRow}>
-            <View style={[styles.summaryBox, styles.oweBox]}>
-              <Text style={styles.summaryLabel}>You Owe</Text>
-              <Text style={[styles.summaryAmount, styles.oweText]}>{formatAmount(summary.youOwe)}</Text>
-            </View>
-            <View style={[styles.summaryBox, styles.getBox]}>
-              <Text style={styles.summaryLabel}>You Get</Text>
-              <Text style={[styles.summaryAmount, styles.getText]}>{formatAmount(summary.youGet)}</Text>
-            </View>
-          </View>
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>Net balance</Text>
+          <Text style={[styles.balanceValue, { color: netColor }]}>
+            {netLabel} {currency(netBalance)}
+          </Text>
+
+          <TouchableOpacity style={styles.settleBtn} onPress={handleSettle} activeOpacity={0.88}>
+            <Ionicons name={netBalance < 0 ? 'cash-outline' : 'receipt-outline'} size={16} color="#FFFFFF" />
+            <Text style={styles.settleBtnText}>{netBalance < 0 ? 'Settle' : 'View Settlements'}</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.sectionCard}>
-          <View style={styles.pendingHeaderRow}>
-            <Text style={styles.sectionTitle}>Pending Settlements</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{friendSettlements.length}</Text>
-            </View>
-          </View>
+        <View style={styles.historyCard}>
+          <Text style={styles.historyTitle}>History</Text>
 
-          {friendSettlements.length === 0 ? (
-            <View style={styles.allSettledRow}>
-              <Ionicons name='checkmark-circle' size={18} color='#00E5B0' />
-              <Text style={styles.allSettledText}>✅ All settled with this friend</Text>
-            </View>
-          ) : (
-            friendSettlements.map((item) => (
-              <View key={item.id} style={styles.pendingCompactRow}>
-                <View style={styles.pendingLeft}>
-                  <Text style={styles.pendingGroupName} numberOfLines={1}>
-                    {item.group?.emoji ? `${item.group.emoji} ` : ''}
-                    {item.group?.name || 'Personal'}
-                  </Text>
-                </View>
-
-                <Text style={styles.pendingAmount}>{formatAmount(item.remaining || item.amount)}</Text>
-
-                <TouchableOpacity
-                  style={[
-                    styles.pendingActionBtn,
-                    item.direction === 'you_owe' ? styles.payBtn : styles.remindBtn,
-                  ]}
-                  onPress={() => (item.direction === 'you_owe' ? handlePay(item) : handleRemind(item))}
-                  activeOpacity={0.88}
-                >
-                  <Text style={styles.pendingActionText}>{item.direction === 'you_owe' ? 'Pay' : 'Remind'}</Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Transaction History</Text>
-
-          {(loading || historyLoading) ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size='small' color='#7C5CFC' />
+          {loading ? (
+            <View style={styles.loaderWrap}>
+              <ActivityIndicator size="small" color={COLORS.violet} />
             </View>
           ) : historyItems.length === 0 ? (
-            <Text style={styles.emptyText}>No completed settlements found with this friend.</Text>
+            <Text style={styles.emptyText}>No transactions with this friend yet.</Text>
           ) : (
-            historyItems.map((item) => (
-              <View key={item.id || item._id || item.createdAt} style={styles.historyRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.historyGroupText} numberOfLines={1}>
-                    {item.group?.emoji ? `${item.group.emoji} ` : ''}
-                    {item.group?.name || 'Direct'}
-                  </Text>
-                  <Text style={styles.historyDateText}>
-                    {new Date(item.createdAt).toLocaleDateString('en-IN')}
-                  </Text>
+            historyItems.map((item, index) => {
+              const title = item.description || (item.type === 'settlement' ? 'Settlement' : 'Expense');
+              return (
+                <View key={`${item.type}-${item.date}-${index}`} style={styles.historyRow}>
+                  <View style={styles.historyLeft}>
+                    <Text style={styles.historyItemTitle}>{title}</Text>
+                    <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
+                  </View>
+                  <Text style={styles.historyAmount}>{currency(item.amount)}</Text>
                 </View>
-                <Text style={styles.historyAmountText}>{formatAmount(item.amount)}</Text>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -242,201 +171,131 @@ export default function FriendDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#0F0F1A',
+    backgroundColor: COLORS.bg,
   },
   header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: COLORS.border,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A2B',
   },
-  backBtnPlaceholder: {
-    width: 32,
-    height: 32,
+  backPlaceholder: {
+    width: 34,
+    height: 34,
   },
   headerTitle: {
-    color: '#F0F0FF',
-    fontSize: 19,
-    fontFamily: 'Syne_700Bold',
     flex: 1,
     textAlign: 'center',
     marginHorizontal: 8,
+    color: COLORS.textPrimary,
+    fontSize: 19,
+    fontFamily: 'Syne_700Bold',
   },
-  scrollView: {
+  scroll: {
     flex: 1,
   },
   content: {
     padding: 16,
     gap: 12,
-    paddingBottom: 28,
+    paddingBottom: 24,
   },
-  sectionCard: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+  balanceCard: {
     borderRadius: 14,
-    backgroundColor: '#14141F',
-    padding: 12,
-  },
-  sectionTitle: {
-    color: '#F0F0FF',
-    fontSize: 15,
-    fontFamily: 'DMSans_700Bold',
-    marginBottom: 10,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  summaryBox: {
-    flex: 1,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
+    borderColor: 'rgba(124,92,252,0.35)',
+    backgroundColor: COLORS.card,
+    padding: 14,
   },
-  oweBox: {
-    backgroundColor: 'rgba(255,95,126,0.08)',
-    borderColor: 'rgba(255,95,126,0.25)',
-  },
-  getBox: {
-    backgroundColor: 'rgba(0,229,176,0.08)',
-    borderColor: 'rgba(0,229,176,0.25)',
-  },
-  summaryLabel: {
-    color: '#A7A7C2',
-    fontSize: 11,
+  balanceLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
     fontFamily: 'DMSans_500Medium',
     marginBottom: 4,
   },
-  summaryAmount: {
-    fontSize: 16,
+  balanceValue: {
+    fontSize: 24,
     fontFamily: 'Syne_700Bold',
   },
-  oweText: {
-    color: '#FF5F7E',
-  },
-  getText: {
-    color: '#00E5B0',
-  },
-  pendingHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  countBadge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(124,92,252,0.20)',
+  settleBtn: {
+    marginTop: 12,
+    borderRadius: 10,
+    backgroundColor: COLORS.coral,
     borderWidth: 1,
-    borderColor: 'rgba(124,92,252,0.35)',
+    borderColor: COLORS.coral,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  countBadgeText: {
-    color: '#9B7FFF',
-    fontSize: 12,
-    fontFamily: 'DMSans_700Bold',
-  },
-  allSettledRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 6,
   },
-  allSettledText: {
-    color: '#00E5B0',
+  settleBtnText: {
+    color: '#FFFFFF',
     fontSize: 13,
-    fontFamily: 'DMSans_600SemiBold',
-  },
-  pendingCompactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: '#1A1A2B',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    marginBottom: 8,
-    gap: 8,
-  },
-  pendingLeft: {
-    flex: 1,
-  },
-  pendingGroupName: {
-    color: '#DBDBF1',
-    fontSize: 13,
-    fontFamily: 'DMSans_600SemiBold',
-  },
-  pendingAmount: {
-    color: '#F0F0FF',
-    fontSize: 13,
-    fontFamily: 'Syne_700Bold',
-  },
-  pendingActionBtn: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-  },
-  payBtn: {
-    backgroundColor: 'rgba(124,92,252,0.18)',
-    borderColor: 'rgba(124,92,252,0.35)',
-  },
-  remindBtn: {
-    backgroundColor: 'rgba(0,229,176,0.14)',
-    borderColor: 'rgba(0,229,176,0.30)',
-  },
-  pendingActionText: {
-    color: '#F0F0FF',
-    fontSize: 12,
     fontFamily: 'DMSans_700Bold',
   },
-  loadingWrap: {
+  historyCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    padding: 12,
+  },
+  historyTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 15,
+    fontFamily: 'DMSans_700Bold',
+    marginBottom: 8,
+  },
+  loaderWrap: {
     paddingVertical: 8,
     alignItems: 'center',
   },
   emptyText: {
-    color: '#A7A7C2',
-    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontSize: 13,
     fontFamily: 'DMSans_500Medium',
   },
   historyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
     paddingVertical: 10,
+    gap: 10,
   },
-  historyGroupText: {
-    color: '#DBDBF1',
-    fontSize: 13,
+  historyLeft: {
+    flex: 1,
+  },
+  historyItemTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
     fontFamily: 'DMSans_600SemiBold',
   },
-  historyDateText: {
-    color: '#8D8DA8',
-    fontSize: 11,
-    fontFamily: 'DMSans_500Medium',
+  historyDate: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
     marginTop: 2,
+    fontFamily: 'DMSans_500Medium',
   },
-  historyAmountText: {
-    color: '#F0F0FF',
-    fontSize: 13,
+  historyAmount: {
+    color: '#EDEAFF',
+    fontSize: 14,
     fontFamily: 'Syne_700Bold',
-    marginLeft: 8,
   },
 });

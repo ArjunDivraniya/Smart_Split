@@ -8,3 +8,4 @@ export { useGroups } from './useGroups';
 export { useExpenses } from './useExpenses';
 export { useSettlements } from './useSettlements';
 export { useNotifications } from './useNotifications';
+export { usePersonalExpenses } from './usePersonalExpenses';

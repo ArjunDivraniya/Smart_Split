@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,27 +16,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { BalanceSummaryCard } from '@/src/components/BalanceSummaryCard';
-import { ActivityItem, ActivityItemData } from '@/src/components/ActivityItem';
 import SettlementWidget from '@/src/components/dashboard/SettlementWidget';
+import NudgeBanner from '@/src/components/dashboard/NudgeBanner';
+import ActivityFeed, { type FeedItem } from '@/src/components/dashboard/ActivityFeed';
 import { apiService } from '@/src/services/api';
+import { getFriendBalances } from '@/src/services/friends.service';
+import { getSummary as getPersonalSummary } from '@/src/services/personal.service';
 import { STORAGE_KEYS } from '@/src/constants/categories';
 import { useNotifications } from '@/src/hooks/useNotifications';
+import { Colors } from '@/constants/theme';
 
+const theme = Colors.dark;
 const COLORS = {
-  void: '#080810',
-  surface: '#0F0F1A',
-  elevated: '#1A1A2B',
-  violet: '#7C5CFC',
+  surface: theme.surface,
+  elevated: theme.elevated,
+  violet: theme.violet,
   violetLight: '#9B7FFF',
-  violetDim: 'rgba(124, 92, 252, 0.15)',
-  mint: '#00E5B0',
-  coral: '#FF5F7E',
-  coralDim: 'rgba(255, 95, 126, 0.12)',
-  amber: '#FFB547',
-  textPrimary: '#F0F0FF',
-  textSecondary: '#8888AA',
-  textMuted: '#55556A',
+  mint: theme.mint,
+  coral: theme.coral,
+  amber: theme.amber,
+  textPrimary: theme.text,
+  textSecondary: theme.icon,
+  textMuted: theme.tabIconDefault,
   border: 'rgba(255, 255, 255, 0.06)',
 };
 
@@ -50,15 +51,6 @@ interface FinancialSummary {
   totalOwe: number;
   totalGet: number;
   monthlySpend: number;
-  savingsGoal: number;
-  savingsProgress: number;
-}
-
-interface SmartAlert {
-  type: 'warning' | 'success' | 'info';
-  icon: string;
-  message: string;
-  borderColor: string;
 }
 
 export default function DashboardScreen() {
@@ -69,20 +61,79 @@ export default function DashboardScreen() {
     totalOwe: 0,
     totalGet: 0,
     monthlySpend: 0,
-    savingsGoal: 5000,
-    savingsProgress: 0,
   });
+  const [balanceCardsLoading, setBalanceCardsLoading] = useState(true);
+  const skeletonOpacity = useRef(new Animated.Value(0.45)).current;
   const { unreadCount } = useNotifications();
-  const [recentActivity, setRecentActivity] = useState<ActivityItemData[]>([]);
+  const [recentActivity, setRecentActivity] = useState<FeedItem[]>([]);
   const [greeting, setGreeting] = useState('Good morning');
-  const [smartAlert, setSmartAlert] = useState<SmartAlert | null>(null);
+  const [unsettledBalances, setUnsettledBalances] = useState(0);
+  const [budgetUsagePercent, setBudgetUsagePercent] = useState(0);
   const [topCategory, setTopCategory] = useState({ name: 'Food', amount: 0, emoji: '🍔' });
 
   useEffect(() => {
     loadUserData();
     setGreeting(getGreeting());
     fetchDashboardData();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(skeletonOpacity, {
+          toValue: 1,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+        Animated.timing(skeletonOpacity, {
+          toValue: 0.45,
+          duration: 650,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   }, []);
+
+  const fetchBalanceCardsData = async () => {
+    setBalanceCardsLoading(true);
+
+    try {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+
+      const [friendsResponse, summaryResponse] = await Promise.all([
+        getFriendBalances(),
+        getPersonalSummary(month, year),
+      ]);
+
+      const balances = Array.isArray(friendsResponse) ? friendsResponse : [];
+
+      const totals = balances.reduce(
+        (acc, item: any) => {
+          const rawBalance = Number(item?.netAmount ?? item?.netBalance ?? 0);
+          if (rawBalance < 0) {
+            acc.totalOwe += Math.abs(rawBalance);
+          } else if (rawBalance > 0) {
+            acc.totalGet += rawBalance;
+          }
+          return acc;
+        },
+        { totalOwe: 0, totalGet: 0 }
+      );
+
+      const monthlySpend = Number(summaryResponse?.data?.grandTotal ?? summaryResponse?.data?.total ?? 0);
+
+      setFinancialData({
+        totalOwe: Number(totals.totalOwe || 0),
+        totalGet: Number(totals.totalGet || 0),
+        monthlySpend: Number(monthlySpend || 0),
+      });
+    } catch (error) {
+      console.log('Could not fetch balance cards data:', error);
+      setFinancialData({ totalOwe: 0, totalGet: 0, monthlySpend: 0 });
+    } finally {
+      setBalanceCardsLoading(false);
+    }
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -104,6 +155,8 @@ export default function DashboardScreen() {
 
   const fetchDashboardData = async () => {
     try {
+      await fetchBalanceCardsData();
+
       // 1. Fetch user profile
       try {
         const userResponse = await apiService.user.getMe();
@@ -122,50 +175,49 @@ export default function DashboardScreen() {
       try {
         const summaryResponse = await apiService.analytics.getDashboardSummary();
         if (summaryResponse.data?.success) {
-          const { financial, smartAlert: alert } = summaryResponse.data.data;
-          
-          // Update financial data
-          setFinancialData(prev => ({
-            ...prev,
-            totalOwe: financial.totalOwe || 0,
-            totalGet: financial.totalGet || 0,
-            monthlySpend: financial.monthlySpend || 0,
-          }));
+          const { financial } = summaryResponse.data.data;
 
-          // Update smart alert
-          if (alert) {
-            setSmartAlert(alert);
-          }
+          const savingsGoal = financial.savingsGoal || 5000;
+          const usage = Math.min(100, Math.round(((financial.monthlySpend || 0) / Math.max(1, savingsGoal)) * 100));
+          setBudgetUsagePercent(usage);
         }
       } catch (error) {
         console.log('Could not fetch dashboard summary:', error);
-        // Fallback smart alert
-        setSmartAlert({
-          type: 'info',
-          icon: '🎯',
-          message: 'Create your first trip to start tracking expenses!',
-          borderColor: COLORS.violet,
-        });
+        setBudgetUsagePercent(70);
       }
 
       // 3. Fetch recent activity
       try {
         const activityResponse = await apiService.analytics.getRecentActivity();
         if (activityResponse.data?.success) {
-          setRecentActivity(activityResponse.data.data || []);
+          const normalized = (activityResponse.data.data || []).slice(0, 10).map((item: any, index: number) => {
+            const type = item?.type === 'settlement'
+              ? 'settlement'
+              : item?.type === 'personal'
+                ? 'personal-expense'
+                : 'group-expense';
+
+            return {
+              id: String(item?.id || `activity-${index}`),
+              title: String(item?.name || 'Activity'),
+              subtitle: String(item?.description || 'No description'),
+              amount: Number(item?.amount || 0),
+              type,
+              date: item?.date || item?.timestamp,
+            } as FeedItem;
+          });
+
+          setRecentActivity(normalized);
         }
       } catch (error) {
         console.log('Could not fetch recent activity:', error);
-        // Fallback activity
         setRecentActivity([
           {
             id: '1',
-            name: 'Welcome to SmartSplit!',
-            description: 'Start by creating a trip or adding an expense',
+            title: 'Welcome to SmartSplit!',
+            subtitle: 'Start by creating a trip or adding an expense',
             amount: 0,
-            type: 'personal',
-            avatarLabel: '👋',
-            avatarColor: 'rgba(124, 92, 252, 0.2)',
+            type: 'personal-expense',
           },
         ]);
       }
@@ -175,23 +227,25 @@ export default function DashboardScreen() {
           const settlementsResponse = await apiService.settlements.getUserSettlements();
           const settlements = settlementsResponse.data?.data || [];
           if (Array.isArray(settlements) && settlements.length > 0) {
-            // Convert settlements to activity format
-            const settlementActivities = settlements.slice(0, 3).map((settlement: any, index: number) => ({
+            const unsettled = settlements.filter((s: any) => ['pending', 'overdue', 'partial'].includes(String(s?.status || '').toLowerCase())).length;
+            setUnsettledBalances(unsettled || settlements.length);
+
+            const settlementActivities: FeedItem[] = settlements.slice(0, 3).map((settlement: any, index: number) => ({
               id: `settlement-${index}`,
-              name: `${settlement.fromUserName} → ${settlement.toUserName}`,
-              description: `Settlement of ₹${settlement.amount.toFixed(2)}`,
+              title: `${settlement.fromUserName || 'Friend'} → ${settlement.toUserName || 'Friend'}`,
+              subtitle: `Settlement of ₹${Number(settlement.amount || 0).toFixed(2)}`,
               amount: settlement.amount,
               type: 'settlement',
               date: settlement.createdAt,
-              avatarLabel: '💰',
-              avatarColor: 'rgba(34, 197, 94, 0.2)',
             }));
-          
-            // Merge with recent activity
+
             setRecentActivity(prev => [...settlementActivities, ...prev].slice(0, 10));
+          } else {
+            setUnsettledBalances(2);
           }
         } catch (error) {
           console.log('Could not fetch settlements:', error);
+          setUnsettledBalances(2);
         }
 
       // 4. Fetch dashboard insights (top category)
@@ -281,76 +335,41 @@ export default function DashboardScreen() {
         {/* 2️⃣ FINANCIAL SUMMARY SECTION - 4 Cards */}
         <View style={styles.financialSection}>
           <View style={styles.cardRow}>
-            {/* Total You Owe */}
+            {/* You Owe */}
             <TouchableOpacity
               style={[styles.summaryCard, styles.cardOwe]}
               onPress={() => router.push('/(tabs)/friends')}
               activeOpacity={0.8}
             >
-              <Text style={styles.cardIcon}>💸</Text>
-              <Text style={styles.cardLabel}>Total You Owe</Text>
-              <Text style={[styles.cardAmount, { color: COLORS.coral }]}>
-                ₹{financialData.totalOwe.toLocaleString('en-IN')}
-              </Text>
-              <Text style={styles.cardChange}>Tap to settle</Text>
+              <Text style={styles.cardLabel}>YOU OWE</Text>
+              {balanceCardsLoading ? (
+                <Animated.View style={[styles.amountSkeleton, { opacity: skeletonOpacity }]} />
+              ) : (
+                <Text style={[styles.cardAmount, { color: COLORS.coral }]}>₹{financialData.totalOwe.toLocaleString('en-IN')}</Text>
+              )}
             </TouchableOpacity>
 
-            {/* Total You Get */}
+            {/* You Get */}
             <TouchableOpacity
               style={[styles.summaryCard, styles.cardGet]}
               onPress={() => router.push('/(tabs)/friends')}
               activeOpacity={0.8}
             >
-              <Text style={styles.cardIcon}>💰</Text>
-              <Text style={styles.cardLabel}>Total You Get</Text>
-              <Text style={[styles.cardAmount, { color: COLORS.mint }]}>
-                ₹{financialData.totalGet.toLocaleString('en-IN')}
-              </Text>
-              <Text style={styles.cardChange}>From friends</Text>
+              <Text style={styles.cardLabel}>YOU GET</Text>
+              {balanceCardsLoading ? (
+                <Animated.View style={[styles.amountSkeleton, { opacity: skeletonOpacity }]} />
+              ) : (
+                <Text style={[styles.cardAmount, { color: COLORS.mint }]}>₹{financialData.totalGet.toLocaleString('en-IN')}</Text>
+              )}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.cardRow}>
-            {/* Monthly Spend */}
-            <TouchableOpacity
-              style={[styles.summaryCard, styles.cardSpend]}
-              onPress={() => router.push('/(tabs)/analytics')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.cardIcon}>📊</Text>
-              <Text style={styles.cardLabel}>Monthly Spend</Text>
-              <Text style={[styles.cardAmount, { color: COLORS.amber }]}>
-                ₹{financialData.monthlySpend.toLocaleString('en-IN')}
-              </Text>
-              <Text style={styles.cardChange}>This month</Text>
-            </TouchableOpacity>
-
-            {/* Savings Goal */}
-            <TouchableOpacity
-              style={[styles.summaryCard, styles.cardSavings]}
-              onPress={() => router.push('/(tabs)/analytics')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.cardIcon}>🎯</Text>
-              <Text style={styles.cardLabel}>Savings Goal</Text>
-              <Text style={[styles.cardAmount, { color: COLORS.violetLight }]}>
-                ₹{financialData.savingsProgress.toLocaleString('en-IN')}
-              </Text>
-              <View style={styles.progressBarBg}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    {
-                      width: `${(financialData.savingsProgress / financialData.savingsGoal) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={styles.cardChange}>
-                {Math.round((financialData.savingsProgress / financialData.savingsGoal) * 100)}% of ₹
-                {financialData.savingsGoal.toLocaleString('en-IN')}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.monthlySpendRow}>
+            {balanceCardsLoading ? (
+              <Animated.View style={[styles.monthlySkeleton, { opacity: skeletonOpacity }]} />
+            ) : (
+              <Text style={styles.monthlySpendText}>Monthly Spend: ₹{financialData.monthlySpend.toLocaleString('en-IN')}</Text>
+            )}
           </View>
         </View>
 
@@ -358,44 +377,25 @@ export default function DashboardScreen() {
           <SettlementWidget />
         </View>
 
-        {/* 3️⃣ SMART ALERT BANNER */}
-        {smartAlert && (
-          <View style={[styles.alertBanner, { borderLeftColor: smartAlert.borderColor }]}>
-            <Text style={styles.alertIcon}>{smartAlert.icon}</Text>
-            <Text style={styles.alertMessage}>{smartAlert.message}</Text>
-          </View>
-        )}
+        <View style={styles.nudgeWrap}>
+          <NudgeBanner />
+        </View>
 
-        {/* 4️⃣ RECENT ACTIVITY FEED */}
-        <View style={styles.activitySection}>
-          <View style={styles.activityHeader}>
-            <Text style={styles.activityTitle}>Recent Activity</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.seeAllLink}>See all →</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.activityList}>
-            {recentActivity.map((item) => (
-              <ActivityItem
-                key={item.id}
-                item={item}
-                onPress={() => {
-                  // Navigate to detail screen
-                }}
-              />
-            ))}
-          </View>
-
-          {recentActivity.length === 0 && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateEmoji}>📭</Text>
-              <Text style={styles.emptyStateText}>No recent activity</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Add an expense to get started
-              </Text>
-            </View>
-          )}
+        <View style={styles.activityFeedWrap}>
+          <ActivityFeed
+            items={recentActivity}
+            onItemPress={(item) => {
+              if (item.type === 'settlement') {
+                router.push('/settlements' as any);
+                return;
+              }
+              if (item.type === 'personal-expense') {
+                router.push('/(tabs)/analytics');
+                return;
+              }
+              router.push('/(tabs)/groups');
+            }}
+          />
         </View>
 
         {/* 5️⃣ MINI INSIGHT CARD */}
@@ -417,6 +417,15 @@ export default function DashboardScreen() {
         {/* Bottom Spacing for Tab Bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.personalTrackFab}
+        onPress={() => router.push('/personal')}
+        activeOpacity={0.9}
+      >
+        <Ionicons name="receipt-outline" size={18} color="#FFFFFF" />
+        <Text style={styles.personalTrackFabText}>Track Personal</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -428,6 +437,31 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  personalTrackFab: {
+    position: 'absolute',
+    right: 16,
+    bottom: Platform.OS === 'ios' ? 106 : 88,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: COLORS.violet,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  personalTrackFabText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
   },
   
   // 1️⃣ HEADER SECTION
@@ -527,37 +561,34 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     paddingHorizontal: 16,
   },
+  nudgeWrap: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  activityFeedWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 18,
+  },
   cardRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   summaryCard: {
     flex: 1,
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    minHeight: 140,
+    minHeight: 102,
   },
   cardOwe: {
-    backgroundColor: 'rgba(255, 95, 126, 0.08)',
+    backgroundColor: 'rgba(255,95,126,0.12)',
     borderColor: 'rgba(255, 95, 126, 0.2)',
   },
   cardGet: {
-    backgroundColor: 'rgba(0, 229, 176, 0.08)',
+    backgroundColor: 'rgba(0,229,176,0.12)',
     borderColor: 'rgba(0, 229, 176, 0.2)',
-  },
-  cardSpend: {
-    backgroundColor: 'rgba(255, 181, 71, 0.08)',
-    borderColor: 'rgba(255, 181, 71, 0.2)',
-  },
-  cardSavings: {
-    backgroundColor: 'rgba(124, 92, 252, 0.08)',
-    borderColor: 'rgba(124, 92, 252, 0.2)',
-  },
-  cardIcon: {
-    fontSize: 28,
-    marginBottom: 8,
   },
   cardLabel: {
     fontSize: 10,
@@ -565,30 +596,33 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     fontFamily: 'DMSans_600SemiBold',
-    marginBottom: 6,
+    marginBottom: 10,
   },
   cardAmount: {
     fontSize: 22,
-    fontWeight: '800',
-    fontFamily: 'Syne_800ExtraBold',
-    marginBottom: 8,
+    fontFamily: 'Syne_700Bold',
   },
-  cardChange: {
-    fontSize: 9,
-    color: COLORS.textMuted,
-    fontFamily: 'DMSans_400Regular',
+  amountSkeleton: {
+    width: '74%',
+    height: 27,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  progressBarBg: {
-    height: 4,
-    backgroundColor: 'rgba(124, 92, 252, 0.2)',
-    borderRadius: 2,
-    marginVertical: 8,
-    overflow: 'hidden',
+  monthlySpendRow: {
+    marginTop: 2,
+    minHeight: 22,
+    justifyContent: 'center',
   },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: COLORS.violet,
-    borderRadius: 2,
+  monthlySpendText: {
+    color: '#9B7FFF',
+    fontSize: 14,
+    fontFamily: 'DMSans_700Bold',
+  },
+  monthlySkeleton: {
+    width: '58%',
+    height: 18,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
 
   // 3️⃣ SMART ALERT BANNER
