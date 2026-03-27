@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect } from 'react';
@@ -6,9 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { STORAGE_KEYS } from '@/src/constants/categories';
-import { apiService, setAuthToken } from '@/src/services/api';
-import { useGoogleAuth, handleGoogleSignIn } from '@/src/utils/googleAuth';
+import { useAuth } from '@/src/context';
+import { useGoogleAuth, handleGoogleSignIn as processGoogleSignIn } from '@/src/utils/googleAuth';
 
 const COLORS = {
   void: '#080810',
@@ -25,6 +23,7 @@ const COLORS = {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login, refreshUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,9 +46,10 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     setError('');
 
-    const result = await handleGoogleSignIn(response);
+    const result = await processGoogleSignIn(response);
 
     if (result.success) {
+      await refreshUser();
       router.replace('/(tabs)');
     } else {
       setError(result.error || 'Google sign-in failed');
@@ -67,18 +67,7 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      const response = await apiService.auth.login({ email: email.trim(), password });
-      const token = response.data?.token;
-      const user = response.data?.user;
-
-      if (!token) {
-        throw new Error('Missing token in response.');
-      }
-
-      await setAuthToken(token);
-      if (user) {
-        await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
-      }
+      await login(email.trim(), password);
 
       router.replace('/(tabs)');
     } catch (err: any) {
@@ -89,7 +78,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignInPress = async () => {
     setError('');
     setGoogleLoading(true);
     try {
@@ -158,7 +147,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           style={[styles.googleButton, (googleLoading || !request) && styles.buttonDisabled]}
-          onPress={handleGoogleSignIn}
+          onPress={handleGoogleSignInPress}
           activeOpacity={0.9}
           disabled={googleLoading || !request}
         >

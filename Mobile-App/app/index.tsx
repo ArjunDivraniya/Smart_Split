@@ -6,6 +6,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { STORAGE_KEYS } from '@/src/constants/categories';
+import { getRefreshToken } from '@/src/services/api';
 
 const COLORS = {
   void: '#080810',
@@ -39,11 +40,12 @@ export default function SplashScreen() {
       let hasToken = false;
       let hasOnboarded = false;
       try {
-        const [token, onboardingComplete] = await Promise.all([
+        const [token, refreshToken, onboardingComplete] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN),
+          getRefreshToken(),
           AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE),
         ]);
-        hasToken = !!token;
+        hasToken = !!token || !!refreshToken;
         hasOnboarded = onboardingComplete === 'true';
       } catch {
         hasToken = false;

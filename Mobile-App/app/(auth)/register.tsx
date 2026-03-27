@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -6,8 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { STORAGE_KEYS } from '@/src/constants/categories';
-import { apiService, setAuthToken } from '@/src/services/api';
+import { useAuth } from '@/src/context';
 import { useGoogleAuth, handleGoogleSignIn } from '@/src/utils/googleAuth';
 
 const COLORS = {
@@ -25,6 +23,7 @@ const COLORS = {
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { register, refreshUser } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +51,7 @@ export default function RegisterScreen() {
     const result = await handleGoogleSignIn(response);
 
     if (result.success) {
+      await refreshUser();
       router.replace('/(tabs)');
     } else {
       setError(result.error || 'Google sign-in failed');
@@ -75,30 +75,7 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      const response = await apiService.auth.register({
-        name: name.trim(),
-        email: email.trim(),
-        password,
-      });
-
-      let token = response.data?.token;
-      const user = response.data?.user;
-
-      if (!token) {
-        const loginResponse = await apiService.auth.login({ email: email.trim(), password });
-        token = loginResponse.data?.token;
-        if (!token) {
-          throw new Error('Missing token in response.');
-        }
-        const loginUser = loginResponse.data?.user;
-        if (loginUser) {
-          await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(loginUser));
-        }
-      } else if (user) {
-        await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
-      }
-
-      await setAuthToken(token);
+      await register(name.trim(), email.trim(), password);
       router.replace('/(tabs)');
     } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || 'Registration failed.';
