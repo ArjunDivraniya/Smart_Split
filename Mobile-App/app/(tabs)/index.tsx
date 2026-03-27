@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { BalanceSummaryCard } from '@/src/components/BalanceSummaryCard';
 import { ActivityItem, ActivityItemData } from '@/src/components/ActivityItem';
+import SettlementWidget from '@/src/components/dashboard/SettlementWidget';
 import { apiService } from '@/src/services/api';
 import { STORAGE_KEYS } from '@/src/constants/categories';
 
@@ -362,6 +363,10 @@ export default function DashboardScreen() {
           </View>
         </View>
 
+        <View style={styles.settlementWidgetWrap}>
+          <SettlementWidget />
+        </View>
+
         {/* 3️⃣ SMART ALERT BANNER */}
         {smartAlert && (
           <View style={[styles.alertBanner, { borderLeftColor: smartAlert.borderColor }]}>
@@ -526,6 +531,10 @@ const styles = StyleSheet.create({
   financialSection: {
     paddingHorizontal: 16,
     paddingVertical: 8,
+  },
+  settlementWidgetWrap: {
+    marginVertical: 8,
+    paddingHorizontal: 16,
   },
   cardRow: {
     flexDirection: 'row',
