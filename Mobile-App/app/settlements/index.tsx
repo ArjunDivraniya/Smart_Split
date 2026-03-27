@@ -75,13 +75,14 @@ export default function SettlementsScreen() {
   }, [settlements]);
 
   const handleSettleAll = () => {
-    router.push('/friends/settle' as any);
+    router.push('/(tabs)/friends' as any);
   };
 
   const handlePayNow = (settlement: Settlement) => {
     router.push({
       pathname: '/friends/settle' as any,
       params: {
+        id: settlement.group?.id || '',
         settlementId: settlement.id,
         friendId: settlement.friend.id,
         friendName: settlement.friend.name,

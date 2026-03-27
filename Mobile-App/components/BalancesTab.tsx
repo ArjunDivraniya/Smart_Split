@@ -7,14 +7,17 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BalanceRow } from '@/components/BalanceRow';
 import { SettlementModal } from '@/components/SettlementModal';
+import { useSettlements } from '@/src/hooks/useSettlements';
+import { Settlement as PendingSettlement } from '@/src/types/settlement.types';
 
 const toSafeKey = (value: unknown, fallback: string): string => {
   if (value === null || value === undefined) {
@@ -72,8 +75,10 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   currentUserId,
   currentUserName,
 }) => {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
+  const { settlements: pendingSettlementsData, remindFriend } = useSettlements();
   const [balances, setBalances] = useState<Balance[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settlementHistory, setSettlementHistory] = useState<SettlementHistoryItem[]>([]);
@@ -224,6 +229,105 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   const handleSettlementSuccess = () => {
     fetchBalances();
     fetchSettlements();
+  };
+
+  const groupPendingSettlements = React.useMemo(() => {
+    return pendingSettlementsData.filter(
+      (item) => item.group?.id === groupId && item.status !== 'completed'
+    );
+  }, [pendingSettlementsData, groupId]);
+
+  const handlePendingPay = (item: PendingSettlement) => {
+    const amount = Number(item.remaining || item.amount || 0);
+    if (amount <= 0) {
+      return;
+    }
+
+    setModalState({
+      visible: true,
+      fromUser: { id: currentUserId, name: currentUserName },
+      toUser: { id: item.friend.id, name: item.friend.name },
+      amount,
+    });
+  };
+
+  const handlePendingRemind = async (item: PendingSettlement) => {
+    const result = await remindFriend(item.id);
+    if (!result?.whatsappUrl) {
+      Alert.alert('Unable to send reminder', 'No reminder link could be generated.');
+      return;
+    }
+
+    const canOpen = await Linking.canOpenURL(result.whatsappUrl);
+    if (!canOpen) {
+      Alert.alert('WhatsApp not available', 'Please install WhatsApp to send reminder.');
+      return;
+    }
+
+    await Linking.openURL(result.whatsappUrl);
+  };
+
+  const renderPendingSettlementsCompact = () => {
+    if (groupPendingSettlements.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.pendingSection}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="hourglass-outline" size={20} color="#f59e0b" />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Pending Settlements</Text>
+        </View>
+
+        {groupPendingSettlements.map((item) => {
+          const isYouOwe = item.direction === 'you_owe';
+          const statusColor =
+            item.status === 'overdue' ? '#FF5F7E' : item.status === 'partial' ? '#FFB547' : '#8B8BA9';
+
+          return (
+            <View
+              key={item.id}
+              style={[styles.pendingRow, { backgroundColor: colors.card, borderColor: colors.elevated }]}
+            >
+              <View style={styles.pendingLeftCol}>
+                <Ionicons
+                  name={isYouOwe ? 'arrow-forward' : 'arrow-back'}
+                  size={16}
+                  color={isYouOwe ? '#FF5F7E' : '#00E5B0'}
+                />
+                <Text style={[styles.pendingFriendName, { color: colors.text }]} numberOfLines={1}>
+                  {item.friend.name}
+                </Text>
+              </View>
+
+              <Text style={[styles.pendingAmount, { color: colors.text }]}>
+                ₹{Number(item.remaining || item.amount || 0).toFixed(2)}
+              </Text>
+
+              <View style={[styles.statusBadge, { borderColor: `${statusColor}66`, backgroundColor: `${statusColor}1A` }]}>
+                <Text style={[styles.statusBadgeText, { color: statusColor }]}>{item.status}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.pendingActionBtn, isYouOwe ? styles.pendingPayBtn : styles.pendingRemindBtn]}
+                onPress={() => (isYouOwe ? handlePendingPay(item) : handlePendingRemind(item))}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.pendingActionText}>{isYouOwe ? 'Pay' : 'Remind'}</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+
+        <TouchableOpacity
+          style={styles.pendingViewAllBtn}
+          onPress={() => router.push({ pathname: '/settlements' as any, params: { groupId } })}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.pendingViewAllText}>View All →</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const renderSummaryCard = () => {
@@ -405,6 +509,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
           <>
             {renderSummaryCard()}
             {renderOptimizedSettlements()}
+            {renderPendingSettlementsCompact()}
             {renderBalancesList()}
             
             {settlementHistory.length > 0 && (
@@ -548,6 +653,76 @@ const styles = StyleSheet.create({
   },
   optimizedSection: {
     marginBottom: 24,
+  },
+  pendingSection: {
+    marginBottom: 24,
+  },
+  pendingRow: {
+    marginHorizontal: 16,
+    marginVertical: 5,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pendingLeftCol: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+  },
+  pendingFriendName: {
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  pendingAmount: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  statusBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  pendingActionBtn: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  pendingPayBtn: {
+    backgroundColor: 'rgba(124, 92, 252, 0.18)',
+    borderColor: 'rgba(124, 92, 252, 0.34)',
+  },
+  pendingRemindBtn: {
+    backgroundColor: 'rgba(0, 229, 176, 0.14)',
+    borderColor: 'rgba(0, 229, 176, 0.30)',
+  },
+  pendingActionText: {
+    color: '#F3F3FF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  pendingViewAllBtn: {
+    paddingHorizontal: 16,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  pendingViewAllText: {
+    color: '#9B7FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   sectionHeader: {
     flexDirection: 'row',

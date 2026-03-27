@@ -21,6 +21,7 @@ import { ActivityItem, ActivityItemData } from '@/src/components/ActivityItem';
 import SettlementWidget from '@/src/components/dashboard/SettlementWidget';
 import { apiService } from '@/src/services/api';
 import { STORAGE_KEYS } from '@/src/constants/categories';
+import { useNotifications } from '@/src/hooks/useNotifications';
 
 const COLORS = {
   void: '#080810',
@@ -71,7 +72,7 @@ export default function DashboardScreen() {
     savingsGoal: 5000,
     savingsProgress: 0,
   });
-  const [notificationCount, setNotificationCount] = useState(0);
+  const { unreadCount } = useNotifications();
   const [recentActivity, setRecentActivity] = useState<ActivityItemData[]>([]);
   const [greeting, setGreeting] = useState('Good morning');
   const [smartAlert, setSmartAlert] = useState<SmartAlert | null>(null);
@@ -147,17 +148,7 @@ export default function DashboardScreen() {
         });
       }
 
-      // 3. Fetch notifications
-      try {
-        const notifResponse = await apiService.notifications.getAll();
-        const unreadCount = notifResponse.data?.filter((n: any) => !n.read).length || 0;
-        setNotificationCount(unreadCount);
-      } catch (error) {
-        console.log('Could not fetch notifications:', error);
-        setNotificationCount(0);
-      }
-
-      // 4. Fetch recent activity
+      // 3. Fetch recent activity
       try {
         const activityResponse = await apiService.analytics.getRecentActivity();
         if (activityResponse.data?.success) {
@@ -179,7 +170,7 @@ export default function DashboardScreen() {
         ]);
       }
 
-        // 4b. Fetch user settlements
+        // 3b. Fetch user settlements
         try {
           const settlementsResponse = await apiService.settlements.getUserSettlements();
           const settlements = settlementsResponse.data?.data || [];
@@ -203,7 +194,7 @@ export default function DashboardScreen() {
           console.log('Could not fetch settlements:', error);
         }
 
-      // 5. Fetch dashboard insights (top category)
+      // 4. Fetch dashboard insights (top category)
       try {
         const insightsResponse = await apiService.analytics.getDashboardInsights();
         if (insightsResponse.data?.success) {
@@ -256,14 +247,14 @@ export default function DashboardScreen() {
             <View style={styles.headerRight}>
               <TouchableOpacity
                 style={styles.bellButton}
-                onPress={() => router.push('/(tabs)/analytics')}
+                onPress={() => router.push('/notifications' as any)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="notifications" size={18} color={COLORS.textPrimary} />
-                {notificationCount > 0 && (
+                {unreadCount > 0 && (
                   <View style={styles.notificationBadge}>
                     <Text style={styles.notificationBadgeText}>
-                      {notificationCount > 9 ? '9+' : notificationCount}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </Text>
                   </View>
                 )}
