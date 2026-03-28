@@ -20,6 +20,7 @@ import SettlementWidget from '@/src/components/dashboard/SettlementWidget';
 import NudgeBanner from '@/src/components/dashboard/NudgeBanner';
 import ActivityFeed, { type FeedItem } from '@/src/components/dashboard/ActivityFeed';
 import { apiService } from '@/src/services/api';
+import { getCategoryBreakdown, getInsights } from '@/src/services/analytics.service';
 import { getFriendBalances } from '@/src/services/friends.service';
 import { getSummary as getPersonalSummary } from '@/src/services/personal.service';
 import { STORAGE_KEYS } from '@/src/constants/categories';
@@ -70,6 +71,7 @@ export default function DashboardScreen() {
   const [unsettledBalances, setUnsettledBalances] = useState(0);
   const [budgetUsagePercent, setBudgetUsagePercent] = useState(0);
   const [topCategory, setTopCategory] = useState({ name: 'Food', amount: 0, emoji: '🍔' });
+  const [topCategoriesPreview, setTopCategoriesPreview] = useState<Array<{ category: string; total: number; emoji: string }>>([]);
 
   useEffect(() => {
     loadUserData();
@@ -250,19 +252,41 @@ export default function DashboardScreen() {
 
       // 4. Fetch dashboard insights (top category)
       try {
-        const insightsResponse = await apiService.analytics.getDashboardInsights();
-        if (insightsResponse.data?.success) {
-          const insight = insightsResponse.data.data;
+        const now = new Date();
+        const [insights, categoryBreakdown] = await Promise.all([
+          getInsights(),
+          getCategoryBreakdown(now.getMonth() + 1, now.getFullYear()),
+        ]);
+
+        const sortedCategories = [...(categoryBreakdown.categories || [])]
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 2)
+          .map((item) => ({
+            category: item.category,
+            total: item.total,
+            emoji: item.emoji || '📦',
+          }));
+
+        setTopCategoriesPreview(sortedCategories);
+
+        if (sortedCategories[0]) {
           setTopCategory({
-            name: insight.name || 'Food',
-            amount: insight.amount || 0,
-            emoji: insight.emoji || '🍔',
+            name: sortedCategories[0].category,
+            amount: sortedCategories[0].total,
+            emoji: sortedCategories[0].emoji,
+          });
+        } else {
+          setTopCategory({
+            name: insights.topCategory || 'Food',
+            amount: insights.thisMonthTotal || 0,
+            emoji: '📊',
           });
         }
       } catch (error) {
         console.log('Could not fetch insights:', error);
         // Fallback insight
         setTopCategory({ name: 'Food', amount: 0, emoji: '🍔' });
+        setTopCategoriesPreview([]);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -413,6 +437,27 @@ export default function DashboardScreen() {
             </View>
           </View>
         )}
+
+        <TouchableOpacity
+          style={styles.analyticsPreviewCard}
+          onPress={() => router.push('/(tabs)/analytics')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.analyticsPreviewTopRow}>
+            <Text style={styles.analyticsPreviewTitle}>This month:</Text>
+            <Text style={styles.analyticsPreviewLink}>Full Analytics →</Text>
+          </View>
+
+          <Text style={styles.analyticsPreviewText}>
+            {topCategoriesPreview.length
+              ? topCategoriesPreview
+                  .map(
+                    (item) => `${item.emoji} ${item.category} ₹${Math.round(item.total).toLocaleString('en-IN')}`
+                  )
+                  .join(' · ')
+              : 'No category data yet'}
+          </Text>
+        </TouchableOpacity>
 
         {/* Bottom Spacing for Tab Bar */}
         <View style={{ height: 100 }} />
@@ -736,6 +781,37 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'Syne_800ExtraBold',
     color: COLORS.violetLight,
+  },
+  analyticsPreviewCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 14,
+    backgroundColor: COLORS.elevated,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  analyticsPreviewTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  analyticsPreviewTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  analyticsPreviewLink: {
+    color: COLORS.violetLight,
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
+  },
+  analyticsPreviewText: {
+    marginTop: 8,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontFamily: 'DMSans_500Medium',
+    lineHeight: 18,
   },
 });
 

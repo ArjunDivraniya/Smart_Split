@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
+import { MonthSelector } from '@/src/components/analytics/MonthSelector';
 
 import type { PersonalExpense } from '@/src/types/personal.types';
 import { deleteExpense, getExpenses } from '@/src/services/personal.service';
@@ -36,21 +37,6 @@ const COLORS = {
   amber: '#FFB547',
   coral: '#FF5F7E',
 };
-
-const MONTHS = [
-  { label: 'Jan', value: 1 },
-  { label: 'Feb', value: 2 },
-  { label: 'Mar', value: 3 },
-  { label: 'Apr', value: 4 },
-  { label: 'May', value: 5 },
-  { label: 'Jun', value: 6 },
-  { label: 'Jul', value: 7 },
-  { label: 'Aug', value: 8 },
-  { label: 'Sep', value: 9 },
-  { label: 'Oct', value: 10 },
-  { label: 'Nov', value: 11 },
-  { label: 'Dec', value: 12 },
-] as const;
 
 const CATEGORIES: CategoryFilter[] = ['All', 'Food', 'Transport', 'Shopping'];
 
@@ -101,7 +87,7 @@ export default function PersonalExpenseScreen() {
   const [error, setError] = useState<string>('');
 
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
-  const [selectedYear] = useState<number>(today.getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('All');
 
   const fetchExpenses = useCallback(async () => {
@@ -263,21 +249,16 @@ export default function PersonalExpenseScreen() {
       </View>
 
       <View style={styles.monthSelectorWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthRow}>
-          {MONTHS.map((month) => {
-            const selected = selectedMonth === month.value;
-            return (
-              <TouchableOpacity
-                key={month.value}
-                style={[styles.monthPill, selected && styles.monthPillActive]}
-                onPress={() => setSelectedMonth(month.value)}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.monthText, selected && styles.monthTextActive]}>{month.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <View style={styles.monthSelectorCard}>
+          <MonthSelector
+            month={selectedMonth}
+            year={selectedYear}
+            onChange={(month, year) => {
+              setSelectedMonth(month);
+              setSelectedYear(year);
+            }}
+          />
+        </View>
       </View>
 
       <View style={styles.categoryWrap}>
@@ -403,6 +384,9 @@ const styles = StyleSheet.create({
   monthSelectorWrap: {
     paddingTop: 6,
     paddingBottom: 8,
+  },
+  monthSelectorCard: {
+    paddingHorizontal: 16,
   },
   monthRow: {
     paddingHorizontal: 16,

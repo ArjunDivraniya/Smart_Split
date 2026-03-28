@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MonthSelector } from '@/src/components/analytics/MonthSelector';
 
 import { COLORS as ThemeColors } from '@/src/constants/theme';
 import { getBudgetStatus } from '@/src/services/budget.service';
@@ -32,21 +33,6 @@ const COLORS = {
   amber: '#FFB547',
   coral: '#FF5F7E',
 };
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 
 const CATEGORY_EMOJI: Record<string, string> = {
   food: '🍔',
@@ -281,24 +267,6 @@ export default function BudgetOverviewScreen() {
     loadData();
   }, [loadData]);
 
-  const handlePrevMonth = () => {
-    if (month === 1) {
-      setMonth(12);
-      setYear((prev) => prev - 1);
-      return;
-    }
-    setMonth((prev) => prev - 1);
-  };
-
-  const handleNextMonth = () => {
-    if (month === 12) {
-      setMonth(1);
-      setYear((prev) => prev + 1);
-      return;
-    }
-    setMonth((prev) => prev + 1);
-  };
-
   const summary = useMemo(() => {
     const totalBudget = budgets.reduce((acc, item) => acc + Number(item.limit || 0), 0);
     const totalSpent = budgets.reduce((acc, item) => acc + Number(item.spent || 0), 0);
@@ -337,15 +305,14 @@ export default function BudgetOverviewScreen() {
       </View>
 
       <View style={styles.monthSelectorRow}>
-        <TouchableOpacity style={styles.monthArrow} onPress={handlePrevMonth} activeOpacity={0.85}>
-          <Ionicons name="chevron-back" size={16} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-
-        <Text style={styles.monthLabel}>{MONTH_NAMES[month - 1]} {year}</Text>
-
-        <TouchableOpacity style={styles.monthArrow} onPress={handleNextMonth} activeOpacity={0.85}>
-          <Ionicons name="chevron-forward" size={16} color={COLORS.textPrimary} />
-        </TouchableOpacity>
+        <MonthSelector
+          month={month}
+          year={year}
+          onChange={(nextMonth, nextYear) => {
+            setMonth(nextMonth);
+            setYear(nextYear);
+          }}
+        />
       </View>
 
       <ScrollView

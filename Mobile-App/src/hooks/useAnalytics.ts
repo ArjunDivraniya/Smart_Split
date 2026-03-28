@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   AnalyticsChartType,
   CategoryData,
@@ -79,7 +79,7 @@ export const useAnalytics = (): UseAnalyticsResult => {
   );
   const [friendSpending, setFriendSpending] = useState<FriendSpending[]>([]);
 
-  const hasLoadedInitial = useRef<boolean>(false);
+  const [hasLoadedInitial, setHasLoadedInitial] = useState<boolean>(false);
 
   const fetchCategoryData = useCallback(async (month: number, year: number) => {
     const categoryResponse = await getCategoryBreakdown(month, year);
@@ -87,7 +87,10 @@ export const useAnalytics = (): UseAnalyticsResult => {
     setCategoryData(Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []);
   }, []);
 
-  const refreshAnalytics = useCallback(async () => {
+  const refreshAnalytics = useCallback(async (monthOverride?: number, yearOverride?: number) => {
+    const monthToUse = monthOverride ?? selectedMonth;
+    const yearToUse = yearOverride ?? selectedYear;
+
     try {
       setLoading(true);
       setError(null);
@@ -95,7 +98,7 @@ export const useAnalytics = (): UseAnalyticsResult => {
       const [monthlyResponse, categoryResponse, insightResponse, groupVsPersonalResponse, friendResponse] =
         await Promise.all([
           getMonthlyData(),
-          getCategoryBreakdown(selectedMonth, selectedYear),
+          getCategoryBreakdown(monthToUse, yearToUse),
           getInsights(),
           getGroupVsPersonal(),
           getFriendSpending(),
@@ -134,13 +137,15 @@ export const useAnalytics = (): UseAnalyticsResult => {
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
-    refreshAnalytics().finally(() => {
-      hasLoadedInitial.current = true;
+    refreshAnalytics(selectedMonth, selectedYear).finally(() => {
+      setHasLoadedInitial(true);
     });
-  }, [refreshAnalytics]);
+    // Run once on mount for full payload fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    if (!hasLoadedInitial.current) {
+    if (!hasLoadedInitial) {
       return;
     }
 
@@ -159,7 +164,7 @@ export const useAnalytics = (): UseAnalyticsResult => {
     };
 
     refetchCategoryData();
-  }, [fetchCategoryData, selectedMonth, selectedYear]);
+  }, [fetchCategoryData, hasLoadedInitial, selectedMonth, selectedYear]);
 
   return {
     loading,

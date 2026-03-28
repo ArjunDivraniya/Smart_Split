@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService } from '@/src/services/api';
+import { getInsights } from '@/src/services/analytics.service';
 import { STORAGE_KEYS } from '@/src/constants/categories';
 
 const COLORS = {
@@ -62,6 +63,12 @@ interface MenuItem {
   onPress?: () => void;
 }
 
+interface SpendingSummary {
+  thisMonthTotal: number;
+  topCategory: string;
+  changePercent: number;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -72,6 +79,11 @@ export default function ProfileScreen() {
     totalSettlements: 0,
     activeFriends: 0,
     financialHealthScore: 0,
+  });
+  const [spendingSummary, setSpendingSummary] = useState<SpendingSummary>({
+    thisMonthTotal: 0,
+    topCategory: 'N/A',
+    changePercent: 0,
   });
 
   useEffect(() => {
@@ -94,6 +106,22 @@ export default function ProfileScreen() {
         }
       } catch (error) {
         console.log('Could not load stats:', error);
+      }
+
+      try {
+        const insights = await getInsights();
+        setSpendingSummary({
+          thisMonthTotal: Number(insights?.thisMonthTotal || 0),
+          topCategory: insights?.topCategory || 'N/A',
+          changePercent: Number(insights?.changePercent || 0),
+        });
+      } catch (error) {
+        console.log('Could not load spending summary:', error);
+        setSpendingSummary({
+          thisMonthTotal: 0,
+          topCategory: 'N/A',
+          changePercent: 0,
+        });
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -391,6 +419,39 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          <View style={styles.spendingSummaryCard}>
+            <Text style={styles.spendingSummaryTitle}>📊 Spending Summary</Text>
+
+            <View style={styles.spendingSummaryRow}>
+              <Text style={styles.spendingSummaryLabel}>This Month</Text>
+              <Text style={styles.spendingSummaryValue}>
+                ₹{Math.round(spendingSummary.thisMonthTotal).toLocaleString('en-IN')}
+              </Text>
+            </View>
+
+            <View style={styles.spendingSummaryRow}>
+              <Text style={styles.spendingSummaryLabel}>Top Category</Text>
+              <Text style={styles.spendingSummaryValue}>{spendingSummary.topCategory}</Text>
+            </View>
+
+            <View style={styles.spendingSummaryRow}>
+              <Text style={styles.spendingSummaryLabel}>Vs Last Month</Text>
+              <Text
+                style={[
+                  styles.spendingSummaryValue,
+                  spendingSummary.changePercent > 0
+                    ? { color: COLORS.coral }
+                    : spendingSummary.changePercent < 0
+                    ? { color: COLORS.mint }
+                    : { color: COLORS.violetLight },
+                ]}
+              >
+                {spendingSummary.changePercent > 0 ? '+' : ''}
+                {spendingSummary.changePercent}%
+              </Text>
+            </View>
+          </View>
+
           {/* Financial Health Score */}
           {stats.financialHealthScore !== undefined && (
             <View style={styles.healthScoreCard}>
@@ -641,6 +702,36 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  spendingSummaryCard: {
+    backgroundColor: COLORS.elevated,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 10,
+  },
+  spendingSummaryTitle: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontFamily: 'Syne_700Bold',
+  },
+  spendingSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  spendingSummaryLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
+  },
+  spendingSummaryValue: {
+    fontSize: 13,
+    color: COLORS.violetLight,
+    fontFamily: 'DMSans_600SemiBold',
   },
   healthScoreHeader: {
     flexDirection: 'row',
