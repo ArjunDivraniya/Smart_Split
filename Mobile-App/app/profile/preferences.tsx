@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/hooks/useTheme';
 import { apiService } from '@/src/services/api';
+import { hapticSelection } from '@/src/utils/haptics';
 
 const COLORS = {
   void: '#080810',
@@ -160,6 +161,7 @@ export default function PreferencesScreen() {
 
   const handleNotificationToggle = async (key: keyof NotificationPreferences) => {
     try {
+      void hapticSelection();
       const newPrefs = { ...notificationPrefs, [key]: !notificationPrefs[key] };
       setNotificationPrefs(newPrefs);
       setSavingNotification(key);
@@ -181,6 +183,7 @@ export default function PreferencesScreen() {
   };
 
   const handleAppLockToggle = async (value: boolean) => {
+    void hapticSelection();
     if (value) {
       // Ask for PIN setup
       Alert.prompt(

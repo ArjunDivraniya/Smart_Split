@@ -27,6 +27,8 @@ import { STORAGE_KEYS } from '@/src/constants/categories';
 import { useNotifications } from '@/src/hooks/useNotifications';
 import { Colors } from '@/constants/theme';
 import { BalanceCardSkeleton } from '@/components/SkeletonLoader';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight } from '@/src/utils/haptics';
 
 const theme = Colors.dark;
 const COLORS = {
@@ -73,6 +75,7 @@ export default function DashboardScreen() {
   const [budgetUsagePercent, setBudgetUsagePercent] = useState(0);
   const [topCategory, setTopCategory] = useState({ name: 'Food', amount: 0, emoji: '🍔' });
   const [topCategoriesPreview, setTopCategoriesPreview] = useState<Array<{ category: string; total: number; emoji: string }>>([]);
+  const [dashboardError, setDashboardError] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -95,7 +98,7 @@ export default function DashboardScreen() {
     ).start();
   }, []);
 
-  const fetchBalanceCardsData = async () => {
+  const fetchBalanceCardsData = async (): Promise<boolean> => {
     setBalanceCardsLoading(true);
 
     try {
@@ -130,9 +133,11 @@ export default function DashboardScreen() {
         totalGet: Number(totals.totalGet || 0),
         monthlySpend: Number(monthlySpend || 0),
       });
+      return true;
     } catch (error) {
       console.log('Could not fetch balance cards data:', error);
       setFinancialData({ totalOwe: 0, totalGet: 0, monthlySpend: 0 });
+      return false;
     } finally {
       setBalanceCardsLoading(false);
     }
@@ -158,7 +163,12 @@ export default function DashboardScreen() {
 
   const fetchDashboardData = async () => {
     try {
-      await fetchBalanceCardsData();
+      setDashboardError(false);
+      let successCount = 0;
+      const balanceCardsLoaded = await fetchBalanceCardsData();
+      if (balanceCardsLoaded) {
+        successCount += 1;
+      }
 
       // 1. Fetch user profile
       try {
@@ -169,6 +179,7 @@ export default function DashboardScreen() {
             STORAGE_KEYS.USER_DATA,
             JSON.stringify(userResponse.data)
           );
+          successCount += 1;
         }
       } catch (error) {
         console.log('Could not fetch user profile:', error);
@@ -183,6 +194,7 @@ export default function DashboardScreen() {
           const savingsGoal = financial.savingsGoal || 5000;
           const usage = Math.min(100, Math.round(((financial.monthlySpend || 0) / Math.max(1, savingsGoal)) * 100));
           setBudgetUsagePercent(usage);
+          successCount += 1;
         }
       } catch (error) {
         console.log('Could not fetch dashboard summary:', error);
@@ -211,6 +223,7 @@ export default function DashboardScreen() {
           });
 
           setRecentActivity(normalized);
+          successCount += 1;
         }
       } catch (error) {
         console.log('Could not fetch recent activity:', error);
@@ -243,6 +256,7 @@ export default function DashboardScreen() {
             }));
 
             setRecentActivity(prev => [...settlementActivities, ...prev].slice(0, 10));
+            successCount += 1;
           } else {
             setUnsettledBalances(2);
           }
@@ -283,22 +297,47 @@ export default function DashboardScreen() {
             emoji: '📊',
           });
         }
+        successCount += 1;
       } catch (error) {
         console.log('Could not fetch insights:', error);
         // Fallback insight
         setTopCategory({ name: 'Food', amount: 0, emoji: '🍔' });
         setTopCategoriesPreview([]);
       }
+
+      if (successCount === 0) {
+        setDashboardError(true);
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setDashboardError(true);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
+    void hapticImpactLight();
     await fetchDashboardData();
     setRefreshing(false);
   };
+
+  if (dashboardError && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <StatusBar style="light" />
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.violet} />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.errorWrap}
+        >
+          <ErrorState onRetry={onRefresh} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -483,6 +522,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  errorWrap: {
+    flexGrow: 1,
   },
   personalTrackFab: {
     position: 'absolute',

@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '@/src/services/api';
+import { hapticSelection } from '@/src/utils/haptics';
 
 const COLORS = {
   surface: '#0F0F1A',
@@ -86,6 +87,7 @@ export default function SecurityLockScreen() {
   };
 
   const handleAppLockToggle = async (value: boolean) => {
+    void hapticSelection();
     if (value) {
       // Ask for PIN setup
       Alert.prompt(
@@ -95,7 +97,7 @@ export default function SecurityLockScreen() {
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Set PIN',
-            onPress: (pin) => {
+            onPress: (pin?: string) => {
               if (pin && pin.length === 4 && /^\d+$/.test(pin)) {
                 setSettings((prev) => ({
                   ...prev,
@@ -124,6 +126,7 @@ export default function SecurityLockScreen() {
   };
 
   const handleFingerprintToggle = (value: boolean) => {
+    void hapticSelection();
     if (value && !settings.appLockEnabled) {
       Alert.alert(
         'Enable App Lock First',
@@ -147,6 +150,7 @@ export default function SecurityLockScreen() {
   };
 
   const handleFaceRecognitionToggle = (value: boolean) => {
+    void hapticSelection();
     if (value && !settings.appLockEnabled) {
       Alert.alert(
         'Enable App Lock First',
@@ -195,7 +199,7 @@ export default function SecurityLockScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Change',
-          onPress: (newPin) => {
+          onPress: (newPin?: string) => {
             if (newPin && newPin.length === 4 && /^\d+$/.test(newPin)) {
               setSettings((prev) => ({
                 ...prev,

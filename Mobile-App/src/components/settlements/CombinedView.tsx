@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import SettlementCard from '@/src/components/settlements/SettlementCard';
+import { EmptyState } from '@/components/EmptyState';
 import { Settlement, SettlementStatus } from '@/src/types/settlement.types';
 
 type FilterValue = SettlementStatus | 'all';
@@ -99,7 +100,7 @@ const getEmptyStateContent = (activeFilter: FilterValue) => {
   if (activeFilter === 'all') {
     return {
       emoji: '🎉',
-      title: 'All settled up! Nothing pending',
+      title: 'All settled up!',
       subtitle: 'No open settlements to act on right now.',
     };
   }
@@ -187,11 +188,11 @@ export function CombinedView({
         );
       }}
       ListEmptyComponent={
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>{emptyContent.emoji}</Text>
-          <Text style={styles.emptyTitle}>{emptyContent.title}</Text>
-          <Text style={styles.emptySubtitle}>{emptyContent.subtitle}</Text>
-        </View>
+        <EmptyState
+          emoji={emptyContent.emoji}
+          title={emptyContent.title}
+          subtitle={emptyContent.subtitle}
+        />
       }
       refreshing={refreshing}
       onRefresh={onRefresh}

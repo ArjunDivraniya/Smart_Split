@@ -13,6 +13,9 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MonthSelector } from '@/src/components/analytics/MonthSelector';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight, hapticNotifyWarning } from '@/src/utils/haptics';
 
 import { COLORS as ThemeColors } from '@/src/constants/theme';
 import { getBudgetStatus } from '@/src/services/budget.service';
@@ -205,11 +208,12 @@ export default function BudgetOverviewScreen() {
   const [year, setYear] = useState(now.getFullYear());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<BudgetStatusItem[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
+  const budgetLimitHapticKey = useRef('');
 
   const skeletonPulse = useRef(new Animated.Value(0.45)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -218,17 +222,11 @@ export default function BudgetOverviewScreen() {
         Animated.timing(skeletonPulse, { toValue: 0.45, duration: 700, useNativeDriver: true }),
       ])
     ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, { toValue: -10, duration: 1200, useNativeDriver: true }),
-        Animated.timing(floatAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [floatAnim, skeletonPulse]);
+  }, [skeletonPulse]);
 
   const loadData = useCallback(async () => {
     try {
+      setError(null);
       setLoading(true);
 
       const [budgetItems, summary] = await Promise.all([
@@ -248,6 +246,7 @@ export default function BudgetOverviewScreen() {
       setExpenseCategories(categoriesFromExpenses);
     } catch (error) {
       console.error('Failed to load budget overview:', error);
+      setError('Failed to load budget overview');
       setBudgets([]);
       setExpenseCategories([]);
     } finally {
@@ -264,8 +263,22 @@ export default function BudgetOverviewScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    void hapticImpactLight();
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!budgets.length) {
+      return;
+    }
+
+    const hasOverLimit = budgets.some((item) => Number(item.percentage || 0) >= 100);
+    const currentKey = `${year}-${month}`;
+    if (hasOverLimit && budgetLimitHapticKey.current !== currentKey) {
+      budgetLimitHapticKey.current = currentKey;
+      void hapticNotifyWarning();
+    }
+  }, [budgets, month, year]);
 
   const summary = useMemo(() => {
     const totalBudget = budgets.reduce((acc, item) => acc + Number(item.limit || 0), 0);
@@ -351,24 +364,22 @@ export default function BudgetOverviewScreen() {
             <BudgetCardSkeleton pulse={skeletonPulse} />
             <BudgetCardSkeleton pulse={skeletonPulse} />
           </>
+        ) : error ? (
+          <ErrorState onRetry={onRefresh} style={styles.emptyWrap} />
         ) : budgets.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <Animated.Text style={[styles.emptyEmoji, { transform: [{ translateY: floatAnim }] }]}>🎯</Animated.Text>
-            <Text style={styles.emptyTitle}>No budgets set yet</Text>
-            <Text style={styles.emptySubtitle}>Set spending limits to track your expenses</Text>
-            <TouchableOpacity
-              style={styles.emptyActionBtn}
-              onPress={() =>
-                router.push({
-                  pathname: '/budget/set' as any,
-                  params: { month: String(month), year: String(year) },
-                })
-              }
-              activeOpacity={0.9}
-            >
-              <Text style={styles.emptyActionText}>Set Your First Budget</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            emoji="🎯"
+            title="No budgets set yet"
+            subtitle="Set spending limits to track your expenses"
+            actionLabel="Set Your First Budget"
+            onAction={() =>
+              router.push({
+                pathname: '/budget/set' as any,
+                params: { month: String(month), year: String(year) },
+              })
+            }
+            style={styles.emptyWrap}
+          />
         ) : (
           <>
             {budgets.map((item) => (

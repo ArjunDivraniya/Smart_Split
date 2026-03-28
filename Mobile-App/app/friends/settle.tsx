@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { createSettlement } from '@/src/services/settlements.service';
+import { hapticImpactHeavy, hapticNotifySuccess } from '@/src/utils/haptics';
 
 const PAYMENT_METHODS: Array<'upi' | 'cash' | 'bank'> = ['upi', 'cash', 'bank'];
 
@@ -62,6 +63,7 @@ export default function FriendSettleScreen() {
 		}
 
 		try {
+			void hapticImpactHeavy();
 			setSubmitting(true);
 
 			await createSettlement({
@@ -71,6 +73,7 @@ export default function FriendSettleScreen() {
 				note: note.trim() || `Paid via ${method.toUpperCase()}`,
 				...(groupId ? { groupId } : {}),
 			});
+			void hapticNotifySuccess();
 
 			Alert.alert('Payment recorded', `Settlement with ${friendName} has been recorded.`, [
 				{

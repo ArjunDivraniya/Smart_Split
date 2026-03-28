@@ -18,6 +18,8 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { addExpense, updateExpense } from '@/src/services/personal.service';
 import type { ExpenseCategory, PaymentMethod, RecurringType } from '@/src/types/personal.types';
+import { hapticImpactLight } from '@/src/utils/haptics';
+import { showSuccessToast } from '@/src/utils/toast';
 
 const COLORS = {
   surface: '#0F0F1A',
@@ -166,6 +168,7 @@ export default function PersonalAddExpenseScreen() {
     }
 
     try {
+      void hapticImpactLight();
       setSaving(true);
 
       const payload = {
@@ -185,6 +188,7 @@ export default function PersonalAddExpenseScreen() {
         Alert.alert('Updated', 'Personal expense updated successfully.');
       } else {
         await addExpense(payload);
+        showSuccessToast('✅ Expense saved');
         Alert.alert('Saved', 'Personal expense added successfully.');
       }
 

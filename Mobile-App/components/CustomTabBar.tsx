@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { AddExpenseModal } from './AddExpenseModal';
+import { hapticSelection } from '@/src/utils/haptics';
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const colorScheme = useColorScheme() ?? 'dark';
@@ -47,6 +48,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                 const isFocused = state.index === index;
 
                 const onPress = () => {
+                    void hapticSelection();
                     if (route.name === 'add') {
                         const event = navigation.emit({
                             type: 'tabPress',

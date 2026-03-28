@@ -13,6 +13,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { MonthSelector } from '@/src/components/analytics/MonthSelector';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight, hapticNotifyWarning } from '@/src/utils/haptics';
 
 import type { PersonalExpense } from '@/src/types/personal.types';
 import { deleteExpense, getExpenses } from '@/src/services/personal.service';
@@ -151,6 +154,7 @@ export default function PersonalExpenseScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
+            void hapticNotifyWarning();
             await deleteExpense(expenseId);
             setExpenses((prev) => prev.filter((item) => getExpenseId(item as PersonalExpense & { _id?: string }) !== expenseId));
           } catch (err: any) {
@@ -163,6 +167,7 @@ export default function PersonalExpenseScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    void hapticImpactLight();
     await fetchExpenses();
   }, [fetchExpenses]);
 
@@ -286,14 +291,14 @@ export default function PersonalExpenseScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.violet} />}
       >
         {loading ? <Text style={styles.infoText}>Loading expenses...</Text> : null}
-        {!loading && error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {!loading && error ? <ErrorState onRetry={onRefresh} /> : null}
 
         {!loading && !error && sections.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyEmoji}>🧾</Text>
-            <Text style={styles.emptyTitle}>No expenses found</Text>
-            <Text style={styles.emptySub}>Try another month or category</Text>
-          </View>
+          <EmptyState
+            emoji="📝"
+            title="No expenses this month"
+            subtitle="Start tracking your personal spending"
+          />
         ) : null}
 
         {sections.map((section) => (

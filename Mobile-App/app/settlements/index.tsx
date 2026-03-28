@@ -20,6 +20,8 @@ import PartialPayModal from '@/src/components/settlements/PartialPayModal';
 import { useSettlements } from '@/src/hooks/useSettlements';
 import { Settlement } from '@/src/types/settlement.types';
 import { useAuth } from '@/src/context';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight } from '@/src/utils/haptics';
 
 const FALLBACK_SUMMARY = {
   totalYouOwe: 0,
@@ -77,6 +79,7 @@ export default function SettlementsScreen() {
     summary,
     settlements,
     loading,
+    error,
     activeFilter,
     activeView,
     activeDirection,
@@ -93,8 +96,15 @@ export default function SettlementsScreen() {
 
   const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
   const [partialVisible, setPartialVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const hasHandledDeepLinkRef = useRef(false);
-  const refreshSettlements = fetchSettlements;
+
+  const refreshSettlements = async () => {
+    setRefreshing(true);
+    void hapticImpactLight();
+    await fetchSettlements();
+    setRefreshing(false);
+  };
 
   const deepLinkFriendId = String(params.friendId || '').trim();
 
@@ -297,7 +307,7 @@ export default function SettlementsScreen() {
     handleClosePartial();
   };
 
-  if (loading) {
+  if (loading && settlements.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.headerRow}>
@@ -349,12 +359,16 @@ export default function SettlementsScreen() {
         />
 
         <View style={styles.viewWrap}>
-          {activeView === 'combined' ? (
+          {error && settlements.length === 0 ? (
+            <ErrorState onRetry={refreshSettlements} />
+          ) : null}
+
+          {!error || settlements.length > 0 ? (activeView === 'combined' ? (
             <CombinedView
               settlements={linkFilteredSettlements}
               activeFilter={activeFilter}
               currentUserId={currentUserId}
-              refreshing={loading}
+              refreshing={refreshing}
               onRefresh={refreshSettlements}
               onPayNow={handlePayNow}
               onPayPartial={handlePayPartial}
@@ -366,7 +380,7 @@ export default function SettlementsScreen() {
             <ByGroupView
               groupedSettlements={linkGroupedByGroup}
               currentUserId={currentUserId}
-              refreshing={loading}
+              refreshing={refreshing}
               onRefresh={refreshSettlements}
               onPayNow={handlePayNow}
               onPayPartial={handlePayPartial}
@@ -374,7 +388,7 @@ export default function SettlementsScreen() {
               onRemind={handleRemind}
               onMarkReceived={handleMarkReceived}
             />
-          )}
+          )) : null}
         </View>
       </View>
 

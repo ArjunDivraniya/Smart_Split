@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SettlementCard from '@/src/components/settlements/SettlementCard';
+import { EmptyState } from '@/components/EmptyState';
 import { Settlement } from '@/src/types/settlement.types';
 
 interface ByGroupViewProps {
@@ -163,6 +164,14 @@ export function ByGroupView({
           </View>
         );
       })}
+
+      {groups.length === 0 && (
+        <EmptyState
+          emoji="🎉"
+          title="All settled up!"
+          subtitle="No open settlements to act on right now."
+        />
+      )}
     </ScrollView>
   );
 }

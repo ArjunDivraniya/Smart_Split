@@ -15,12 +15,16 @@ import { MaterialIcons } from '@expo/vector-icons';
 import NotificationItem from '@/src/components/notifications/NotificationItem';
 import useNotifications, { AppNotification } from '@/src/hooks/useNotifications';
 import { NotificationSkeletonLoader } from '@/components/SkeletonLoader';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight } from '@/src/utils/haptics';
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const {
     notifications,
     loading,
+    error,
     unreadCount,
     fetchNotifications,
     markAsRead,
@@ -44,6 +48,7 @@ export default function NotificationsScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    void hapticImpactLight();
     await fetchNotifications();
     setRefreshing(false);
   }, [fetchNotifications]);
@@ -185,9 +190,11 @@ export default function NotificationsScreen() {
       </View>
 
       {/* Content */}
-      {notifications.length === 0 ? (
+      {error ? (
+        <ErrorState onRetry={handleRefresh} />
+      ) : notifications.length === 0 ? (
         <ScrollView
-          contentContainerStyle={styles.emptyContent}
+          contentContainerStyle={[styles.emptyContent, { justifyContent: 'center' }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -196,13 +203,11 @@ export default function NotificationsScreen() {
             />
           }
         >
-          <Animated.View style={{ transform: [{ scale: bellScale }] }}>
-            <Text style={styles.emptyBell}>🔔</Text>
-          </Animated.View>
-          <Text style={styles.emptyTitle}>No notifications yet</Text>
-          <Text style={styles.emptySubtitle}>
-            You'll see expense updates,{'\n'}settlement confirmations,{'\n'}and budget alerts here
-          </Text>
+          <EmptyState
+            emoji="🔔"
+            title="No notifications yet"
+            subtitle="You'll see expense updates, settlement confirmations, and budget alerts here"
+          />
         </ScrollView>
       ) : (
         <ScrollView

@@ -33,6 +33,8 @@ import {
   validateSplit,
   formatAmount,
 } from '@/src/utils/splitCalculator';
+import { hapticImpactLight } from '@/src/utils/haptics';
+import { showSuccessToast } from '@/src/utils/toast';
 
 interface GroupMember {
   userId: string;
@@ -323,6 +325,7 @@ export function ExpenseFormView({
     }
 
     try {
+      void hapticImpactLight();
       setSubmitting(true);
 
       const numAmount = parseFloat(amount);
@@ -370,6 +373,7 @@ export function ExpenseFormView({
         await apiService.expenses.update(expenseId, requestBody);
       } else {
         await apiService.groups.addExpense(groupId as string, requestBody);
+        showSuccessToast('✅ Expense saved');
       }
 
       Alert.alert('Success', isEditMode ? 'Expense updated successfully' : 'Expense added successfully', [

@@ -19,6 +19,9 @@ import { BarChart } from '@/src/components/analytics/BarChart';
 import { InsightCard } from '@/src/components/analytics/InsightCard';
 import { FriendSpendingCard } from '@/src/components/analytics/FriendSpendingCard';
 import { ChartSkeletonLoader } from '@/components/SkeletonLoader';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight } from '@/src/utils/haptics';
 
 export default function AnalyticsScreen() {
     const router = useRouter();
@@ -68,6 +71,7 @@ export default function AnalyticsScreen() {
     const onRefresh = async () => {
         try {
             setRefreshing(true);
+            void hapticImpactLight();
             await refreshAnalytics();
         } finally {
             setRefreshing(false);
@@ -81,6 +85,12 @@ export default function AnalyticsScreen() {
 
     const visibleCategories = showAllCategories ? sortedCategories : sortedCategories.slice(0, 4);
     const topFriendAmount = friendSpending[0]?.totalShared || 0;
+    const hasAnalyticsData =
+        categoryGrandTotal > 0 ||
+        sortedCategories.length > 0 ||
+        friendSpending.length > 0 ||
+        Number(groupVsPersonalSummary.totalGroup || 0) > 0 ||
+        Number(groupVsPersonalSummary.totalPersonal || 0) > 0;
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -103,44 +113,61 @@ export default function AnalyticsScreen() {
                     </View>
                 </View>
 
-                <View style={styles.sectionSpacing}>
-                    {loading && !insights.length ? (
-                        <View style={styles.placeholderCard}>
-                            <ActivityIndicator size="small" color="#7C5CFC" />
-                            <Text style={styles.placeholderText}>Loading smart insights...</Text>
+                {!loading && error && !hasAnalyticsData ? (
+                    <View style={styles.emptyWrap}>
+                        <ErrorState onRetry={onRefresh} />
+                    </View>
+                ) : !loading && !hasAnalyticsData ? (
+                    <View style={styles.emptyWrap}>
+                        <EmptyState
+                            emoji="📊"
+                            title="Add expenses to see insights"
+                            subtitle="Track group or personal expenses to unlock analytics trends"
+                            actionLabel="Add Expense"
+                            onAction={() => router.push('/(tabs)/groups' as any)}
+                        />
+                    </View>
+                ) : (
+                    <>
+
+                        <View style={styles.sectionSpacing}>
+                            {loading && !insights.length ? (
+                                <View style={styles.placeholderCard}>
+                                    <ActivityIndicator size="small" color="#7C5CFC" />
+                                    <Text style={styles.placeholderText}>Loading smart insights...</Text>
+                                </View>
+                            ) : (
+                                <InsightCard insights={insights} />
+                            )}
                         </View>
-                    ) : (
-                        <InsightCard insights={insights} />
-                    )}
-                </View>
 
-                <View style={styles.sectionSpacing}>
-                    <ChartToggle
-                        active={activeChart === 'monthly' ? 'categories' : 'monthly-trend'}
-                        onChange={(value) => setActiveChart(value === 'categories' ? 'monthly' : 'group-vs-personal')}
-                    />
-                </View>
+                        <View style={styles.sectionSpacing}>
+                            <ChartToggle
+                                active={activeChart === 'monthly' ? 'categories' : 'monthly-trend'}
+                                onChange={(value) => setActiveChart(value === 'categories' ? 'monthly' : 'group-vs-personal')}
+                            />
+                        </View>
 
-                <Animated.View
-                    style={[
-                        styles.sectionSpacing,
-                        {
-                            opacity: chartOpacity,
-                            transform: [{ translateY: chartTranslateY }],
-                        },
-                    ]}
-                >
-                    {loading && !categoryData.length && !monthlyData.length ? (
-                        <ChartSkeletonLoader />
-                    ) : activeChart === 'monthly' ? (
-                        <DonutChart categories={categoryData} totalAmount={categoryGrandTotal} />
-                    ) : (
-                        <BarChart monthlyData={monthlyData} mode="split" />
-                    )}
-                </Animated.View>
+                        <Animated.View
+                            style={[
+                                styles.sectionSpacing,
+                                {
+                                    opacity: chartOpacity,
+                                    transform: [{ translateY: chartTranslateY }],
+                                },
+                            ]}
+                        >
+                            {loading && !categoryData.length && !monthlyData.length ? (
+                                <ChartSkeletonLoader />
+                            ) : activeChart === 'monthly' ? (
+                                <DonutChart categories={categoryData} totalAmount={categoryGrandTotal} />
+                            ) : (
+                                <BarChart monthlyData={monthlyData} mode="split" />
+                            )}
+                        </Animated.View>
 
-                <View style={styles.panel}>
-                    <Text style={styles.panelTitle}>Category Breakdown</Text>
+                        <View style={styles.panel}>
+                            <Text style={styles.panelTitle}>Category Breakdown</Text>
 
                     {loading && !visibleCategories.length ? (
                         <Text style={styles.emptyText}>Loading categories...</Text>
@@ -177,10 +204,10 @@ export default function AnalyticsScreen() {
                             <Text style={styles.linkText}>{showAllCategories ? 'Show less categories ↑' : 'See all categories →'}</Text>
                         </TouchableOpacity>
                     ) : null}
-                </View>
+                        </View>
 
-                <View style={styles.panel}>
-                    <Text style={styles.panelTitle}>Group vs Personal</Text>
+                        <View style={styles.panel}>
+                            <Text style={styles.panelTitle}>Group vs Personal</Text>
 
                     <View style={styles.ratioRow}>
                         <Text style={styles.ratioLabel}>Group</Text>
@@ -217,10 +244,10 @@ export default function AnalyticsScreen() {
                             {groupVsPersonalSummary.personalPercent}% ₹{Math.round(groupVsPersonalSummary.totalPersonal).toLocaleString('en-IN')}
                         </Text>
                     </View>
-                </View>
+                        </View>
 
-                <View style={styles.panel}>
-                    <Text style={styles.panelTitle}>You spend most with</Text>
+                        <View style={styles.panel}>
+                            <Text style={styles.panelTitle}>You spend most with</Text>
 
                     {loading && !friendSpending.length ? (
                         <Text style={styles.emptyText}>Loading friend spending...</Text>
@@ -233,11 +260,13 @@ export default function AnalyticsScreen() {
                     {!friendSpending.length && !loading ? (
                         <Text style={styles.emptyText}>No shared friend spending data yet.</Text>
                     ) : null}
-                </View>
+                        </View>
 
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-                <View style={{ height: 90 }} />
+                        <View style={{ height: 90 }} />
+                    </>
+                )}
             </ScrollView>
         </SafeAreaView>
     );
@@ -270,6 +299,10 @@ const styles = StyleSheet.create({
     },
     sectionSpacing: {
         marginTop: 14,
+    },
+    emptyWrap: {
+        minHeight: 420,
+        justifyContent: 'center',
     },
     loaderCard: {
         minHeight: 220,

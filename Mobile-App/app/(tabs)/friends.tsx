@@ -19,6 +19,9 @@ import { COLORS as ThemeColors } from '@/src/constants/theme';
 import type { FriendBalanceItem } from '@/src/types/friends.types';
 import FriendCard from '@/src/components/friends/FriendCard';
 import { FriendCardSkeleton } from '@/components/SkeletonLoader';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight } from '@/src/utils/haptics';
 
 const COLORS = {
   bg: '#0F0F1A',
@@ -48,9 +51,11 @@ export default function FriendsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendBalanceItem[]>([]);
   const [countsByFriend, setCountsByFriend] = useState<Record<string, CountRow>>({});
+  const [error, setError] = useState<string | null>(null);
 
   const loadBalances = useCallback(async () => {
     try {
+      setError(null);
       setLoading(true);
       const data = await getFriendBalances();
       setFriends(data);
@@ -93,6 +98,7 @@ export default function FriendsScreen() {
       }
     } catch (error) {
       console.error('Failed to fetch friend balances:', error);
+      setError('Failed to load friends list');
       setFriends([]);
       setCountsByFriend({});
     } finally {
@@ -109,6 +115,7 @@ export default function FriendsScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    void hapticImpactLight();
     loadBalances();
   }, [loadBalances]);
 
@@ -213,12 +220,16 @@ export default function FriendsScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 22 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />}
         >
-          {friends.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="people-outline" size={34} color={COLORS.textSecondary} />
-              <Text style={styles.emptyTitle}>No friend balances yet</Text>
-              <Text style={styles.emptySub}>Balances will appear once you split expenses in groups.</Text>
-            </View>
+          {error ? (
+            <ErrorState onRetry={onRefresh} />
+          ) : friends.length === 0 ? (
+            <EmptyState
+              emoji="🤝"
+              title="No friends yet. Add people to a group!"
+              subtitle="Create or open a group to add members and start tracking balances"
+              actionLabel="Go to Groups"
+              onAction={() => router.push('/(tabs)/groups' as any)}
+            />
           ) : (
             friends.map((friend) => {
               const friendCounts = countsByFriend[String(friend.friendId || '')] || { pending: 0, overdue: 0 };

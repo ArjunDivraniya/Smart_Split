@@ -15,6 +15,10 @@ import { apiService } from '@/src/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ExpenseItem } from '@/components/ExpenseItem';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight, hapticNotifyWarning } from '@/src/utils/haptics';
+import { showInfoToast } from '@/src/utils/toast';
 
 const toSafeKey = (value: unknown, fallback: string): string => {
   if (value === null || value === undefined) {
@@ -81,6 +85,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,6 +121,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
 
   const fetchExpenses = async () => {
     try {
+      setError(null);
       setLoading(true);
       const params: any = {
         sortBy,
@@ -168,7 +174,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
       setExpenses(transformedExpenses);
     } catch (error) {
       console.error('Error fetching expenses:', error);
-      Alert.alert('Error', 'Failed to load expenses');
+      setError('Failed to load expenses');
       setExpenses([]);
     } finally {
       setLoading(false);
@@ -178,6 +184,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
 
   const handleRefresh = () => {
     setRefreshing(true);
+    void hapticImpactLight();
     fetchExpenses();
   };
 
@@ -192,7 +199,9 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
+              void hapticNotifyWarning();
               await apiService.groups.removeExpense(groupId, expenseId);
+              showInfoToast('🗑️ Expense deleted');
               fetchExpenses();
             } catch (error) {
               console.error('Error deleting expense:', error);
@@ -349,15 +358,13 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="receipt-outline" size={64} color="#cbd5e1" />
-      <Text style={[styles.emptyTitle, { color: colors.text }]}>No expenses yet</Text>
-      <Text style={[styles.emptySubtitle, { color: colors.icon }]}>Add your first expense to get started</Text>
-      <TouchableOpacity style={styles.addButton} onPress={onAddExpense}>
-        <Ionicons name="add" size={24} color="#ffffff" />
-        <Text style={styles.addButtonText}>Add Expense</Text>
-      </TouchableOpacity>
-    </View>
+    <EmptyState
+      emoji="💸"
+      title="No expenses added yet"
+      subtitle="Add your first group expense to start splitting"
+      actionLabel="Add Expense"
+      onAction={onAddExpense}
+    />
   );
 
   if (loading && !refreshing) {
@@ -372,6 +379,10 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {renderFilterBar()}
       {renderFilters()}
+
+      {!loading && error ? (
+        <ErrorState onRetry={fetchExpenses} />
+      ) : (
       
       <FlatList
         data={expenses}
@@ -390,6 +401,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
         onRefresh={handleRefresh}
         contentContainerStyle={expenses.length === 0 && styles.emptyList}
       />
+      )}
 
       {expenses.length > 0 && (
         <TouchableOpacity style={styles.fab} onPress={onAddExpense}>

@@ -10,6 +10,9 @@ import { Group, GroupType } from '@/src/types/group.types';
 import { useGroups } from '@/src/hooks/useGroups';
 import { apiService } from '@/src/services';
 import { GroupCardSkeleton } from '@/components/SkeletonLoader';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { hapticImpactLight } from '@/src/utils/haptics';
 
 type GroupFilter = 'all' | 'active' | 'trips' | 'archived';
 
@@ -49,6 +52,7 @@ export default function GroupsScreen() {
     const { groups, loading, error, refreshGroups, deleteGroup } = useGroups();
     const [selectedFilter, setSelectedFilter] = useState<GroupFilter>('all');
     const [currentUserId, setCurrentUserId] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
 
     const filterOptions: Array<{ key: GroupFilter; label: string }> = [
         { key: 'all', label: 'All' },
@@ -90,6 +94,13 @@ export default function GroupsScreen() {
 
     const handleCreateGroup = () => {
         router.push('/group/create');
+    };
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        void hapticImpactLight();
+        await refreshGroups();
+        setRefreshing(false);
     };
 
     const handleGroupPress = (group: Group) => {
@@ -155,15 +166,13 @@ export default function GroupsScreen() {
     };
 
     const renderEmptyState = () => (
-        <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIllustrationOuter, { backgroundColor: colors.elevated }]}> 
-                <View style={[styles.emptyIllustrationInner, { borderColor: colors.icon }]}> 
-                    <Ionicons name="people-outline" size={46} color={colors.icon} />
-                </View>
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No groups found</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.icon }]}>Create a new group to start tracking shared expenses.</Text>
-        </View>
+        <EmptyState
+            emoji="👥"
+            title={isExpensePickerMode ? 'No groups found' : 'No groups yet. Create your first group!'}
+            subtitle={isExpensePickerMode ? 'Create a group first' : 'Split your first trip, room, or event with friends.'}
+            actionLabel={isExpensePickerMode ? undefined : 'Create Group'}
+            onAction={isExpensePickerMode ? undefined : handleCreateGroup}
+        />
     );
 
     return (
@@ -217,18 +226,7 @@ export default function GroupsScreen() {
                 {loading ? (
                     renderLoadingSkeleton()
                 ) : error ? (
-                    <View style={styles.errorContainer}>
-                        <Ionicons name="alert-circle" size={48} color={colors.coral} />
-                        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
-                        <TouchableOpacity
-                            style={[styles.retryButton, { backgroundColor: colors.violet }]}
-                            onPress={refreshGroups}
-                        >
-                            <Text style={styles.retryButtonText}>Retry</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : filteredGroups.length === 0 ? (
-                    renderEmptyState()
+                    <ErrorState onRetry={handleRefresh} />
                 ) : (
                     <FlatList
                         data={filteredGroups}
@@ -243,8 +241,14 @@ export default function GroupsScreen() {
                                 onDelete={handleDeleteGroup}
                             />
                         )}
-                        contentContainerStyle={styles.listContent}
+                        contentContainerStyle={[
+                            styles.listContent,
+                            filteredGroups.length === 0 ? styles.listEmptyContent : null,
+                        ]}
                         ItemSeparatorComponent={() => <View style={styles.separator} />}
+                        ListEmptyComponent={renderEmptyState()}
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
                     />
                 )}
 
@@ -316,6 +320,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 6,
         paddingBottom: 110,
+    },
+    listEmptyContent: {
+        flexGrow: 1,
     },
     separator: {
         height: 2,

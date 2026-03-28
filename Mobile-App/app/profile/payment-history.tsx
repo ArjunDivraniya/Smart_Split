@@ -19,6 +19,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { apiService } from '@/src/services/api';
+import { EmptyState } from '@/components/EmptyState';
 
 const COLORS = {
   void: '#080810',
@@ -311,13 +312,12 @@ Date: ${selectedPayment.date.toLocaleString('en-IN')}`;
             <ActivityIndicator size="large" color={COLORS.violet} />
           </View>
         ) : filteredPayments.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📭</Text>
-            <Text style={styles.emptyTitle}>No payments yet</Text>
-            <Text style={styles.emptyDescription}>
-              Your {selectedTab !== 'all' ? selectedTab : 'payment'} history will appear here
-            </Text>
-          </View>
+          <EmptyState
+            emoji="💳"
+            title="No payment history yet"
+            subtitle={`Your ${selectedTab !== 'all' ? selectedTab : 'payment'} history will appear here`}
+            style={styles.emptyContainer}
+          />
         ) : (
           <SectionList
             sections={groupedPayments}

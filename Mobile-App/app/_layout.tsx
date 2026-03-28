@@ -8,6 +8,8 @@ import React, { useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
+import Toast from 'react-native-toast-message';
 
 import { AuthProvider } from '@/src/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -42,6 +44,33 @@ export default function RootLayout() {
     return null;
   }
 
+  const toastConfig: ToastConfig = {
+    success: (props) => (
+      <BaseToast
+        {...props}
+        style={{ borderLeftColor: '#00E5B0', backgroundColor: '#101A1A', borderRadius: 10 }}
+        text1Style={{ color: '#F0F0FF', fontFamily: 'DMSans_600SemiBold', fontSize: 14 }}
+        text2Style={{ color: '#A0A0BF', fontFamily: 'DMSans_400Regular', fontSize: 12 }}
+      />
+    ),
+    error: (props) => (
+      <ErrorToast
+        {...props}
+        style={{ borderLeftColor: '#FF5F7E', backgroundColor: '#1C1216', borderRadius: 10 }}
+        text1Style={{ color: '#F0F0FF', fontFamily: 'DMSans_600SemiBold', fontSize: 14 }}
+        text2Style={{ color: '#A0A0BF', fontFamily: 'DMSans_400Regular', fontSize: 12 }}
+      />
+    ),
+    info: (props) => (
+      <BaseToast
+        {...props}
+        style={{ borderLeftColor: '#7C5CFC', backgroundColor: '#14122A', borderRadius: 10 }}
+        text1Style={{ color: '#F0F0FF', fontFamily: 'DMSans_600SemiBold', fontSize: 14 }}
+        text2Style={{ color: '#A0A0BF', fontFamily: 'DMSans_400Regular', fontSize: 12 }}
+      />
+    ),
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -64,6 +93,7 @@ export default function RootLayout() {
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
           <StatusBar style="auto" />
+          <Toast config={toastConfig} />
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
