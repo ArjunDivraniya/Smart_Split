@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { getNotifications, markAllAsRead } from '../controllers/notification.controller';
+import {
+	clearAllNotifications,
+	getNotifications,
+	markAllAsRead,
+	markNotificationAsRead,
+} from '../controllers/notification.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -13,6 +18,27 @@ router.use(authenticateToken);
  * @access  Private
  */
 router.get('/', getNotifications);
+
+/**
+ * @route   PUT /api/notifications/:id/read
+ * @desc    Mark single notification as read
+ * @access  Private
+ */
+router.put('/:id/read', markNotificationAsRead);
+
+/**
+ * @route   PUT /api/notifications/read-all
+ * @desc    Mark all notifications as read
+ * @access  Private
+ */
+router.put('/read-all', markAllAsRead);
+
+/**
+ * @route   DELETE /api/notifications/clear
+ * @desc    Clear all notifications for current user
+ * @access  Private
+ */
+router.delete('/clear', clearAllNotifications);
 
 /**
  * @route   PUT /api/notifications

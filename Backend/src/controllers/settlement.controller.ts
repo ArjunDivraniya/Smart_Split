@@ -278,8 +278,8 @@ export const recordSettlement = async (req: AuthRequest, res: Response) => {
     await Notification.create({
       recipient: to,
       sender: fromUserId,
-      message: `${fromUser?.name || 'Someone'} recorded a settlement of ₹${parsedAmount.toFixed(2)} via ${methodNormalized.toUpperCase()}`,
-      type: 'expense',
+      message: `${fromUser?.name || 'Someone'} settled ₹${parsedAmount.toFixed(2)} with you ✅`,
+      type: 'settled',
     });
 
     const populatedSettlement = await Settlement.findById(settlement._id)
@@ -889,13 +889,15 @@ export const recordPartialSettlementPayment = async (req: AuthRequest, res: Resp
     await settlement.save();
 
     const isCompleted = Number(settlement.remaining || 0) <= 0;
+    const payer = await User.findById(settlement.fromUser).select('name').lean();
+    const totalAmount = Number(settlement.amount || 0).toFixed(2);
+    const remainingAmount = Number(settlement.remaining || 0).toFixed(2);
+
     await Notification.create({
       recipient: settlement.toUser,
       sender: settlement.fromUser,
-      message: isCompleted
-        ? 'Payment received in full ✅'
-        : `Partial payment of ₹${parsedPaidAmount.toFixed(2)} received. ₹${Number(settlement.remaining || 0).toFixed(2)} still remaining`,
-      type: isCompleted ? 'settled' : 'expense_added',
+      message: `${payer?.name || 'Someone'} paid ₹${parsedPaidAmount.toFixed(2)} of ₹${totalAmount} — ₹${remainingAmount} remaining`,
+      type: 'settled',
     });
 
     const updatedSettlement = await Settlement.findById(settlement._id)

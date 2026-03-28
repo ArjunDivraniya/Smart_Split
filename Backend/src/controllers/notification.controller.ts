@@ -53,6 +53,37 @@ const NOTIFICATION_TITLES: Record<string, string> = {
   budget_alert: 'Budget Alert',
 };
 
+const mapNotificationForResponse = (notification: any) => {
+  const groupIdFromTrip = notification.trip?._id?.toString?.() || notification.trip?.toString?.();
+  const groupIdFromGroup = notification.group?._id?.toString?.() || notification.group?.toString?.();
+  const friendId = notification.sender?._id?.toString?.() || notification.sender?.toString?.();
+  const amount = parseAmountFromMessage(String(notification.message || ''));
+
+  const meta: { groupId?: string; friendId?: string; amount?: number } = {};
+  const resolvedGroupId = groupIdFromGroup || groupIdFromTrip;
+
+  if (resolvedGroupId) {
+    meta.groupId = resolvedGroupId;
+  }
+  if (friendId) {
+    meta.friendId = friendId;
+  }
+  if (typeof amount === 'number') {
+    meta.amount = amount;
+  }
+
+  return {
+    id: notification._id.toString(),
+    type: notification.type,
+    title: NOTIFICATION_TITLES[notification.type] || 'Notification',
+    message: notification.message,
+    isRead: Boolean(notification.isRead),
+    meta,
+    createdAt: notification.createdAt,
+    timeAgo: getTimeAgo(notification.createdAt),
+  };
+};
+
 // Get User Notifications
 export const getNotifications = async (req: AuthRequest, res: Response) => {
   try {
@@ -79,40 +110,17 @@ export const getNotifications = async (req: AuthRequest, res: Response) => {
       .sort({ createdAt: -1 })
       .populate('sender', 'name profileImage')
       .populate('trip', 'name')
+      .populate('group', 'name')
       .limit(limit),
       Notification.countDocuments({ recipient: userId, isRead: false }),
       Notification.countDocuments({ recipient: userId }),
     ]);
 
-    const notifications = notificationDocs.map((notification: any) => {
-      const groupId = notification.trip?._id?.toString?.() || notification.trip?.toString?.();
-      const friendId = notification.sender?._id?.toString?.() || notification.sender?.toString?.();
-      const amount = parseAmountFromMessage(String(notification.message || ''));
-
-      const meta: { groupId?: string; friendId?: string; amount?: number } = {};
-      if (groupId) {
-        meta.groupId = groupId;
-      }
-      if (friendId) {
-        meta.friendId = friendId;
-      }
-      if (typeof amount === 'number') {
-        meta.amount = amount;
-      }
-
-      return {
-        id: notification._id.toString(),
-        type: notification.type,
-        title: NOTIFICATION_TITLES[notification.type] || 'Notification',
-        message: notification.message,
-        isRead: Boolean(notification.isRead),
-        meta,
-        createdAt: notification.createdAt,
-        timeAgo: getTimeAgo(notification.createdAt),
-      };
-    });
+    const notifications = notificationDocs.map((notification: any) => mapNotificationForResponse(notification));
 
     return res.status(200).json({
+      success: true,
+      data: notifications,
       notifications,
       unreadCount,
       totalCount,
@@ -128,14 +136,80 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
 
-    await Notification.updateMany({ recipient: userId, isRead: false }, { $set: { isRead: true } });
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const result = await Notification.updateMany(
+      { recipient: userId, isRead: false },
+      { $set: { isRead: true } }
+    );
+
+    const updatedCount = Number((result as any).modifiedCount ?? (result as any).nModified ?? 0);
 
     return res.status(200).json({
       success: true,
-      message: 'All marked as read',
+      updatedCount,
+      message: 'All notifications marked as read',
     });
   } catch (error: any) {
     console.error('Mark notifications as read error:', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Mark a single notification as read
+export const markNotificationAsRead = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const notificationId = req.params.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const notification = await Notification.findOneAndUpdate(
+      { _id: notificationId, recipient: userId },
+      { $set: { isRead: true } },
+      { new: true }
+    )
+      .populate('sender', 'name profileImage')
+      .populate('trip', 'name')
+      .populate('group', 'name');
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      notification: mapNotificationForResponse(notification),
+    });
+  } catch (error: any) {
+    console.error('Mark notification as read error:', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Clear all notifications for current user
+export const clearAllNotifications = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const result = await Notification.deleteMany({ recipient: userId });
+    const deletedCount = Number(result.deletedCount || 0);
+
+    return res.status(200).json({
+      success: true,
+      deletedCount,
+      message: 'All notifications cleared',
+    });
+  } catch (error: any) {
+    console.error('Clear all notifications error:', error);
     return res.status(500).json({ message: error.message });
   }
 };

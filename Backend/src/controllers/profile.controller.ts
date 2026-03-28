@@ -2,8 +2,199 @@ import { Response } from 'express';
 import User from '../models/User.model';
 import Trip from '../models/Trip.model';
 import Expense from '../models/Expense.model';
+import Group from '../models/Group.model';
+import PersonalExpense from '../models/PersonalExpense.model';
+import Settlement from '../models/Settlement.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 import bcrypt from 'bcryptjs';
+
+const formatMemberSince = (createdAt?: Date): string => {
+  const date = createdAt ? new Date(createdAt) : new Date();
+  const formatted = date.toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+  return `Member since ${formatted}`;
+};
+
+const mapProfileUser = (user: any) => ({
+  id: String(user._id),
+  name: user.name,
+  email: user.email,
+  phone: user.phone || '',
+  upiId: user.upiId || '',
+  avatar: user.profileImage || '',
+  monthlyIncome: Number(user.preferences?.monthlyIncome || 0),
+  savingsGoal: Number(user.preferences?.savingsGoal || 0),
+  preferences: user.preferences,
+  createdAt: user.createdAt,
+});
+
+// Get full user profile + computed stats
+export const getProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const user = await User.findById(userId)
+      .select('name email phone upiId profileImage preferences createdAt')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const [
+      totalGroups,
+      totalPersonalExpenses,
+      personalTotalsAgg,
+      thisMonthAgg,
+      totalSettled,
+      totalGroupsCreated,
+    ] = await Promise.all([
+      Group.countDocuments({
+        $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      }),
+      PersonalExpense.countDocuments({ user: userId }),
+      PersonalExpense.aggregate<{ totalSpent: number }>([
+        {
+          $match: { user: user._id },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSpent: { $sum: '$amount' },
+          },
+        },
+      ]),
+      PersonalExpense.aggregate<{ thisMonthSpent: number }>([
+        {
+          $match: {
+            user: user._id,
+            expenseDate: { $gte: monthStart, $lt: nextMonthStart },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            thisMonthSpent: { $sum: '$amount' },
+          },
+        },
+      ]),
+      Settlement.countDocuments({
+        status: 'completed',
+        $or: [{ fromUser: userId }, { toUser: userId }],
+      }),
+      Group.countDocuments({ createdBy: userId }),
+    ]);
+
+    const totalSpent = Number(personalTotalsAgg[0]?.totalSpent || 0);
+    const thisMonthSpent = Number(thisMonthAgg[0]?.thisMonthSpent || 0);
+
+    return res.status(200).json({
+      user: mapProfileUser(user),
+      stats: {
+        totalGroups,
+        totalPersonalExpenses,
+        totalSpent,
+        thisMonthSpent,
+        totalSettled,
+        totalGroupsCreated,
+        memberSince: formatMemberSince(user.createdAt as Date),
+      },
+    });
+  } catch (error: any) {
+    console.error('Get profile error:', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Update basic profile fields
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { name, phone, upiId, avatar, monthlyIncome, savingsGoal } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const updateData: Record<string, any> = {};
+
+    if (name !== undefined) {
+      const normalizedName = String(name).trim();
+      if (!normalizedName) {
+        return res.status(400).json({ message: 'Name cannot be empty' });
+      }
+      updateData.name = normalizedName;
+    }
+
+    if (phone !== undefined) {
+      const normalizedPhone = String(phone).trim();
+      if (!/^\d{10}$/.test(normalizedPhone)) {
+        return res.status(400).json({ message: 'Phone must be 10 digits' });
+      }
+      updateData.phone = normalizedPhone;
+    }
+
+    if (upiId !== undefined) {
+      const normalizedUpiId = String(upiId).trim();
+      if (normalizedUpiId && !normalizedUpiId.includes('@')) {
+        return res.status(400).json({ message: 'UPI ID must contain @' });
+      }
+      updateData.upiId = normalizedUpiId;
+    }
+
+    if (avatar !== undefined) {
+      updateData.profileImage = String(avatar).trim();
+    }
+
+    if (monthlyIncome !== undefined) {
+      const normalizedIncome = Number(monthlyIncome);
+      if (!Number.isFinite(normalizedIncome) || normalizedIncome < 0) {
+        return res.status(400).json({ message: 'monthlyIncome must be a non-negative number' });
+      }
+      updateData['preferences.monthlyIncome'] = normalizedIncome;
+    }
+
+    if (savingsGoal !== undefined) {
+      const normalizedGoal = Number(savingsGoal);
+      if (!Number.isFinite(normalizedGoal) || normalizedGoal < 0) {
+        return res.status(400).json({ message: 'savingsGoal must be a non-negative number' });
+      }
+      updateData['preferences.savingsGoal'] = normalizedGoal;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        message: 'At least one field is required: name, phone, upiId, avatar, monthlyIncome, savingsGoal',
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .select('name email phone upiId profileImage preferences createdAt')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json(mapProfileUser(user));
+  } catch (error: any) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
 
 // Get Profile Stats
 export const getProfileStats = async (req: AuthRequest, res: Response) => {
@@ -135,15 +326,46 @@ export const getProfileStats = async (req: AuthRequest, res: Response) => {
 export const updatePreferences = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { preferences } = req.body;
+    const payload = req.body?.preferences ?? req.body;
 
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
+    const updateData: Record<string, any> = {};
+
+    if (payload?.currency !== undefined) {
+      updateData['preferences.currency'] = String(payload.currency).trim();
+    }
+
+    if (payload?.theme !== undefined) {
+      const allowedThemes = ['dark', 'light', 'system'];
+      if (!allowedThemes.includes(payload.theme)) {
+        return res.status(400).json({ message: 'theme must be one of: dark, light, system' });
+      }
+      updateData['preferences.theme'] = payload.theme;
+    }
+
+    if (payload?.defaultSplit !== undefined) {
+      updateData['preferences.defaultSplit'] = payload.defaultSplit;
+    }
+
+    if (payload?.notifications !== undefined) {
+      if (typeof payload.notifications !== 'object' || payload.notifications === null) {
+        return res.status(400).json({ message: 'preferences.notifications must be an object' });
+      }
+      updateData['preferences.notifications'] = payload.notifications;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        message: 'At least one field is required: currency, theme, defaultSplit, notifications',
+      });
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
-      { preferences },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -151,11 +373,7 @@ export const updatePreferences = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Preferences updated',
-      data: user.preferences,
-    });
+    return res.status(200).json(user.preferences);
   } catch (error: any) {
     console.error('Update preferences error:', error);
     return res.status(500).json({ message: error.message });
@@ -231,67 +449,48 @@ export const exportData = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Get user data
-    const user = await User.findById(userId).select('-password');
+    const user = await User.findById(userId).select('name email').lean();
 
-    // Get all trips
-    const trips = await Trip.find({
-      $or: [
-        { createdBy: userId },
-        { 'members.userId': userId },
-      ],
-    }).populate('createdBy', 'name email')
-      .populate('members.userId', 'name email');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-    const tripIds = trips.map(trip => trip._id);
-
-    // Get all expenses
-    const expenses = await Expense.find({
-      trip: { $in: tripIds },
-    }).populate('paidBy', 'name email')
-      .populate('trip', 'name destination');
-
-    // Format export data
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      user: {
-        name: user?.name,
-        email: user?.email,
-        phone: user?.phone,
-        upiId: user?.upiId,
-      },
-      stats: {
-        totalTrips: trips.length,
-        totalExpenses: expenses.length,
-      },
-      trips: trips.map(trip => ({
-        name: trip.name,
-        destination: trip.destination,
-        startDate: trip.startDate,
-        endDate: trip.endDate,
-        status: trip.status,
-        members: trip.members.length,
-        expenses: trip.expenses.length,
-      })),
-      expenses: expenses.map((expense: any) => ({
-        title: expense.title,
-        amount: expense.amount,
-        category: expense.category,
-        paidBy: expense.paidBy?.name,
-        trip: expense.trip?.name,
-        date: expense.date,
-        splitType: expense.splitType,
-      })),
-    };
+    const [personalExpenses, groups, settlements] = await Promise.all([
+      PersonalExpense.find({ user: userId }).sort({ expenseDate: -1 }).lean(),
+      Group.find({
+        $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      })
+        .populate('createdBy', 'name email')
+        .populate('members.userId', 'name email')
+        .populate({
+          path: 'expenses',
+          populate: [
+            { path: 'paidBy', select: 'name email' },
+            { path: 'splitBetween', select: 'name email' },
+          ],
+        })
+        .sort({ createdAt: -1 })
+        .lean(),
+      Settlement.find({
+        $or: [{ fromUser: userId }, { toUser: userId }],
+      })
+        .populate('fromUser', 'name email')
+        .populate('toUser', 'name email')
+        .populate('createdBy', 'name email')
+        .populate('group', 'name type')
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
 
     return res.status(200).json({
-      success: true,
-      data: exportData,
-      summary: {
-        personalExpenses: expenses.length,
-        groups: trips.length,
-        friends: trips.reduce((acc, trip) => acc + trip.members.length, 0),
+      exportedAt: new Date().toISOString(),
+      user: {
+        name: user.name,
+        email: user.email,
       },
+      personalExpenses,
+      groups,
+      settlements,
     });
   } catch (error: any) {
     console.error('Export data error:', error);

@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import {
+  getProfile,
+  updateProfile,
   getProfileStats,
   updatePreferences,
   changePassword,
@@ -17,6 +19,20 @@ const router = Router();
 
 // All profile routes require authentication
 router.use(authenticateToken);
+
+/**
+ * @route   GET /api/profile
+ * @desc    Get full profile and computed stats
+ * @access  Private
+ */
+router.get('/', getProfile);
+
+/**
+ * @route   PUT /api/profile
+ * @desc    Update basic user profile fields
+ * @access  Private
+ */
+router.put('/', updateProfile);
 
 /**
  * @route   GET /api/profile/stats

@@ -73,6 +73,44 @@ export const useNotifications = () => {
     []
   );
 
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await apiService.notifications.markAllAsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    } catch (err: any) {
+      setError(getErrorMessage(err));
+    }
+  }, []);
+
+  const deleteNotification = useCallback(
+    async (notificationId: string) => {
+      try {
+        await apiService.notifications.delete(notificationId);
+        setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
+      } catch (err: any) {
+        setError(getErrorMessage(err));
+      }
+    },
+    []
+  );
+
+  const clearAllNotifications = useCallback(async () => {
+    try {
+      await apiService.notifications.clearAll?.();
+      setNotifications([]);
+    } catch (err: any) {
+      // Fallback: delete each notification individually
+      try {
+        for (const notification of notifications) {
+          await apiService.notifications.delete(notification.id);
+        }
+        setNotifications([]);
+      } catch (fallbackErr: any) {
+        setError(getErrorMessage(fallbackErr));
+      }
+    }
+  }, [notifications]);
+
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.isRead).length,
     [notifications]
@@ -89,6 +127,9 @@ export const useNotifications = () => {
     unreadCount,
     fetchNotifications,
     markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
   };
 };
 

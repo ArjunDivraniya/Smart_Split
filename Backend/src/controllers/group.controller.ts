@@ -4,6 +4,7 @@ import Group from '../models/Group.model';
 import User from '../models/User.model';
 import Expense from '../models/Expense.model';
 import Settlement from '../models/Settlement.model';
+import Notification from '../models/Notification.model';
 
 const toStringId = (value: any): string => {
   if (!value) return '';
@@ -1242,6 +1243,32 @@ export const addGroupExpense = async (req: Request, res: Response) => {
     group.expenses.push(newExpense._id as any);
     group.totalSpent = Number((group.totalSpent || 0) + Number(amount));
     await group.save();
+
+    const actor = await User.findById(userId).select('name').lean();
+    const actorName = String(actor?.name || 'Someone').trim();
+    const descriptionText = String(title || description || 'Expense').trim();
+    const amountText = Number(amount || 0).toLocaleString('en-IN');
+
+    const rawRecipientIds = [
+      String(group.createdBy),
+      ...group.members.map((member) => String(member.userId)),
+    ];
+
+    const recipientIds = Array.from(new Set(rawRecipientIds)).filter((id) => id && id !== String(userId));
+
+    if (recipientIds.length > 0) {
+      await Notification.insertMany(
+        recipientIds.map((recipientId) => ({
+          recipient: recipientId,
+          sender: userId,
+          group: group._id,
+          message: `${actorName} added ${descriptionText} ₹${amountText} in ${group.name}`,
+          type: 'expense_added',
+          isRead: false,
+          createdAt: new Date(),
+        }))
+      );
+    }
 
     res.status(201).json({
       success: true,

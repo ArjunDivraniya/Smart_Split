@@ -4,6 +4,7 @@ export interface INotification extends Document {
   recipient: mongoose.Types.ObjectId;
   sender?: mongoose.Types.ObjectId;
   trip?: mongoose.Types.ObjectId;
+  group?: mongoose.Types.ObjectId;
   message: string;
   type: 'invite' | 'expense' | 'activity' | 'system' | 'settled' | 'expense_added' | 'budget_alert';
   isRead: boolean;
@@ -23,6 +24,10 @@ const NotificationSchema: Schema = new Schema({
   trip: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Trip',
+  },
+  group: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
   },
   message: {
     type: String,

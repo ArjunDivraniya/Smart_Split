@@ -1,7 +1,17 @@
-import React, { useCallback } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import NotificationItem from '@/src/components/notifications/NotificationItem';
 import useNotifications, { AppNotification } from '@/src/hooks/useNotifications';
 
@@ -10,9 +20,32 @@ export default function NotificationsScreen() {
   const {
     notifications,
     loading,
+    unreadCount,
     fetchNotifications,
     markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
   } = useNotifications();
+
+  const [refreshing, setRefreshing] = useState(false);
+  const bellAnimation = new Animated.Value(0);
+
+  const unreadNotifications = useMemo(
+    () => notifications.filter((n) => !n.isRead),
+    [notifications]
+  );
+
+  const readNotifications = useMemo(
+    () => notifications.filter((n) => n.isRead),
+    [notifications]
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchNotifications();
+    setRefreshing(false);
+  }, [fetchNotifications]);
 
   const handleNotificationTap = useCallback(
     async (notification: AppNotification) => {
@@ -39,7 +72,7 @@ export default function NotificationsScreen() {
           }
           break;
         case 'monthly_report':
-          router.push('/analytics' as any);
+          router.push('/(tabs)/analytics' as any);
           break;
         default:
           break;
@@ -48,35 +81,174 @@ export default function NotificationsScreen() {
     [markAsRead, router]
   );
 
+  const handleMarkAllAsRead = useCallback(async () => {
+    if (unreadCount > 0) {
+      await markAllAsRead();
+    }
+  }, [markAllAsRead, unreadCount]);
+
+  const handleClearAll = useCallback(async () => {
+    if (notifications.length > 0) {
+      await clearAllNotifications();
+    }
+  }, [clearAllNotifications, notifications.length]);
+
+  const handleDeleteNotification = useCallback(
+    async (notificationId: string) => {
+      await deleteNotification(notificationId);
+    },
+    [deleteNotification]
+  );
+
+  // Animate bell icon on mount
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bellAnimation, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bellAnimation, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [bellAnimation]);
+
+  const bellScale = bellAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.05],
+  });
+
+  if (loading && notifications.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator size="large" color="#7C5CFC" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Notifications</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+            <MaterialIcons name="arrow-back" size={24} color="#F0F0FF" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Notifications</Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        {/* Action buttons */}
+        {notifications.length > 0 && (
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                unreadCount === 0 && styles.actionButtonDisabled,
+              ]}
+              onPress={handleMarkAllAsRead}
+              disabled={unreadCount === 0}
+            >
+              <MaterialIcons name="check" size={16} color="#00E5B0" />
+              <Text style={styles.actionText}>Mark All Read</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleClearAll}
+            >
+              <MaterialIcons name="delete-outline" size={16} color="#FF5F7E" />
+              <Text style={styles.actionText}>Clear All</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      {loading ? (
-        <View style={styles.loaderWrap}>
-          <ActivityIndicator size='large' color='#7C5CFC' />
-        </View>
+      {/* Content */}
+      {notifications.length === 0 ? (
+        <ScrollView
+          contentContainerStyle={styles.emptyContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#7C5CFC"
+            />
+          }
+        >
+          <Animated.View style={{ transform: [{ scale: bellScale }] }}>
+            <Text style={styles.emptyBell}>🔔</Text>
+          </Animated.View>
+          <Text style={styles.emptyTitle}>No notifications yet</Text>
+          <Text style={styles.emptySubtitle}>
+            You'll see expense updates,{'\n'}settlement confirmations,{'\n'}and budget alerts here
+          </Text>
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchNotifications} tintColor='#7C5CFC' />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#7C5CFC"
+            />
+          }
           showsVerticalScrollIndicator={false}
         >
-          {notifications.length === 0 ? (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyTitle}>No notifications yet</Text>
+          {/* Unread section */}
+          {unreadNotifications.length > 0 && (
+            <View>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>UNREAD</Text>
+                <Text style={styles.sectionCount}>({unreadNotifications.length})</Text>
+              </View>
+              <View style={styles.divider} />
+
+              {unreadNotifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onPress={handleNotificationTap}
+                  onDelete={handleDeleteNotification}
+                />
+              ))}
+
+              {readNotifications.length > 0 && (
+                <>
+                  <View style={[styles.sectionHeader, styles.sectionHeaderTop]}>
+                    <Text style={styles.sectionTitle}>EARLIER</Text>
+                  </View>
+                  <View style={styles.divider} />
+                </>
+              )}
             </View>
-          ) : (
-            notifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onPress={handleNotificationTap}
-              />
-            ))
           )}
+
+          {/* Read section */}
+          {readNotifications.length > 0 && unreadNotifications.length === 0 && (
+            <View>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>EARLIER</Text>
+              </View>
+              <View style={styles.divider} />
+            </View>
+          )}
+
+          {readNotifications.map((notification) => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              onPress={handleNotificationTap}
+              onDelete={handleDeleteNotification}
+            />
+          ))}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -90,31 +262,110 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   title: {
     color: '#F0F0FF',
     fontSize: 24,
     fontFamily: 'Syne_700Bold',
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  actionText: {
+    color: '#F0F0FF',
+    fontSize: 12,
+    fontFamily: 'DMSans_600SemiBold',
+    fontWeight: '600',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  sectionHeaderTop: {
+    marginTop: 16,
+  },
+  sectionTitle: {
+    color: '#80809E',
+    fontSize: 11,
+    fontFamily: 'DMSans_600SemiBold',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  sectionCount: {
+    color: '#80809E',
+    fontSize: 11,
+    fontFamily: 'DMSans_500Medium',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginVertical: 8,
   },
   loaderWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: {
-    padding: 16,
-    paddingBottom: 24,
-  },
-  emptyWrap: {
-    marginTop: 40,
+  emptyContent: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  emptyBell: {
+    fontSize: 56,
+    marginBottom: 16,
   },
   emptyTitle: {
-    color: '#A0A0BF',
-    fontSize: 14,
+    color: '#F0F0FF',
+    fontSize: 16,
     fontFamily: 'DMSans_600SemiBold',
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    color: '#80809E',
+    fontSize: 13,
+    fontFamily: 'DMSans_400Regular',
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

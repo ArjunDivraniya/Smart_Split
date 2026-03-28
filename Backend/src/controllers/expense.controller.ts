@@ -3,6 +3,7 @@ import Expense from '../models/Expense.model';
 import Trip from '../models/Trip.model';
 import Group from '../models/Group.model';
 import Settlement from '../models/Settlement.model';
+import User from '../models/User.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { sendNotification } from '../utils/notification';
 
@@ -204,7 +205,23 @@ export const addExpense = async (req: AuthRequest, res: Response) => {
       $push: { expenses: savedExpense._id },
     });
 
-    await sendNotification(splitBetween, userId!, tripId, `Added expense "${title}" of ₹${amount}`, 'expense');
+    const [actor, trip] = await Promise.all([
+      User.findById(userId).select('name').lean(),
+      Trip.findById(tripId).select('name').lean(),
+    ]);
+
+    const actorName = String(actor?.name || 'Someone').trim();
+    const amountText = Number(amount || 0).toLocaleString('en-IN');
+    const groupName = String(trip?.name || 'Group').trim();
+    const expenseDescription = String(title || 'Expense').trim();
+
+    await sendNotification(
+      splitBetween,
+      userId!,
+      tripId,
+      `${actorName} added ${expenseDescription} ₹${amountText} in ${groupName}`,
+      'expense_added'
+    );
 
     return res.status(201).json({
       message: 'Expense added successfully',

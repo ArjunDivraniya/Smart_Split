@@ -37,6 +37,7 @@ export interface IUserPreferences {
   monthlyIncome?: number;
   monthlyBudget?: number;
   savingsGoal?: number;
+  defaultSplit?: 'equally' | 'unequally' | 'percentage' | 'shares';
   defaultUpiId?: string;
   autoGenerateUpiLink: boolean;
   settlementConfirmation: boolean;
@@ -138,6 +139,11 @@ const UserSchema: Schema = new Schema({
     savingsGoal: {
       type: Number,
       default: 5000,
+    },
+    defaultSplit: {
+      type: String,
+      enum: ['equally', 'unequally', 'percentage', 'shares'],
+      default: 'equally',
     },
     defaultUpiId: {
       type: String,

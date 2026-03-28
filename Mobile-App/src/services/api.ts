@@ -269,14 +269,23 @@ export const apiService = {
     markAllAsRead: () =>
       api.put('/notifications/read-all'),
     
+    clearAll: () =>
+      api.delete('/notifications/clear'),
+    
     delete: (notificationId: string) =>
       api.delete(`/notifications/${notificationId}`),
   },
 
   // Profile endpoints
   profile: {
+    getProfile: () =>
+      api.get('/profile'),
+    
     getStats: () =>
       api.get('/profile/stats'),
+    
+    updateProfile: (data: any) =>
+      api.put('/profile', data),
     
     updatePreferences: (data: any) =>
       api.put('/profile/preferences', data),
