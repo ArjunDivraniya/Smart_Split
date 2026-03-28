@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import {
   getAnalytics,
+  getCategoryAnalytics,
+  getFriendSpendingAnalytics,
+  getGroupVsPersonalAnalytics,
+  getMonthlyAnalytics,
   getRecentActivity,
   getDashboardInsights,
   getDashboardSummary,
@@ -11,6 +15,34 @@ const router = Router();
 
 // All analytics routes require authentication
 router.use(authenticateToken);
+
+/**
+ * @route   GET /api/analytics/monthly
+ * @desc    Get monthly spending data for last 6 months (personal, group, total)
+ * @access  Private
+ */
+router.get('/monthly', getMonthlyAnalytics);
+
+/**
+ * @route   GET /api/analytics/categories?month=2&year=2025
+ * @desc    Get category-wise spending breakdown for a specific month
+ * @access  Private
+ */
+router.get('/categories', getCategoryAnalytics);
+
+/**
+ * @route   GET /api/analytics/group-vs-personal
+ * @desc    Get 6-month group vs personal spending comparison
+ * @access  Private
+ */
+router.get('/group-vs-personal', getGroupVsPersonalAnalytics);
+
+/**
+ * @route   GET /api/analytics/friend-spending
+ * @desc    Get top friends by shared group spending
+ * @access  Private
+ */
+router.get('/friend-spending', getFriendSpendingAnalytics);
 
 /**
  * @route   GET /api/analytics/trip/:id
