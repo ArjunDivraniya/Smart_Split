@@ -26,6 +26,7 @@ import { getSummary as getPersonalSummary } from '@/src/services/personal.servic
 import { STORAGE_KEYS } from '@/src/constants/categories';
 import { useNotifications } from '@/src/hooks/useNotifications';
 import { Colors } from '@/constants/theme';
+import { BalanceCardSkeleton } from '@/components/SkeletonLoader';
 
 const theme = Colors.dark;
 const COLORS = {
@@ -367,7 +368,7 @@ export default function DashboardScreen() {
             >
               <Text style={styles.cardLabel}>YOU OWE</Text>
               {balanceCardsLoading ? (
-                <Animated.View style={[styles.amountSkeleton, { opacity: skeletonOpacity }]} />
+                <BalanceCardSkeleton height={32} borderRadius={6} />
               ) : (
                 <Text style={[styles.cardAmount, { color: COLORS.coral }]}>₹{financialData.totalOwe.toLocaleString('en-IN')}</Text>
               )}
@@ -381,7 +382,7 @@ export default function DashboardScreen() {
             >
               <Text style={styles.cardLabel}>YOU GET</Text>
               {balanceCardsLoading ? (
-                <Animated.View style={[styles.amountSkeleton, { opacity: skeletonOpacity }]} />
+                <BalanceCardSkeleton height={32} borderRadius={6} />
               ) : (
                 <Text style={[styles.cardAmount, { color: COLORS.mint }]}>₹{financialData.totalGet.toLocaleString('en-IN')}</Text>
               )}
@@ -390,7 +391,7 @@ export default function DashboardScreen() {
 
           <View style={styles.monthlySpendRow}>
             {balanceCardsLoading ? (
-              <Animated.View style={[styles.monthlySkeleton, { opacity: skeletonOpacity }]} />
+              <BalanceCardSkeleton width="80%" height={16} borderRadius={6} />
             ) : (
               <Text style={styles.monthlySpendText}>Monthly Spend: ₹{financialData.monthlySpend.toLocaleString('en-IN')}</Text>
             )}

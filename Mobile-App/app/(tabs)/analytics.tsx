@@ -18,6 +18,7 @@ import { DonutChart } from '@/src/components/analytics/DonutChart';
 import { BarChart } from '@/src/components/analytics/BarChart';
 import { InsightCard } from '@/src/components/analytics/InsightCard';
 import { FriendSpendingCard } from '@/src/components/analytics/FriendSpendingCard';
+import { ChartSkeletonLoader } from '@/components/SkeletonLoader';
 
 export default function AnalyticsScreen() {
     const router = useRouter();
@@ -130,9 +131,7 @@ export default function AnalyticsScreen() {
                     ]}
                 >
                     {loading && !categoryData.length && !monthlyData.length ? (
-                        <View style={styles.loaderCard}>
-                            <ActivityIndicator size="large" color="#7C5CFC" />
-                        </View>
+                        <ChartSkeletonLoader />
                     ) : activeChart === 'monthly' ? (
                         <DonutChart categories={categoryData} totalAmount={categoryGrandTotal} />
                     ) : (

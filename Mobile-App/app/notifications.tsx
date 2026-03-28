@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import NotificationItem from '@/src/components/notifications/NotificationItem';
 import useNotifications, { AppNotification } from '@/src/hooks/useNotifications';
+import { NotificationSkeletonLoader } from '@/components/SkeletonLoader';
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -126,9 +127,22 @@ export default function NotificationsScreen() {
   if (loading && notifications.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.loaderWrap}>
-          <ActivityIndicator size="large" color="#7C5CFC" />
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+              <MaterialIcons name="arrow-back" size={24} color="#F0F0FF" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Notifications</Text>
+            <View style={{ width: 24 }} />
+          </View>
         </View>
+        <ScrollView contentContainerStyle={styles.skeletonContent}>
+          <NotificationSkeletonLoader style={{ marginBottom: 12 }} />
+          <NotificationSkeletonLoader style={{ marginBottom: 12 }} />
+          <NotificationSkeletonLoader style={{ marginBottom: 12 }} />
+          <NotificationSkeletonLoader style={{ marginBottom: 12 }} />
+          <NotificationSkeletonLoader />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -367,5 +381,9 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_400Regular',
     lineHeight: 18,
     textAlign: 'center',
+  },
+  skeletonContent: {
+    padding: 16,
+    paddingBottom: 24,
   },
 });

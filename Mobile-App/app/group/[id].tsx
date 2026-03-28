@@ -29,6 +29,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import api from '@/src/services/api';
 import { addMember } from '@/src/services/groups.service';
 import { ExpenseFormView } from '@/app/group/add-expense';
+import { ExpenseItemSkeleton } from '@/components/SkeletonLoader';
 
 interface Expense {
   id: string;
@@ -272,7 +273,11 @@ export default function GroupDetailScreen() {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-          <ActivityIndicator size="large" color={colors.violet} />
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            <ExpenseItemSkeleton />
+            <ExpenseItemSkeleton style={{ marginTop: 12 }} />
+            <ExpenseItemSkeleton style={{ marginTop: 12 }} />
+          </View>
         </View>
       </SafeAreaView>
     );

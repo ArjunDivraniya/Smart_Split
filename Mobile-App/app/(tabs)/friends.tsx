@@ -18,6 +18,7 @@ import { getPendingSettlements } from '@/src/services/settlements.service';
 import { COLORS as ThemeColors } from '@/src/constants/theme';
 import type { FriendBalanceItem } from '@/src/types/friends.types';
 import FriendCard from '@/src/components/friends/FriendCard';
+import { FriendCardSkeleton } from '@/components/SkeletonLoader';
 
 const COLORS = {
   bg: '#0F0F1A',
@@ -199,9 +200,13 @@ export default function FriendsScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.loaderWrap}>
-          <ActivityIndicator size="large" color={COLORS.accent} />
-        </View>
+        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={[styles.content, { paddingTop: 12 }]}>
+            <FriendCardSkeleton style={{ marginBottom: 10 }} />
+            <FriendCardSkeleton style={{ marginBottom: 10 }} />
+            <FriendCardSkeleton style={{ marginBottom: 10 }} />
+          </View>
+        </ScrollView>
       ) : (
         <ScrollView
           style={styles.scroll}

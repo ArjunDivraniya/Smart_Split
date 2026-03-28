@@ -22,6 +22,7 @@ import { useTheme } from '@/src/hooks/useTheme';
 import { getMonthlyData } from '@/src/services/analytics.service';
 import { apiService } from '@/src/services/api';
 import { STORAGE_KEYS } from '@/src/constants/categories';
+import { StatsRowSkeletonLoader } from '@/components/SkeletonLoader';
 
 const COLORS = {
   void: '#080810',

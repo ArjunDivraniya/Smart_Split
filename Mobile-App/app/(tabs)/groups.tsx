@@ -9,6 +9,7 @@ import { GroupCard } from '../../src/components/groups/GroupCard';
 import { Group, GroupType } from '@/src/types/group.types';
 import { useGroups } from '@/src/hooks/useGroups';
 import { apiService } from '@/src/services';
+import { GroupCardSkeleton } from '@/components/SkeletonLoader';
 
 type GroupFilter = 'all' | 'active' | 'trips' | 'archived';
 
@@ -140,24 +141,14 @@ export default function GroupsScreen() {
     };
 
     const renderLoadingSkeleton = () => {
-        const skeletonRows = Array.from({ length: 4 }, (_, index) => index);
+        const skeletonRows = Array.from({ length: 3 }, (_, index) => index);
         return (
             <View style={styles.skeletonList}>
                 {skeletonRows.map((item) => (
-                    <View
+                    <GroupCardSkeleton
                         key={`skeleton-${item}`}
-                        style={[styles.skeletonCard, { backgroundColor: colors.elevated }]}
-                    >
-                        <View style={styles.skeletonHeaderRow}>
-                            <View style={[styles.skeletonCircle, { backgroundColor: colors.icon }]} />
-                            <View style={styles.skeletonTextBlock}>
-                                <View style={[styles.skeletonLineLg, { backgroundColor: colors.icon }]} />
-                                <View style={[styles.skeletonLineSm, { backgroundColor: colors.icon }]} />
-                            </View>
-                        </View>
-                        <View style={[styles.skeletonLineMd, { backgroundColor: colors.icon }]} />
-                        <View style={[styles.skeletonLineFull, { backgroundColor: colors.icon }]} />
-                    </View>
+                        style={{ marginBottom: 12 }}
+                    />
                 ))}
             </View>
         );
