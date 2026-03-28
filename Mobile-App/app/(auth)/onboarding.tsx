@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useRef, useState } from 'react';
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 import {
   Dimensions,
   FlatList,
@@ -34,27 +35,82 @@ const COLORS = {
 
 const SLIDES = [
   {
-    title: 'Split expenses with friends',
-    description: 'Create groups, add expenses, and keep everyone in sync.',
+    emoji: '✈️',
+    title: 'Split Trip Expenses',
+    description: 'Add group expenses in seconds.\nEveryone sees what they owe.',
     accent: COLORS.violet,
-    icon: '👥',
-    floaters: ['💸', '✅', '📊'],
+    illustration: 'trip',
   },
   {
-    title: 'Track personal spending',
-    description: 'Stay on top of budgets with clear categories and totals.',
+    emoji: '📊',
+    title: 'Track Personal Spending',
+    description: 'Log daily expenses and set\nbudgets for each category.',
     accent: COLORS.mint,
-    icon: '📌',
-    floaters: ['🎯', '📒', '⚡'],
+    illustration: 'personal',
   },
   {
-    title: 'Settle up easily',
-    description: 'See balances instantly and close out with one tap.',
+    emoji: '💰',
+    title: 'Settle Up Instantly',
+    description: 'Pay friends via UPI or\nRazorpay — right from the app.',
     accent: COLORS.violetLight,
-    icon: '🤝',
-    floaters: ['💳', '✨', '✅'],
+    illustration: 'settle',
   },
-];
+] as const;
+
+type SlideItem = (typeof SLIDES)[number];
+
+const TripIllustration = () => (
+  <Svg width={220} height={220} viewBox="0 0 220 220" fill="none">
+    <Circle cx="110" cy="110" r="96" fill="rgba(124, 92, 252, 0.12)" />
+    <Rect x="44" y="126" width="132" height="44" rx="14" fill="#14142A" stroke="rgba(255,255,255,0.12)" />
+    <Rect x="58" y="138" width="24" height="20" rx="6" fill="#7C5CFC" />
+    <Rect x="89" y="138" width="24" height="20" rx="6" fill="#9B7FFF" />
+    <Rect x="120" y="138" width="24" height="20" rx="6" fill="#00E5B0" />
+    <Path d="M92 94 L154 74 L96 102" stroke="#00E5B0" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M77 102 L154 74 L86 88" stroke="#7C5CFC" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx="154" cy="74" r="8" fill="#FFB547" />
+  </Svg>
+);
+
+const PersonalIllustration = () => (
+  <Svg width={220} height={220} viewBox="0 0 220 220" fill="none">
+    <Circle cx="110" cy="110" r="96" fill="rgba(0, 229, 176, 0.13)" />
+    <Rect x="52" y="48" width="116" height="124" rx="14" fill="#14142A" stroke="rgba(255,255,255,0.12)" />
+    <Line x1="72" y1="84" x2="148" y2="84" stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
+    <Line x1="72" y1="103" x2="148" y2="103" stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
+    <Line x1="72" y1="122" x2="122" y2="122" stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
+    <Rect x="72" y="137" width="76" height="12" rx="6" fill="#00E5B0" opacity="0.9" />
+    <Rect x="74" y="58" width="44" height="12" rx="6" fill="#7C5CFC" />
+    <Circle cx="166" cy="58" r="18" fill="#7C5CFC" />
+    <Path d="M166 49V58L173 62" stroke="#F0F0FF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const SettleIllustration = () => (
+  <Svg width={220} height={220} viewBox="0 0 220 220" fill="none">
+    <Circle cx="110" cy="110" r="96" fill="rgba(176, 110, 255, 0.14)" />
+    <Rect x="38" y="78" width="72" height="56" rx="12" fill="#14142A" stroke="rgba(255,255,255,0.12)" />
+    <Rect x="112" y="88" width="70" height="56" rx="12" fill="#14142A" stroke="rgba(255,255,255,0.12)" />
+    <Path d="M92 146 C102 162, 118 162, 128 146" stroke="#00E5B0" strokeWidth="5" strokeLinecap="round" />
+    <Path d="M128 72 C118 56, 102 56, 92 72" stroke="#7C5CFC" strokeWidth="5" strokeLinecap="round" />
+    <Rect x="52" y="96" width="46" height="9" rx="4.5" fill="#7C5CFC" />
+    <Rect x="126" y="106" width="42" height="9" rx="4.5" fill="#00E5B0" />
+    <Circle cx="152" cy="66" r="15" fill="#FFB547" />
+    <Path d="M146 66h12M152 60v12" stroke="#080810" strokeWidth="2.3" strokeLinecap="round" />
+  </Svg>
+);
+
+const OnboardingIllustration = ({ type }: { type: SlideItem['illustration'] }) => {
+  if (type === 'trip') {
+    return <TripIllustration />;
+  }
+
+  if (type === 'personal') {
+    return <PersonalIllustration />;
+  }
+
+  return <SettleIllustration />;
+};
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -85,19 +141,12 @@ export default function OnboardingScreen() {
 
   const renderItem = useMemo(
     () =>
-      ({ item, slideIndex }: { item: (typeof SLIDES)[number]; slideIndex: number }) => (
+      ({ item }: { item: SlideItem }) => (
         <View style={styles.slide}>
-          <View style={[styles.illustration, { borderColor: item.accent }]}
-          >
-            <Text style={styles.illusIcon}>{item.icon}</Text>
+          <View style={[styles.illustration, { borderColor: item.accent }]}>
+            <OnboardingIllustration type={item.illustration} />
             <View style={[styles.floatChip, styles.floatOne]}>
-              <Text style={styles.floatText}>{item.floaters[0]}</Text>
-            </View>
-            <View style={[styles.floatChip, styles.floatTwo]}>
-              <Text style={styles.floatText}>{item.floaters[1]}</Text>
-            </View>
-            <View style={[styles.floatChip, styles.floatThree]}>
-              <Text style={styles.floatText}>{item.floaters[2]}</Text>
+              <Text style={styles.floatText}>{item.emoji}</Text>
             </View>
           </View>
           <Text style={styles.title}>{item.title}</Text>
@@ -121,7 +170,7 @@ export default function OnboardingScreen() {
         ref={listRef}
         data={SLIDES}
         keyExtractor={(item) => item.title}
-        renderItem={({ item, index: slideIndex }) => renderItem({ item, slideIndex })}
+        renderItem={({ item }) => renderItem({ item })}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -178,23 +227,20 @@ const styles = StyleSheet.create({
   },
   illustration: {
     alignSelf: 'center',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
     borderWidth: 2,
     backgroundColor: COLORS.violetDim,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
   },
-  illusIcon: {
-    fontSize: 54,
-  },
   floatChip: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: COLORS.elevated,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -203,32 +249,24 @@ const styles = StyleSheet.create({
   },
   floatOne: {
     top: 8,
-    right: -8,
-  },
-  floatTwo: {
-    bottom: 10,
-    left: -16,
-  },
-  floatThree: {
-    top: 18,
-    left: -24,
+    right: 14,
   },
   floatText: {
-    fontSize: 16,
+    fontSize: 24,
   },
   title: {
-    fontSize: 22,
+    fontSize: 30,
     fontWeight: '800',
     fontFamily: 'Syne_800ExtraBold',
     color: COLORS.textPrimary,
     textAlign: 'center',
   },
   description: {
-    fontSize: 13,
+    fontSize: 16,
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: 10,
-    lineHeight: 20,
+    lineHeight: 24,
     fontFamily: 'DMSans_400Regular',
   },
   footer: {

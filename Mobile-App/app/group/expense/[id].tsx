@@ -17,6 +17,8 @@ import { apiService } from '@/src/services/api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { calculateSplit, Participant, SplitResult } from '@/src/utils/splitCalculator';
+import { showInfoToast } from '@/src/utils/toast';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 interface ExpenseDetail {
   _id: string;
@@ -87,6 +89,10 @@ export default function ExpenseDetailScreen() {
     currentUserId,
     isCreator,
   } = useLocalSearchParams();
+  const handleBack = useBackNavigation('/(tabs)/groups' as any, () => {
+    const resolvedGroupId = String(groupId || '').trim();
+    return resolvedGroupId ? (`/group/${resolvedGroupId}` as any) : ('/(tabs)/groups' as any);
+  }, { alwaysUseFallback: true });
 
   const [loading, setLoading] = useState(true);
   const [expense, setExpense] = useState<ExpenseDetail | null>(null);
@@ -148,14 +154,14 @@ export default function ExpenseDetailScreen() {
 
         if (!found) {
           Alert.alert('Not Found', 'Expense could not be loaded.');
-          router.back();
+          handleBack();
           return;
         }
 
         setExpense(found);
       } catch {
         Alert.alert('Error', 'Failed to load expense details.');
-        router.back();
+        handleBack();
       } finally {
         setLoading(false);
       }
@@ -173,7 +179,8 @@ export default function ExpenseDetailScreen() {
         onPress: async () => {
           try {
             await apiService.groups.removeExpense(String(groupId || ''), String(expenseId || ''));
-            Alert.alert('Deleted', 'Expense deleted successfully.', [{ text: 'OK', onPress: () => router.back() }]);
+            showInfoToast('🗑️ Expense deleted');
+            Alert.alert('Deleted', 'Expense deleted successfully.', [{ text: 'OK', onPress: handleBack }]);
           } catch {
             Alert.alert('Error', 'Failed to delete expense.');
           }
@@ -205,7 +212,7 @@ export default function ExpenseDetailScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.elevated }]}> 
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Expense Details</Text>

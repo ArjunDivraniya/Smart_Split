@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { apiService } from '@/src/services/api';
 import { EmptyState } from '@/components/EmptyState';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 const COLORS = {
   void: '#080810',
@@ -63,6 +64,7 @@ interface PaymentHistory {
 
 export default function PaymentHistoryScreen() {
   const router = useRouter();
+  const handleBack = useBackNavigation('/profile' as any, undefined, { alwaysUseFallback: true });
   const [selectedTab, setSelectedTab] = useState<'all' | PaymentStatus>('all');
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -278,7 +280,7 @@ Date: ${selectedPayment.date.toLocaleString('en-IN')}`;
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+          <TouchableOpacity onPress={handleBack} hitSlop={12}>
             <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Payment History</Text>

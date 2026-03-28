@@ -18,6 +18,7 @@ import { BalanceRow } from '@/components/BalanceRow';
 import { SettlementModal } from '@/components/SettlementModal';
 import { useSettlements } from '@/src/hooks/useSettlements';
 import { Settlement as PendingSettlement } from '@/src/types/settlement.types';
+import { showInfoToast } from '@/src/utils/toast';
 
 const toSafeKey = (value: unknown, fallback: string): string => {
   if (value === null || value === undefined) {
@@ -265,6 +266,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     }
 
     await Linking.openURL(result.whatsappUrl);
+    showInfoToast('📱 Reminder sent via WhatsApp');
   };
 
   const renderPendingSettlementsCompact = () => {

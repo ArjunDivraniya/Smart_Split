@@ -22,6 +22,7 @@ import { Settlement } from '@/src/types/settlement.types';
 import { useAuth } from '@/src/context';
 import { ErrorState } from '@/components/ErrorState';
 import { hapticImpactLight } from '@/src/utils/haptics';
+import { showInfoToast } from '@/src/utils/toast';
 
 const FALLBACK_SUMMARY = {
   totalYouOwe: 0,
@@ -253,6 +254,7 @@ export default function SettlementsScreen() {
     const canOpen = await Linking.canOpenURL(whatsappWithLink);
     if (canOpen) {
       await Linking.openURL(whatsappWithLink);
+      showInfoToast('📱 Reminder sent via WhatsApp');
       return;
     }
 

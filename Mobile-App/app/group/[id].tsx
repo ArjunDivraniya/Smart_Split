@@ -30,6 +30,8 @@ import api from '@/src/services/api';
 import { addMember } from '@/src/services/groups.service';
 import { ExpenseFormView } from '@/app/group/add-expense';
 import { ExpenseItemSkeleton } from '@/components/SkeletonLoader';
+import { showSuccessToast } from '@/src/utils/toast';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 interface Expense {
   id: string;
@@ -76,6 +78,7 @@ export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const handleBack = useBackNavigation('/(tabs)/groups' as any, undefined, { alwaysUseFallback: true });
 
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
@@ -207,7 +210,7 @@ export default function GroupDetailScreen() {
     } catch (error: any) {
       console.error('Error fetching group:', error);
       Alert.alert('Error', 'Failed to load group details');
-      router.back();
+      handleBack();
     } finally {
       setLoading(false);
     }
@@ -528,6 +531,7 @@ export default function GroupDetailScreen() {
       await addMember(groupId, userId);
       await fetchGroupDetails();
       setSearchResults((prev) => prev.filter((candidate) => normalizeId(candidate._id) !== userId));
+      showSuccessToast('✅ Member added');
       Alert.alert('Success', `${user.name || user.email} added to group.`);
     } catch (error: any) {
       Alert.alert(
@@ -650,7 +654,7 @@ export default function GroupDetailScreen() {
       {/* Hero Header */}
       <View style={[styles.heroWrap, { borderBottomColor: colors.elevated }]}>
         <View style={styles.heroTopRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={22} color={colors.text} />
           </TouchableOpacity>
 

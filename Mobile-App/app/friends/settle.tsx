@@ -14,6 +14,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { createSettlement } from '@/src/services/settlements.service';
 import { hapticImpactHeavy, hapticNotifySuccess } from '@/src/utils/haptics';
+import { showSuccessToast } from '@/src/utils/toast';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 const PAYMENT_METHODS: Array<'upi' | 'cash' | 'bank'> = ['upi', 'cash', 'bank'];
 
@@ -37,6 +39,12 @@ export default function FriendSettleScreen() {
 	const friendId = String(params.friendId || '');
 	const friendName = String(params.friendName || 'Friend');
 	const groupId = String(params.groupId || '');
+	const handleBack = useBackNavigation('/settlements' as any, () => {
+		if (friendId) {
+			return (`/friends/${friendId}` as any);
+		}
+		return '/settlements' as any;
+	});
 
 	const initialAmount = useMemo(() => {
 		const parsed = parsePositiveAmount(String(params.amount || ''));
@@ -48,7 +56,7 @@ export default function FriendSettleScreen() {
 	const [note, setNote] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 
-	const onBack = () => router.back();
+	const onBack = () => handleBack();
 
 	const onSubmit = async () => {
 		if (!friendId) {
@@ -74,11 +82,12 @@ export default function FriendSettleScreen() {
 				...(groupId ? { groupId } : {}),
 			});
 			void hapticNotifySuccess();
+			showSuccessToast('✅ Settled up!');
 
 			Alert.alert('Payment recorded', `Settlement with ${friendName} has been recorded.`, [
 				{
 					text: 'OK',
-					onPress: () => router.back(),
+					onPress: onBack,
 				},
 			]);
 		} catch (error: any) {

@@ -35,6 +35,7 @@ import {
 } from '@/src/utils/splitCalculator';
 import { hapticImpactLight } from '@/src/utils/haptics';
 import { showSuccessToast } from '@/src/utils/toast';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 interface GroupMember {
   userId: string;
@@ -674,13 +675,17 @@ export function ExpenseFormView({
 export default function AddExpenseScreen() {
   const router = useRouter();
   const { id: routeGroupId, expenseId, expenseData } = useLocalSearchParams();
+  const handleBack = useBackNavigation('/(tabs)/groups' as any, () => {
+    const resolvedGroupId = String(routeGroupId || '').trim();
+    return resolvedGroupId ? (`/group/${resolvedGroupId}` as any) : ('/(tabs)/groups' as any);
+  }, { alwaysUseFallback: true });
 
   return (
     <ExpenseFormView
       groupId={String(routeGroupId || '')}
       expenseId={typeof expenseId === 'string' ? expenseId : undefined}
       expenseData={typeof expenseData === 'string' ? expenseData : undefined}
-      onClose={() => router.back()}
+      onClose={handleBack}
     />
   );
 }

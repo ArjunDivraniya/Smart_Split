@@ -21,6 +21,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useProfile from '@/src/hooks/useProfile';
 import { apiService } from '@/src/services/api';
+import { showSuccessToast } from '@/src/utils/toast';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 const COLORS = {
   void: '#080810',
@@ -42,6 +44,7 @@ const COLORS = {
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const handleBack = useBackNavigation('/profile' as any, undefined, { alwaysUseFallback: true });
   const { profile, loading: profileLoading } = useProfile();
 
   // Form state
@@ -188,6 +191,29 @@ export default function EditProfileScreen() {
     }
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !showPhotoOptions) {
+      return;
+    }
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+        cancelButtonIndex: 0,
+        userInterfaceStyle: 'dark',
+      },
+      (index: number) => {
+        if (index === 1) {
+          void handlePickPhoto('camera');
+        }
+        if (index === 2) {
+          void handlePickPhoto('gallery');
+        }
+        setShowPhotoOptions(false);
+      }
+    );
+  }, [showPhotoOptions]);
+
   // Save changes
   const handleSave = async () => {
     if (!validate()) {
@@ -239,6 +265,7 @@ export default function EditProfileScreen() {
 
       // Update profile
       await apiService.profile.updateProfile(updateData);
+      showSuccessToast('✅ Profile updated');
 
       Alert.alert('Success', 'Profile updated successfully!', [
         {
@@ -253,7 +280,7 @@ export default function EditProfileScreen() {
               avatar,
             });
             setHasChanges(false);
-            router.back();
+            handleBack();
           },
         },
       ]);
@@ -286,7 +313,7 @@ export default function EditProfileScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+          <TouchableOpacity onPress={handleBack} hitSlop={12}>
             <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
@@ -488,20 +515,6 @@ export default function EditProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Photo Options Sheet */}
-      {Platform.OS === 'ios' && showPhotoOptions && (
-        <ActionSheetIOS
-          options={['Cancel', 'Take Photo', 'Choose from Gallery']}
-          cancelButtonIndex={0}
-          userInterfaceStyle="dark"
-          onPress={(index) => {
-            if (index === 1) handlePickPhoto('camera');
-            if (index === 2) handlePickPhoto('gallery');
-            setShowPhotoOptions(false);
-          }}
-        />
-      )}
 
       {/* Android Photo Options */}
       {Platform.OS === 'android' && showPhotoOptions && (

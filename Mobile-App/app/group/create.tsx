@@ -20,6 +20,7 @@ import { TripDatePicker } from '@/src/components/groups/TripDatePicker';
 import { addMember, createGroup } from '@/src/services/groups.service';
 import api from '@/src/services/api';
 import { GroupType } from '@/src/types/group.types';
+import { showInfoToast } from '@/src/utils/toast';
 
 type CreateStep = 1 | 2 | 3;
 
@@ -204,6 +205,8 @@ export default function CreateGroupScreen() {
           selectedMembers.map((member) => addMember(groupId, member._id))
         );
       }
+
+      showInfoToast('👥 Group created');
 
       router.replace(`/group/${groupId}` as any);
     } catch (err: any) {

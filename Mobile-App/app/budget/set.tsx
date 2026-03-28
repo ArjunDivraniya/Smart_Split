@@ -20,6 +20,8 @@ import { COLORS as ThemeColors } from '@/src/constants/theme';
 import { createBudget, deleteBudget, getBudgetStatus, updateBudget } from '@/src/services/budget.service';
 import { getSummary as getPersonalSummary } from '@/src/services/personal.service';
 import type { BudgetStatusItem } from '@/src/types/budget.types';
+import { showSuccessToast } from '@/src/utils/toast';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 const COLORS = {
   surface: '#0F0F1A',
@@ -88,6 +90,7 @@ const resolveCategoryFromParam = (input?: string): string => {
 
 export default function SetBudgetScreen() {
   const router = useRouter();
+  const handleBack = useBackNavigation('/budget' as any, undefined, { alwaysUseFallback: true });
   const params = useLocalSearchParams<{ month?: string; year?: string; category?: string }>();
 
   const now = new Date();
@@ -230,6 +233,8 @@ export default function SetBudgetScreen() {
         await createBudget(payload);
       }
 
+      showSuccessToast('🎯 Budget saved');
+
       router.replace({
         pathname: '/budget' as any,
         params: { month: String(month), year: String(year) },
@@ -276,7 +281,7 @@ export default function SetBudgetScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.85}>
             <Ionicons name="chevron-back" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Set Budget</Text>

@@ -18,6 +18,8 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService } from '@/src/services/api';
+import { showInfoToast } from '@/src/utils/toast';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 const COLORS = {
   void: '#080810',
@@ -49,6 +51,7 @@ interface ExportData {
 
 export default function ExportDataScreen() {
   const router = useRouter();
+  const handleBack = useBackNavigation('/profile' as any, undefined, { alwaysUseFallback: true });
   const floatAnim = useRef(new Animated.Value(0)).current;
 
   // State
@@ -325,6 +328,7 @@ export default function ExportDataScreen() {
           })
         );
 
+        showInfoToast('📤 Export ready to download');
         Alert.alert('Success', 'Data export prepared and ready to share!');
       } catch (error: any) {
         if (error.message !== 'Share action dismissed.') {
@@ -346,7 +350,7 @@ export default function ExportDataScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+        <TouchableOpacity onPress={handleBack} hitSlop={12}>
           <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Export My Data</Text>

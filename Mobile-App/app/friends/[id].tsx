@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { getFriendHistory } from '@/src/services/friends.service';
 import type { FriendHistoryItem } from '@/src/types/friends.types';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 const COLORS = {
   bg: '#0F0F1A',
@@ -42,6 +43,7 @@ const formatDate = (value: string): string => {
 
 export default function FriendDetailScreen() {
   const router = useRouter();
+  const handleBack = useBackNavigation('/(tabs)/friends' as any, undefined, { alwaysUseFallback: true });
   const params = useLocalSearchParams<{ id?: string; name?: string; netBalance?: string }>();
 
   const friendId = String(params.id || '');
@@ -117,7 +119,7 @@ export default function FriendDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.85}>
           <Ionicons name="chevron-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{friendName}</Text>

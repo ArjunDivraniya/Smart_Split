@@ -16,6 +16,7 @@ import { MonthSelector } from '@/src/components/analytics/MonthSelector';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { hapticImpactLight, hapticNotifyWarning } from '@/src/utils/haptics';
+import { showInfoToast } from '@/src/utils/toast';
 
 import type { PersonalExpense } from '@/src/types/personal.types';
 import { deleteExpense, getExpenses } from '@/src/services/personal.service';
@@ -156,6 +157,7 @@ export default function PersonalExpenseScreen() {
           try {
             void hapticNotifyWarning();
             await deleteExpense(expenseId);
+            showInfoToast('🗑️ Expense deleted');
             setExpenses((prev) => prev.filter((item) => getExpenseId(item as PersonalExpense & { _id?: string }) !== expenseId));
           } catch (err: any) {
             Alert.alert('Delete Failed', err?.response?.data?.message || 'Could not delete expense');

@@ -4,11 +4,9 @@ import {
   Alert,
   Image,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
-  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -19,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS as THEME_COLORS } from '@/src/constants/theme';
 import { deleteExpense, getExpenseById } from '@/src/services/personal.service';
 import type { PersonalExpense } from '@/src/types/personal.types';
+import { showInfoToast } from '@/src/utils/toast';
 
 const COLORS = {
   surface: '#0F0F1A',
@@ -105,14 +104,6 @@ const getPaymentLabelWithIcon = (paymentMethod: string): string => {
   return paymentMethod || '-';
 };
 
-const showDeletedToast = () => {
-  if (Platform.OS === 'android') {
-    ToastAndroid.show('Expense deleted', ToastAndroid.SHORT);
-    return;
-  }
-  Alert.alert('Deleted', 'Expense deleted');
-};
-
 export default function PersonalExpenseDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -173,7 +164,7 @@ export default function PersonalExpenseDetailScreen() {
           try {
             setDeleting(true);
             await deleteExpense(expense.id);
-            showDeletedToast();
+            showInfoToast('🗑️ Expense deleted');
             router.replace('/personal');
           } catch (err: any) {
             Alert.alert('Delete Failed', err?.response?.data?.message || 'Could not delete expense');

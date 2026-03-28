@@ -18,9 +18,12 @@ import { NotificationSkeletonLoader } from '@/components/SkeletonLoader';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { hapticImpactLight } from '@/src/utils/haptics';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
+import { getNotificationDeepLinkPath } from '@/src/utils/deepLinks';
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const handleBack = useBackNavigation('/(tabs)' as any);
   const {
     notifications,
     loading,
@@ -57,31 +60,9 @@ export default function NotificationsScreen() {
     async (notification: AppNotification) => {
       await markAsRead(notification.id);
 
-      switch (notification.type) {
-        case 'payment_reminder':
-          router.push({ pathname: '/settlements' as any, params: { filter: 'overdue' } });
-          break;
-        case 'settled':
-          router.push({ pathname: '/settlements' as any, params: { filter: 'done' } });
-          break;
-        case 'expense_added':
-          if (notification.meta?.groupId) {
-            router.push(`/group/${notification.meta.groupId}` as any);
-          }
-          break;
-        case 'budget_alert':
-          router.push('/budget' as any);
-          break;
-        case 'group_invite':
-          if (notification.meta?.groupId) {
-            router.push(`/group/${notification.meta.groupId}` as any);
-          }
-          break;
-        case 'monthly_report':
-          router.push('/(tabs)/analytics' as any);
-          break;
-        default:
-          break;
+      const path = getNotificationDeepLinkPath(notification);
+      if (path) {
+        router.push(path as any);
       }
     },
     [markAsRead, router]
@@ -134,7 +115,7 @@ export default function NotificationsScreen() {
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+            <TouchableOpacity onPress={handleBack} hitSlop={12}>
               <MaterialIcons name="arrow-back" size={24} color="#F0F0FF" />
             </TouchableOpacity>
             <Text style={styles.title}>Notifications</Text>
@@ -157,7 +138,7 @@ export default function NotificationsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+          <TouchableOpacity onPress={handleBack} hitSlop={12}>
             <MaterialIcons name="arrow-back" size={24} color="#F0F0FF" />
           </TouchableOpacity>
           <Text style={styles.title}>Notifications</Text>

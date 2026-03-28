@@ -16,6 +16,7 @@ import { getCategoryBreakdown } from '@/src/services/analytics.service';
 import { getExpenses } from '@/src/services/personal.service';
 import { PersonalExpense } from '@/src/types/personal.types';
 import { MonthSelector } from '@/src/components/analytics/MonthSelector';
+import { useBackNavigation } from '@/src/hooks/useBackNavigation';
 
 const COLORS = {
   surface: '#0F0F1A',
@@ -62,6 +63,7 @@ const formatDate = (value: string | Date) => {
 
 export default function CategoryDrilldownScreen() {
   const router = useRouter();
+  const handleBack = useBackNavigation('/(tabs)/analytics' as any, undefined, { alwaysUseFallback: true });
   const params = useLocalSearchParams<{ category?: string; month?: string; year?: string }>();
 
   const now = new Date();
@@ -169,7 +171,7 @@ export default function CategoryDrilldownScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Category Detail</Text>

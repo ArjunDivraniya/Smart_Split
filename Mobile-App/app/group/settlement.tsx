@@ -18,6 +18,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiService } from '@/src/services/api';
+import { showInfoToast, showSuccessToast } from '@/src/utils/toast';
 
 interface Suggestion {
   fromUserId: string;
@@ -194,6 +195,7 @@ export default function SettlementScreen() {
 
     try {
       await Clipboard.setStringAsync(toUser.upiId);
+      showInfoToast('📋 UPI ID copied');
       Alert.alert('Copied', `${toUser.name}'s UPI ID copied.`);
     } catch {
       Alert.alert('UPI ID', toUser.upiId);
@@ -247,6 +249,7 @@ export default function SettlementScreen() {
         note: `${paymentMethod.toUpperCase()}${note ? ` - ${note}` : ''}`,
       });
 
+      showSuccessToast('✅ Settled up!');
       showSuccessAnimation();
     } catch (error: any) {
       Alert.alert('Error', error?.response?.data?.error || 'Failed to record settlement.');
