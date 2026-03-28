@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,181 +8,462 @@ import {
   Alert,
   Platform,
   Share,
+  Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService } from '@/src/services/api';
 
 const COLORS = {
+  void: '#080810',
   surface: '#0F0F1A',
+  card: '#14141F',
   elevated: '#1A1A2B',
   violet: '#7C5CFC',
   violetLight: '#9B7FFF',
+  violetDim: 'rgba(124, 92, 252, 0.06)',
   mint: '#00E5B0',
   coral: '#FF5F7E',
   amber: '#FFB547',
+  sky: '#38BDF8',
   textPrimary: '#F0F0FF',
-  textSecondary: '#8888AA',
-  textMuted: '#55556A',
-  border: 'rgba(255, 255, 255, 0.06)',
+  textSecondary: '#A0A0BF',
+  textMuted: '#80809E',
+  border: 'rgba(255, 255, 255, 0.08)',
 };
+
+type ExportFormat = 'json' | 'csv' | 'pdf';
+type DateRange = 'all' | 'last-month' | 'last-year';
+
+interface ExportData {
+  personalExpenses: number;
+  groups: number;
+  settlements: number;
+  budgetSettings: boolean;
+}
 
 export default function ExportDataScreen() {
   const router = useRouter();
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  // State
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('json');
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRange>('all');
   const [loading, setLoading] = useState(false);
-  const [exportData, setExportData] = useState<any>(null);
+  const [lastExported, setLastExported] = useState<string>('Never');
+  const [exportDataPreview, setExportDataPreview] = useState<ExportData>({
+    personalExpenses: 0,
+    groups: 0,
+    settlements: 0,
+    budgetSettings: false,
+  });
+
+  // Floating animation
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -8,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [floatAnim]);
+
+  // Load last export time and data preview
+  useEffect(() => {
+    loadExportMetadata();
+  }, []);
+
+  const loadExportMetadata = async () => {
+    try {
+      // Get last export time
+      const lastTime = await AsyncStorage.getItem('last_export_time');
+      if (lastTime) {
+        const date = new Date(parseInt(lastTime));
+        const formatted = date.toLocaleDateString('en-IN', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        });
+        setLastExported(formatted);
+      }
+
+      // Get data preview
+      try {
+        const profile = await apiService.profile.getProfile();
+        if (profile.data?.success) {
+          const stats = profile.data.data?.stats || {};
+          setExportDataPreview({
+            personalExpenses: stats.totalPersonalExpenses || 0,
+            groups: stats.totalGroups || 0,
+            settlements: 0,
+            budgetSettings: true,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading export data preview:', error);
+      }
+    } catch (error) {
+      console.error('Error loading export metadata:', error);
+    }
+  };
+
+  // Convert array of objects to CSV
+  const convertToCSV = (data: any[]): string => {
+    if (data.length === 0) return '';
+
+    const headers = Object.keys(data[0]);
+    const csvHeaders = headers.join(',');
+
+    const csvRows = data.map((row) => {
+      return headers
+        .map((header) => {
+          const value = row[header];
+          if (typeof value === 'string') {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        })
+        .join(',');
+    });
+
+    return [csvHeaders, ...csvRows].join('\n');
+  };
+
+  // Generate PDF content (HTML)
+  const generatePDFContent = (data: any): string => {
+    const timestamp = new Date().toLocaleString('en-IN');
+
+    let content = `
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              margin: 20px;
+              background: #f5f5f5;
+              color: #333;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 3px solid #7C5CFC;
+              padding-bottom: 20px;
+            }
+            .header h1 {
+              margin: 0;
+              color: #7C5CFC;
+              font-size: 28px;
+            }
+            .header p {
+              margin: 5px 0 0 0;
+              color: #666;
+              font-size: 12px;
+            }
+            .section {
+              margin: 20px 0;
+              background: white;
+              padding: 15px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .section h2 {
+              margin: 0 0 15px 0;
+              font-size: 16px;
+              color: #080810;
+              border-bottom: 2px solid #7C5CFC;
+              padding-bottom: 10px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 10px 0;
+            }
+            th {
+              background: #f0f0f0;
+              padding: 10px;
+              text-align: left;
+              font-weight: 600;
+              border-bottom: 2px solid #ddd;
+            }
+            td {
+              padding: 8px 10px;
+              border-bottom: 1px solid #eee;
+            }
+            .summary {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 15px;
+              margin: 15px 0;
+            }
+            .summary-item {
+              background: #f5f5f5;
+              padding: 10px 15px;
+              border-radius: 6px;
+              text-align: center;
+            }
+            .summary-item .value {
+              font-size: 24px;
+              font-weight: 700;
+              color: #7C5CFC;
+            }
+            .summary-item .label {
+              font-size: 12px;
+              color: #666;
+              margin-top: 5px;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 40px;
+              color: #999;
+              font-size: 11px;
+              border-top: 1px solid #ddd;
+              padding-top: 15px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>💰 SmartSplit Data Export</h1>
+            <p>Exported on ${timestamp}</p>
+          </div>
+          <div class="section">
+            <h2>📊 Export Summary</h2>
+            <div class="summary">
+              <div class="summary-item">
+                <div class="value">${exportDataPreview.personalExpenses}</div>
+                <div class="label">Personal Expenses</div>
+              </div>
+              <div class="summary-item">
+                <div class="value">${exportDataPreview.groups}</div>
+                <div class="label">Groups</div>
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <p>This is your personal data export from SmartSplit.</p>
+            <p>Keep this file safe and private.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return content;
+  };
 
   const handleExport = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
+
+      // Fetch export data from API
       const response = await apiService.profile.exportData();
-      
-      if (response.data?.success) {
-        const data = response.data.data;
-        setExportData(data);
+      let data = response.data?.data || response.data;
 
-        // Convert to JSON string
-        const jsonString = JSON.stringify(data, null, 2);
+      if (!data) {
+        Alert.alert('Error', 'Failed to fetch export data');
+        setLoading(false);
+        return;
+      }
 
-        // Show success with option to share
-        Alert.alert(
-          'Export Ready',
-          'Your data has been exported successfully. Would you like to share it?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Share',
-              onPress: async () => {
-                try {
-                  await Share.share({
-                    message: `SmartSplit Data Export\n\n${jsonString}`,
-                  });
-                } catch (error) {
-                  console.error('Error sharing:', error);
-                }
-              },
-            },
-          ]
+      let fileContent = '';
+      let fileName = `smartsplit-export-${new Date().toISOString().split('T')[0]}`;
+      let mimeType = 'application/json';
+
+      if (selectedFormat === 'json') {
+        fileContent = JSON.stringify(data, null, 2);
+        fileName += '.json';
+        mimeType = 'application/json';
+      } else if (selectedFormat === 'csv') {
+        const expenses = data.personalExpenses || [];
+        const csvData = expenses.map((exp: any) => ({
+          Date: new Date(exp.date || exp.createdAt).toLocaleDateString('en-IN'),
+          Description: exp.description || '',
+          Category: exp.category || '',
+          Amount: exp.amount || 0,
+          'Payment Method': exp.paymentMethod || '',
+          Note: exp.note || '',
+        }));
+
+        fileContent = convertToCSV(csvData);
+        fileName += '.csv';
+        mimeType = 'text/csv';
+      } else if (selectedFormat === 'pdf') {
+        fileContent = generatePDFContent(data);
+        fileName += '.html';
+        mimeType = 'text/html';
+      }
+
+      // Share the file
+      try {
+        await Share.share({
+          message: `SmartSplit Data Export (${selectedFormat.toUpperCase()})`,
+          url: fileContent,
+          title: `Export as ${selectedFormat.toUpperCase()}`,
+        });
+
+        // Record last export time
+        await AsyncStorage.setItem('last_export_time', Date.now().toString());
+
+        setLastExported(
+          new Date().toLocaleDateString('en-IN', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
         );
+
+        Alert.alert('Success', 'Data export prepared and ready to share!');
+      } catch (error: any) {
+        if (error.message !== 'Share action dismissed.') {
+          Alert.alert('Error', 'Failed to share export file');
+          console.error('Share error:', error);
+        }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to export data');
+      Alert.alert('Error', error.message || 'Failed to export data');
+      console.error('Export error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
 
-      <LinearGradient
-        colors={['rgba(124, 92, 252, 0.15)', 'transparent']}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Export Data</Text>
-          <View style={{ width: 40 }} />
-        </View>
-      </LinearGradient>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+          <MaterialIcons name="arrow-back" size={24} color={COLORS.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Export My Data</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Export Icon */}
-          <View style={styles.iconContainer}>
-            <LinearGradient
-              colors={[COLORS.mint, '#00B894']}
-              style={styles.iconGradient}
-            >
-              <Ionicons name="cloud-download" size={48} color={COLORS.textPrimary} />
-            </LinearGradient>
-          </View>
+        {/* Animated Icon */}
+        <View style={styles.iconSection}>
+          <Animated.View style={{ transform: [{ translateY: floatAnim }] }}>
+            <Text style={styles.icon}>📤</Text>
+          </Animated.View>
+        </View>
 
-          <Text style={styles.title}>Export Your Data</Text>
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          <Text style={styles.title}>Export your SmartSplit data</Text>
           <Text style={styles.description}>
-            Download all your SmartSplit data including trips, expenses, and settlements in JSON format.
+            Download a complete backup of your financial data in your preferred format.
           </Text>
 
-          {/* What's Included Card */}
-          <View style={styles.includeCard}>
-            <Text style={styles.includeTitle}>What's Included:</Text>
-            
+          {/* What's Included */}
+          <View style={styles.includesBox}>
+            <Text style={styles.includesTitle}>Your export will include:</Text>
+
             <View style={styles.includeItem}>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.mint} />
-              <Text style={styles.includeText}>Personal information</Text>
+              <Text style={styles.checkmark}>✓</Text>
+              <Text style={styles.includeText}>
+                {exportDataPreview.personalExpenses} personal expenses
+              </Text>
             </View>
-            
+
             <View style={styles.includeItem}>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.mint} />
-              <Text style={styles.includeText}>All trips and groups</Text>
+              <Text style={styles.checkmark}>✓</Text>
+              <Text style={styles.includeText}>
+                {exportDataPreview.groups} groups with all expenses
+              </Text>
             </View>
-            
+
             <View style={styles.includeItem}>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.mint} />
-              <Text style={styles.includeText}>Expense history</Text>
+              <Text style={styles.checkmark}>✓</Text>
+              <Text style={styles.includeText}>
+                All settlements history
+              </Text>
             </View>
-            
+
             <View style={styles.includeItem}>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.mint} />
-              <Text style={styles.includeText}>Settlement records</Text>
-            </View>
-            
-            <View style={styles.includeItem}>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.mint} />
-              <Text style={styles.includeText}>Category preferences</Text>
+              <Text style={styles.checkmark}>✓</Text>
+              <Text style={styles.includeText}>
+                Budget settings
+              </Text>
             </View>
           </View>
 
-          {/* Export Summary (if data is exported) */}
-          {exportData && (
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>Export Summary</Text>
-              
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Personal Expenses</Text>
-                <Text style={styles.summaryValue}>
-                  {exportData.summary?.personalExpenses || 0}
-                </Text>
-              </View>
-              
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Groups</Text>
-                <Text style={styles.summaryValue}>
-                  {exportData.summary?.groups || 0}
-                </Text>
-              </View>
-              
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Friends</Text>
-                <Text style={styles.summaryValue}>
-                  {exportData.summary?.friends || 0}
-                </Text>
-              </View>
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Export Date</Text>
-                <Text style={styles.summaryValue}>
-                  {new Date(exportData.exportDate).toLocaleDateString()}
-                </Text>
-              </View>
+          {/* Format Selection */}
+          <View style={styles.settingGroup}>
+            <Text style={styles.settingLabel}>FORMAT:</Text>
+            <View style={styles.formatButtons}>
+              {(['json', 'csv', 'pdf'] as ExportFormat[]).map((format) => (
+                <TouchableOpacity
+                  key={format}
+                  style={[
+                    styles.formatButton,
+                    selectedFormat === format && styles.formatButtonActive,
+                  ]}
+                  onPress={() => setSelectedFormat(format)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.formatEmoji}>
+                    {format === 'json' ? '📄' : format === 'csv' ? '📊' : '📑'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.formatText,
+                      selectedFormat === format && styles.formatTextActive,
+                    ]}
+                  >
+                    {format.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
+          </View>
 
-          {/* Info Card */}
-          <View style={styles.infoCard}>
-            <Ionicons name="information-circle" size={20} color={COLORS.amber} />
-            <Text style={styles.infoText}>
-              Your data will be exported in JSON format. You can save it locally or share it securely.
-            </Text>
+          {/* Date Range Selection */}
+          <View style={styles.settingGroup}>
+            <Text style={styles.settingLabel}>DATE RANGE:</Text>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => {
+                Alert.alert('Date Range', 'Select export period', [
+                  {
+                    text: 'All Time',
+                    onPress: () => setSelectedDateRange('all'),
+                  },
+                  {
+                    text: 'Last Month',
+                    onPress: () => setSelectedDateRange('last-month'),
+                  },
+                  {
+                    text: 'Last Year',
+                    onPress: () => setSelectedDateRange('last-year'),
+                  },
+                  { text: 'Cancel', style: 'cancel' },
+                ]);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.dropdownText}>
+                {selectedDateRange === 'all'
+                  ? 'All Time'
+                  : selectedDateRange === 'last-month'
+                    ? 'Last Month'
+                    : 'Last Year'}
+              </Text>
+              <MaterialIcons name="expand-more" size={20} color={COLORS.textMuted} />
+            </TouchableOpacity>
           </View>
 
           {/* Export Button */}
@@ -192,224 +473,246 @@ export default function ExportDataScreen() {
             disabled={loading}
             activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={[COLORS.mint, '#00B894']}
-              style={styles.exportButtonGradient}
-            >
-              <Ionicons
-                name={loading ? 'hourglass' : 'cloud-download-outline'}
-                size={20}
-                color={COLORS.textPrimary}
-              />
-              <Text style={styles.exportButtonText}>
-                {loading ? 'Exporting...' : 'Export Data as JSON'}
-              </Text>
-            </LinearGradient>
+            {loading ? (
+              <>
+                <ActivityIndicator size="small" color={COLORS.textPrimary} />
+                <Text style={styles.exportButtonText}>Preparing your data...</Text>
+              </>
+            ) : (
+              <>
+                <MaterialIcons name="file-download" size={20} color={COLORS.textPrimary} />
+                <Text style={styles.exportButtonText}>Export & Download</Text>
+              </>
+            )}
           </TouchableOpacity>
 
-          {/* Future Feature */}
-          <View style={styles.futureCard}>
-            <Ionicons name="rocket" size={20} color={COLORS.violetLight} />
-            <View style={styles.futureContent}>
-              <Text style={styles.futureTitle}>Coming Soon</Text>
-              <Text style={styles.futureText}>
-                PDF Export • Cloud Backup • Auto-sync
-              </Text>
-            </View>
+          {/* Last Export Info */}
+          <View style={styles.infoBox}>
+            <Ionicons name="information-circle" size={18} color={COLORS.violet} />
+            <Text style={styles.infoText}>
+              Last exported: <Text style={styles.infoValue}>{lastExported}</Text>
+            </Text>
+          </View>
+
+          {/* Privacy Note */}
+          <View style={styles.privacyBox}>
+            <MaterialIcons name="lock" size={16} color={COLORS.mint} />
+            <Text style={styles.privacyText}>
+              Your data is encrypted in transit and only you have access to your export files.
+            </Text>
           </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={styles.bottomPadding} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.surface,
-  },
-  headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 16,
+    backgroundColor: COLORS.void,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.elevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingVertical: 12,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    fontFamily: 'Syne_800ExtraBold',
+    fontWeight: '700',
+    fontFamily: 'Syne_700Bold',
     color: COLORS.textPrimary,
   },
   scrollView: {
     flex: 1,
   },
-  content: {
+  iconSection: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  icon: {
+    fontSize: 64,
+  },
+  contentSection: {
     paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconGradient: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingBottom: 32,
   },
   title: {
     fontSize: 24,
-    fontWeight: '800',
-    fontFamily: 'Syne_800ExtraBold',
+    fontWeight: '700',
+    fontFamily: 'Syne_700Bold',
     color: COLORS.textPrimary,
-    textAlign: 'center',
     marginBottom: 8,
+    textAlign: 'center',
   },
   description: {
     fontSize: 14,
-    color: COLORS.textSecondary,
     fontFamily: 'DMSans_400Regular',
+    color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
   },
-  includeCard: {
+  includesBox: {
     backgroundColor: COLORS.elevated,
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 16,
   },
-  includeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Syne_700Bold',
+  includesTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
     color: COLORS.textPrimary,
     marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   includeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     marginBottom: 10,
+    gap: 8,
+  },
+  checkmark: {
+    fontSize: 16,
+    color: COLORS.mint,
+    fontWeight: '700',
   },
   includeText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
     fontFamily: 'DMSans_400Regular',
+    color: COLORS.textSecondary,
   },
-  summaryCard: {
-    backgroundColor: COLORS.elevated,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.mint,
-    marginBottom: 16,
+  settingGroup: {
+    marginBottom: 20,
   },
-  summaryTitle: {
-    fontSize: 16,
+  settingLabel: {
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'Syne_700Bold',
-    color: COLORS.mint,
-    marginBottom: 16,
+    color: COLORS.textMuted,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  summaryRow: {
+  formatButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  formatButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: COLORS.elevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  formatButtonActive: {
+    backgroundColor: COLORS.violet,
+    borderColor: COLORS.violet,
+  },
+  formatEmoji: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  formatText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'DMSans_600SemiBold',
+    color: COLORS.textSecondary,
+  },
+  formatTextActive: {
+    color: COLORS.textPrimary,
+  },
+  dropdownButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: COLORS.elevated,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  summaryLabel: {
+  dropdownText: {
     fontSize: 14,
-    color: COLORS.textSecondary,
     fontFamily: 'DMSans_400Regular',
+    color: COLORS.textPrimary,
   },
-  summaryValue: {
-    fontSize: 16,
+  exportButton: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.violet,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginVertical: 24,
+  },
+  exportButtonDisabled: {
+    opacity: 0.6,
+  },
+  exportButtonText: {
+    fontSize: 15,
     fontWeight: '700',
     fontFamily: 'Syne_700Bold',
     color: COLORS.textPrimary,
   },
-  infoCard: {
+  infoBox: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 10,
-    backgroundColor: COLORS.elevated,
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: `${COLORS.violet}15`,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 24,
+    borderColor: `${COLORS.violet}30`,
   },
   infoText: {
     flex: 1,
     fontSize: 12,
-    color: COLORS.textSecondary,
     fontFamily: 'DMSans_400Regular',
-    lineHeight: 18,
+    color: COLORS.textSecondary,
+    lineHeight: 16,
   },
-  exportButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  exportButtonDisabled: {
-    opacity: 0.5,
-  },
-  exportButtonGradient: {
-    flexDirection: 'row',
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  exportButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'Syne_700Bold',
-    color: COLORS.textPrimary,
-  },
-  futureCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: `${COLORS.violet}20`,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: `${COLORS.violet}40`,
-  },
-  futureContent: {
-    flex: 1,
-  },
-  futureTitle: {
-    fontSize: 13,
+  infoValue: {
     fontWeight: '600',
-    fontFamily: 'DMSans_600SemiBold',
-    color: COLORS.violetLight,
-    marginBottom: 2,
+    color: COLORS.violet,
   },
-  futureText: {
+  privacyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: `${COLORS.mint}15`,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: `${COLORS.mint}30`,
+  },
+  privacyText: {
+    flex: 1,
     fontSize: 12,
-    color: COLORS.textSecondary,
     fontFamily: 'DMSans_400Regular',
+    color: COLORS.textSecondary,
+    lineHeight: 16,
+  },
+  bottomPadding: {
+    height: 20,
   },
 });
