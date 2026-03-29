@@ -668,7 +668,7 @@ export const getDashboardInsights = async (req: AuthRequest, res: Response) => {
     let biggestIncrease: { key: string; diff: number } | null = null;
     let biggestDecrease: { key: string; diff: number } | null = null;
 
-    categoryKeys.forEach((key) => {
+    for (const key of categoryKeys) {
       const thisAmount = thisMonthMap.get(key)?.total || 0;
       const lastAmount = lastMonthMap.get(key)?.total || 0;
       const diff = Math.round(thisAmount - lastAmount);
@@ -680,7 +680,7 @@ export const getDashboardInsights = async (req: AuthRequest, res: Response) => {
       if (diff < 0 && (!biggestDecrease || diff < biggestDecrease.diff)) {
         biggestDecrease = { key, diff };
       }
-    });
+    }
 
     if (biggestDecrease) {
       insights.push({

@@ -34,7 +34,7 @@ interface UseAnalyticsResult {
   setSelectedMonth: (month: number) => void;
   setSelectedYear: (year: number) => void;
   setActiveChart: (chart: AnalyticsChartType) => void;
-  refreshAnalytics: () => Promise<void>;
+  refreshAnalytics: (monthOverride?: number, yearOverride?: number) => Promise<void>;
 }
 
 const emptyInsightSummary: Omit<InsightsResponse, 'insights'> = {
@@ -79,14 +79,6 @@ export const useAnalytics = (): UseAnalyticsResult => {
   );
   const [friendSpending, setFriendSpending] = useState<FriendSpending[]>([]);
 
-  const [hasLoadedInitial, setHasLoadedInitial] = useState<boolean>(false);
-
-  const fetchCategoryData = useCallback(async (month: number, year: number) => {
-    const categoryResponse = await getCategoryBreakdown(month, year);
-    setCategoryGrandTotal(categoryResponse?.grandTotal || 0);
-    setCategoryData(Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []);
-  }, []);
-
   const refreshAnalytics = useCallback(async (monthOverride?: number, yearOverride?: number) => {
     const monthToUse = monthOverride ?? selectedMonth;
     const yearToUse = yearOverride ?? selectedYear;
@@ -104,7 +96,20 @@ export const useAnalytics = (): UseAnalyticsResult => {
           getFriendSpending(),
         ]);
 
-      setMonthlyData(Array.isArray(monthlyResponse?.data) ? monthlyResponse.data : []);
+      const normalizedMonthlyData = Array.isArray(monthlyResponse?.data)
+        ? monthlyResponse.data
+            .map((item) => ({
+              ...item,
+              month: Number(item?.month || 0),
+              year: Number(item?.year || 0),
+              personal: Number(item?.personal || 0),
+              group: Number(item?.group || 0),
+              total: Number(item?.total || Number(item?.personal || 0) + Number(item?.group || 0)),
+            }))
+            .sort((a, b) => (a.year === b.year ? a.month - b.month : a.year - b.year))
+        : [];
+
+      setMonthlyData(normalizedMonthlyData);
       setCategoryGrandTotal(categoryResponse?.grandTotal || 0);
       setCategoryData(Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []);
       setInsights(Array.isArray(insightResponse?.insights) ? insightResponse.insights : []);
@@ -137,34 +142,8 @@ export const useAnalytics = (): UseAnalyticsResult => {
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
-    refreshAnalytics(selectedMonth, selectedYear).finally(() => {
-      setHasLoadedInitial(true);
-    });
-    // Run once on mount for full payload fetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!hasLoadedInitial) {
-      return;
-    }
-
-    const refetchCategoryData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        await fetchCategoryData(selectedMonth, selectedYear);
-      } catch (err: any) {
-        setError(getErrorMessage(err));
-        setCategoryGrandTotal(0);
-        setCategoryData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    refetchCategoryData();
-  }, [fetchCategoryData, hasLoadedInitial, selectedMonth, selectedYear]);
+    refreshAnalytics(selectedMonth, selectedYear);
+  }, [refreshAnalytics, selectedMonth, selectedYear]);
 
   return {
     loading,

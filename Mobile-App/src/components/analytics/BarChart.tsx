@@ -11,6 +11,7 @@ const MAX_BAR_HEIGHT = 160;
 
 export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const animatedValuesRef = useRef<Animated.Value[]>([]);
 
   const totals = useMemo(
     () => monthlyData.map((item) => Math.max(0, Number(item.total || item.group + item.personal || 0))),
@@ -18,24 +19,37 @@ export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
   );
 
   const maxTotal = Math.max(...totals, 1);
-  const animatedValues = useRef(monthlyData.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    if (!monthlyData.length) {
+    if (animatedValuesRef.current.length !== monthlyData.length) {
+      animatedValuesRef.current = monthlyData.map(() => new Animated.Value(0));
+    }
+  }, [monthlyData]);
+
+  useEffect(() => {
+    if (!monthlyData.length || !animatedValuesRef.current.length) {
       return;
     }
 
-    const animations = animatedValues.map((value, index) =>
-      Animated.timing(value, {
+    const animations = animatedValuesRef.current.map((value, index) => {
+      value.setValue(0);
+
+      return Animated.timing(value, {
         toValue: 1,
         duration: 600,
         delay: index * 80,
         useNativeDriver: false,
-      })
-    );
+      });
+    });
 
     Animated.stagger(80, animations).start();
-  }, [animatedValues, monthlyData.length]);
+  }, [monthlyData]);
+
+  useEffect(() => {
+    if (selectedIndex !== null && selectedIndex >= monthlyData.length) {
+      setSelectedIndex(null);
+    }
+  }, [monthlyData.length, selectedIndex]);
 
   if (!monthlyData.length) {
     return (
@@ -49,11 +63,25 @@ export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
 
   return (
     <View>
+      {mode === 'split' ? (
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#7C5CFC' }]} />
+            <Text style={styles.legendText}>Group</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#00E5B0' }]} />
+            <Text style={styles.legendText}>Personal</Text>
+          </View>
+        </View>
+      ) : null}
+
       <View style={styles.chartArea}>
         {monthlyData.map((item, index) => {
           const total = Math.max(0, Number(item.total || item.group + item.personal || 0));
           const normalizedHeight = (total / maxTotal) * MAX_BAR_HEIGHT;
-          const totalHeight = animatedValues[index].interpolate({
+          const animatedValue = animatedValuesRef.current[index] || new Animated.Value(1);
+          const totalHeight = animatedValue.interpolate({
             inputRange: [0, 1],
             outputRange: [0, normalizedHeight],
           });
@@ -115,6 +143,26 @@ export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
 export default BarChart;
 
 const styles = StyleSheet.create({
+  legendRow: {
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 8,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    color: '#A0A0BF',
+    fontSize: 11,
+    fontFamily: 'DMSans_500Medium',
+  },
   chartArea: {
     minHeight: 220,
     borderRadius: 14,

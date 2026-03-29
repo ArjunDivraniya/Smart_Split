@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { InsightItem } from '@/src/types/analytics.types';
 
@@ -23,6 +23,7 @@ const typeStyles = {
 };
 
 export const InsightCard = ({ insights }: InsightCardProps) => {
+  const { width } = useWindowDimensions();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
   const listRef = useRef<FlatList<InsightItem>>(null);
@@ -71,7 +72,7 @@ export const InsightCard = ({ insights }: InsightCardProps) => {
           const palette = typeStyles[item.type] || typeStyles.info;
 
           return (
-            <View style={[styles.card, palette]}>
+            <View style={[styles.card, palette, { width: Math.max(280, width - 42) }]}>
               <View style={styles.cardContent}>
                 <Text style={styles.icon}>{item.icon}</Text>
                 <View style={styles.textWrap}>
@@ -104,7 +105,6 @@ export default InsightCard;
 
 const styles = StyleSheet.create({
   card: {
-    width: 340,
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 12,

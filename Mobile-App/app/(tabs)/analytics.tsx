@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAnalytics } from '@/src/hooks/useAnalytics';
 import { ChartToggle } from '@/src/components/analytics/ChartToggle';
 import { MonthSelector } from '@/src/components/analytics/MonthSelector';
@@ -45,7 +46,6 @@ export default function AnalyticsScreen() {
     } = useAnalytics();
 
     const [refreshing, setRefreshing] = useState(false);
-    const [showAllCategories, setShowAllCategories] = useState(false);
 
     const chartOpacity = useRef(new Animated.Value(1)).current;
     const chartTranslateY = useRef(new Animated.Value(0)).current;
@@ -83,10 +83,25 @@ export default function AnalyticsScreen() {
         [categoryData]
     );
 
-    const visibleCategories = showAllCategories ? sortedCategories : sortedCategories.slice(0, 4);
+    const categoryPreviewCount = 3;
+    const friendPreviewCount = 3;
+    const hasMoreCategories = sortedCategories.length > categoryPreviewCount;
+    const hasMoreFriends = friendSpending.length > friendPreviewCount;
+    const visibleCategories = sortedCategories;
+    const visibleFriends = friendSpending;
     const topFriendAmount = friendSpending[0]?.totalShared || 0;
+    const hasMonthlyTrendData = useMemo(
+        () => monthlyData.some((item) => Number(item.total || 0) > 0),
+        [monthlyData]
+    );
+    const selectedMonthPoint = useMemo(
+        () => monthlyData.find((item) => item.month === selectedMonth && item.year === selectedYear) || null,
+        [monthlyData, selectedMonth, selectedYear]
+    );
     const hasAnalyticsData =
         categoryGrandTotal > 0 ||
+        hasMonthlyTrendData ||
+        (selectedMonthPoint?.total || 0) > 0 ||
         sortedCategories.length > 0 ||
         friendSpending.length > 0 ||
         Number(groupVsPersonalSummary.totalGroup || 0) > 0 ||
@@ -101,34 +116,59 @@ export default function AnalyticsScreen() {
             >
                 <View style={styles.headerRow}>
                     <Text style={styles.headerTitle}>Analytics</Text>
-                    <View style={styles.monthSelectorCompactWrap}>
-                        <MonthSelector
-                            month={selectedMonth}
-                            year={selectedYear}
-                            onChange={(month, year) => {
-                                setSelectedMonth(month);
-                                setSelectedYear(year);
-                            }}
-                        />
+                </View>
+
+                <View style={styles.monthSelectorRow}>
+                    <MonthSelector
+                        month={selectedMonth}
+                        year={selectedYear}
+                        onChange={(month, year) => {
+                            setSelectedMonth(month);
+                            setSelectedYear(year);
+                        }}
+                    />
+                </View>
+
+                <View style={styles.monthlySnapshotRow}>
+                    <View style={styles.snapshotCard}>
+                        <Text style={styles.snapshotLabel}>Selected Month</Text>
+                        <Text style={styles.snapshotValue}>₹{Math.round(selectedMonthPoint?.total || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={styles.snapshotMeta}>Total spend</Text>
+                    </View>
+                    <View style={styles.snapshotCard}>
+                        <Text style={styles.snapshotLabel}>Group</Text>
+                        <Text style={[styles.snapshotValue, { color: '#A797FF' }]}>₹{Math.round(selectedMonthPoint?.group || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={styles.snapshotMeta}>Paid by you</Text>
+                    </View>
+                    <View style={styles.snapshotCard}>
+                        <Text style={styles.snapshotLabel}>Personal</Text>
+                        <Text style={[styles.snapshotValue, { color: '#66EFD0' }]}>₹{Math.round(selectedMonthPoint?.personal || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={styles.snapshotMeta}>Own expenses</Text>
                     </View>
                 </View>
 
-                {!loading && error && !hasAnalyticsData ? (
-                    <View style={styles.emptyWrap}>
-                        <ErrorState onRetry={onRefresh} />
-                    </View>
-                ) : !loading && !hasAnalyticsData ? (
-                    <View style={styles.emptyWrap}>
-                        <EmptyState
-                            emoji="📊"
-                            title="Add expenses to see insights"
-                            subtitle="Track group or personal expenses to unlock analytics trends"
-                            actionLabel="Add Expense"
-                            onAction={() => router.push('/(tabs)/groups' as any)}
-                        />
-                    </View>
-                ) : (
-                    <>
+                {!selectedMonthPoint ? (
+                    <Text style={styles.snapshotHint}>No monthly trend point for this selection yet. Trend graph shows last 6 months.</Text>
+                ) : null}
+
+                <>
+                    {!loading && !hasAnalyticsData ? (
+                        <View style={styles.inlineEmptyWrap}>
+                            <EmptyState
+                                emoji="📊"
+                                title="Add expenses to see insights"
+                                subtitle="Track group or personal expenses to unlock analytics trends"
+                                actionLabel="Add Expense"
+                                onAction={() => router.push('/(tabs)/groups' as any)}
+                            />
+                        </View>
+                    ) : null}
+
+                    {!loading && error ? (
+                        <View style={styles.inlineErrorWrap}>
+                            <ErrorState onRetry={onRefresh} />
+                        </View>
+                    ) : null}
 
                         <View style={styles.sectionSpacing}>
                             {loading && !insights.length ? (
@@ -157,6 +197,7 @@ export default function AnalyticsScreen() {
                                 },
                             ]}
                         >
+                            <Text style={styles.chartTitle}>{activeChart === 'monthly' ? 'Category Share' : 'Monthly Trend (Last 6 Months)'}</Text>
                             {loading && !categoryData.length && !monthlyData.length ? (
                                 <ChartSkeletonLoader />
                             ) : activeChart === 'monthly' ? (
@@ -173,37 +214,48 @@ export default function AnalyticsScreen() {
                         <Text style={styles.emptyText}>Loading categories...</Text>
                     ) : null}
 
-                    {visibleCategories.map((item) => (
-                        <TouchableOpacity
-                            key={`${item.category}-${item.total}`}
-                            style={styles.categoryRow}
-                            onPress={() =>
-                                router.push({
-                                    pathname: '/analytics/[category]',
-                                    params: {
-                                        category: item.category,
-                                        month: String(selectedMonth),
-                                        year: String(selectedYear),
-                                    },
-                                } as any)
-                            }
+                    <View style={styles.listContainer}>
+                        <ScrollView
+                            nestedScrollEnabled
+                            showsVerticalScrollIndicator={false}
+                            style={styles.categoryScrollArea}
+                            contentContainerStyle={styles.categoryListContent}
                         >
-                            <View style={styles.categoryLeft}>
-                                <Text style={styles.categoryEmoji}>{item.emoji || '📦'}</Text>
-                                <Text style={styles.categoryName}>{item.category}</Text>
-                            </View>
-                            <View style={styles.categoryRight}>
-                                <Text style={styles.categoryMeta}>{item.percentage}%</Text>
-                                <Text style={styles.categoryAmount}>₹{Math.round(item.total).toLocaleString('en-IN')}</Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
+                            {visibleCategories.map((item) => (
+                                <TouchableOpacity
+                                    key={`${item.category}-${item.total}`}
+                                    style={styles.categoryRow}
+                                    onPress={() =>
+                                        router.push({
+                                            pathname: '/analytics/[category]',
+                                            params: {
+                                                category: item.category,
+                                                month: String(selectedMonth),
+                                                year: String(selectedYear),
+                                            },
+                                        } as any)
+                                    }
+                                >
+                                    <View style={styles.categoryLeft}>
+                                        <Text style={styles.categoryEmoji}>{item.emoji || '📦'}</Text>
+                                        <Text style={styles.categoryName} numberOfLines={1} ellipsizeMode="tail">{item.category}</Text>
+                                    </View>
+                                    <View style={styles.categoryRight}>
+                                        <Text style={styles.categoryMeta}>{item.percentage}%</Text>
+                                        <Text style={styles.categoryAmount}>₹{Math.round(item.total).toLocaleString('en-IN')}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
 
-                    {sortedCategories.length > 4 ? (
-                        <TouchableOpacity onPress={() => setShowAllCategories((prev) => !prev)}>
-                            <Text style={styles.linkText}>{showAllCategories ? 'Show less categories ↑' : 'See all categories →'}</Text>
-                        </TouchableOpacity>
-                    ) : null}
+                        {hasMoreCategories ? (
+                            <LinearGradient
+                                pointerEvents="none"
+                                colors={['rgba(20,20,31,0)', 'rgba(20,20,31,1)']}
+                                style={styles.bottomFade}
+                            />
+                        ) : null}
+                    </View>
                         </View>
 
                         <View style={styles.panel}>
@@ -253,9 +305,26 @@ export default function AnalyticsScreen() {
                         <Text style={styles.emptyText}>Loading friend spending...</Text>
                     ) : null}
 
-                    {friendSpending.slice(0, 3).map((friend) => (
-                        <FriendSpendingCard key={friend.friendId} friend={friend} maxTotal={topFriendAmount} />
-                    ))}
+                    <View style={styles.listContainer}>
+                        <ScrollView
+                            nestedScrollEnabled
+                            showsVerticalScrollIndicator={false}
+                            style={styles.friendScrollArea}
+                            contentContainerStyle={styles.friendListContent}
+                        >
+                            {visibleFriends.map((friend) => (
+                                <FriendSpendingCard key={friend.friendId} friend={friend} maxTotal={topFriendAmount} />
+                            ))}
+                        </ScrollView>
+
+                        {hasMoreFriends ? (
+                            <LinearGradient
+                                pointerEvents="none"
+                                colors={['rgba(20,20,31,0)', 'rgba(20,20,31,1)']}
+                                style={styles.bottomFade}
+                            />
+                        ) : null}
+                    </View>
 
                     {!friendSpending.length && !loading ? (
                         <Text style={styles.emptyText}>No shared friend spending data yet.</Text>
@@ -265,8 +334,7 @@ export default function AnalyticsScreen() {
                         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
                         <View style={{ height: 90 }} />
-                    </>
-                )}
+                </>
             </ScrollView>
         </SafeAreaView>
     );
@@ -285,20 +353,66 @@ const styles = StyleSheet.create({
         marginTop: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
     },
     headerTitle: {
         color: '#F0F0FF',
-        fontSize: 26,
+        fontSize: 22,
         fontFamily: 'Syne_800ExtraBold',
     },
-    monthSelectorCompactWrap: {
+    monthSelectorRow: {
+        marginTop: 10,
+    },
+    monthlySnapshotRow: {
+        marginTop: 14,
+        flexDirection: 'row',
+        gap: 8,
+    },
+    snapshotCard: {
         flex: 1,
-        maxWidth: 230,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.06)',
+        backgroundColor: '#161624',
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+    },
+    snapshotLabel: {
+        color: '#8F8FB2',
+        fontSize: 11,
+        fontFamily: 'DMSans_500Medium',
+    },
+    snapshotValue: {
+        marginTop: 4,
+        color: '#F0F0FF',
+        fontSize: 14,
+        fontFamily: 'Syne_700Bold',
+    },
+    snapshotMeta: {
+        marginTop: 2,
+        color: '#6F6F95',
+        fontSize: 10,
+        fontFamily: 'DMSans_500Medium',
+    },
+    snapshotHint: {
+        marginTop: 8,
+        color: '#8888AA',
+        fontSize: 11,
+        fontFamily: 'DMSans_500Medium',
     },
     sectionSpacing: {
         marginTop: 14,
+    },
+    inlineEmptyWrap: {
+        marginTop: 12,
+    },
+    inlineErrorWrap: {
+        marginTop: 12,
+    },
+    chartTitle: {
+        marginBottom: 8,
+        color: '#BEBEE2',
+        fontSize: 12,
+        fontFamily: 'DMSans_600SemiBold',
     },
     emptyWrap: {
         minHeight: 420,
@@ -342,11 +456,34 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'Syne_700Bold',
     },
+    listContainer: {
+        position: 'relative',
+    },
+    categoryScrollArea: {
+        maxHeight: 168,
+    },
+    categoryListContent: {
+        paddingBottom: 10,
+    },
+    friendScrollArea: {
+        maxHeight: 296,
+    },
+    friendListContent: {
+        gap: 8,
+        paddingBottom: 10,
+    },
+    bottomFade: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 40,
+    },
     categoryRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
+        height: 48,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255,255,255,0.04)',
     },
@@ -359,6 +496,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     categoryName: {
+        flexShrink: 1,
         color: '#F0F0FF',
         fontSize: 14,
         fontFamily: 'DMSans_500Medium',
