@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 8,
     color: COLORS.textPrimary,
-    fontSize: 19,
+    fontSize: 24,
     fontFamily: 'Syne_700Bold',
   },
   scroll: {

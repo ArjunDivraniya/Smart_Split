@@ -361,8 +361,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: COLORS.textPrimary,
-    fontSize: 23,
-    fontFamily: 'Syne_800ExtraBold',
+    fontSize: 24,
+    fontFamily: 'Syne_700Bold',
     letterSpacing: -0.3,
   },
   headerSub: {

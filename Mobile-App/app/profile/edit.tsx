@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: COLORS.textPrimary,
-    fontSize: 18,
+    fontSize: 24,
     fontFamily: 'Syne_700Bold',
     fontWeight: '700',
   },

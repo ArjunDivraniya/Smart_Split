@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: COLORS.textPrimary,
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: 'Syne_700Bold',
   },
   scroll: {

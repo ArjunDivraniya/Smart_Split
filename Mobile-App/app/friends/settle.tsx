@@ -201,9 +201,9 @@ const styles = StyleSheet.create({
 		height: 34,
 	},
 	headerTitle: {
-		color: '#F3F3FF',
+		color: '#F0F0FF',
 		fontFamily: 'Syne_700Bold',
-		fontSize: 20,
+		fontSize: 24,
 	},
 	card: {
 		backgroundColor: '#17172A',

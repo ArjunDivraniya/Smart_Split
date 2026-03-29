@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontFamily: 'Syne_700Bold',
   },
   stepCounter: {

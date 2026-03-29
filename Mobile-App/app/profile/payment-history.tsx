@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
     fontFamily: 'Syne_700Bold',
     color: COLORS.textPrimary,

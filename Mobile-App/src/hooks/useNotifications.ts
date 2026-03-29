@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiService } from '@/src/services/api';
+import { useAuth } from '@/src/context/AuthContext';
 
 export interface AppNotification {
   id: string;
@@ -38,6 +39,7 @@ const getErrorMessage = (err: any): string => {
 };
 
 export const useNotifications = () => {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,17 +118,26 @@ export const useNotifications = () => {
     [notifications]
   );
 
+  // Only fetch notifications after user is authenticated
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    if (isAuthenticated && !authLoading) {
+      fetchNotifications();
+    }
+  }, [isAuthenticated, authLoading, fetchNotifications]);
 
+  // Set up polling for notifications
   useEffect(() => {
+    // Skip polling if not authenticated or still loading auth
+    if (!isAuthenticated || authLoading) {
+      return;
+    }
+
     const intervalId = setInterval(() => {
       fetchNotifications();
     }, 15000);
 
     return () => clearInterval(intervalId);
-  }, [fetchNotifications]);
+  }, [isAuthenticated, authLoading, fetchNotifications]);
 
   return {
     notifications,

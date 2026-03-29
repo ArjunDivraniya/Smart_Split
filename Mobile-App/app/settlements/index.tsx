@@ -431,9 +431,9 @@ const styles = StyleSheet.create({
     height: 32,
   },
   headerTitle: {
-    color: '#F3F3FF',
+    color: '#F0F0FF',
     fontFamily: 'Syne_700Bold',
-    fontSize: 20,
+    fontSize: 24,
   },
   contentContainer: {
     flex: 1,

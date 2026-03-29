@@ -269,9 +269,9 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    fontFamily: 'Syne_800ExtraBold',
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'Syne_700Bold',
     color: COLORS.textPrimary,
   },
   scrollView: {
