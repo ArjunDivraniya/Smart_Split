@@ -364,8 +364,8 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontSize: 36,
     color: '#8B5CF6',
-    fontFamily: 'Syne',
-    fontWeight: '800',
+    fontFamily: 'Syne_700Bold',
+    fontWeight: '700',
   },
   section: {
     borderWidth: 1,

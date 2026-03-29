@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     snapshotLabel: {
         color: '#8F8FB2',
         fontSize: 11,
-        fontFamily: 'DMSans_500Medium',
+        fontFamily: 'Syne_700Bold',
     },
     snapshotValue: {
         marginTop: 4,
@@ -408,13 +408,13 @@ const styles = StyleSheet.create({
         marginTop: 2,
         color: '#6F6F95',
         fontSize: 10,
-        fontFamily: 'DMSans_500Medium',
+        fontFamily: 'Syne_700Bold',
     },
     snapshotHint: {
         marginTop: 8,
         color: '#8888AA',
         fontSize: 11,
-        fontFamily: 'DMSans_500Medium',
+        fontFamily: 'Syne_700Bold',
     },
     sectionSpacing: {
         marginTop: 14,
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         color: '#BEBEE2',
         fontSize: 12,
-        fontFamily: 'DMSans_600SemiBold',
+        fontFamily: 'Syne_700Bold',
     },
     emptyWrap: {
         minHeight: 420,
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     placeholderText: {
         color: '#8888AA',
         fontSize: 12,
-        fontFamily: 'DMSans_500Medium',
+        fontFamily: 'Syne_700Bold',
     },
     panel: {
         marginTop: 16,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         color: '#F0F0FF',
         fontSize: 14,
-        fontFamily: 'DMSans_500Medium',
+        fontFamily: 'Syne_700Bold',
     },
     categoryRight: {
         alignItems: 'flex-end',
@@ -529,12 +529,12 @@ const styles = StyleSheet.create({
     categoryAmount: {
         color: '#FFB547',
         fontSize: 13,
-        fontFamily: 'DMSans_600SemiBold',
+        fontFamily: 'Syne_700Bold',
     },
     linkText: {
         color: '#9B7FFF',
         fontSize: 13,
-        fontFamily: 'DMSans_600SemiBold',
+        fontFamily: 'Syne_700Bold',
         marginTop: 6,
     },
     ratioRow: {
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     ratioLabel: {
         color: '#F0F0FF',
         fontSize: 13,
-        fontFamily: 'DMSans_600SemiBold',
+        fontFamily: 'Syne_700Bold',
     },
     progressTrack: {
         height: 8,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     ratioValue: {
         color: '#8888AA',
         fontSize: 12,
-        fontFamily: 'DMSans_500Medium',
+        fontFamily: 'Syne_700Bold',
     },
     emptyText: {
         color: '#8888AA',
@@ -569,6 +569,6 @@ const styles = StyleSheet.create({
         marginTop: 12,
         color: '#FF5F7E',
         fontSize: 12,
-        fontFamily: 'DMSans_500Medium',
+        fontFamily: 'Syne_700Bold',
     },
 });

@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: COLORS.textPrimary,
     fontSize: 15,
-    fontFamily: 'Syne_600SemiBold',
+    fontFamily: 'Syne_700Bold',
   },
   sectionBodyText: {
     color: COLORS.textSecondary,
