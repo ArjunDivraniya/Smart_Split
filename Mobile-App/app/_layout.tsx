@@ -13,6 +13,7 @@ import Toast from 'react-native-toast-message';
 
 import { AuthProvider } from '@/src/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { customHeaderOptions } from '@/src/utils/screenOptions';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -75,7 +76,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AuthProvider>
-          <Stack>
+          <Stack screenOptions={customHeaderOptions}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -90,7 +91,7 @@ export default function RootLayout() {
             <Stack.Screen name="analytics/[category]" options={{ headerShown: false }} />
             <Stack.Screen name="personal" options={{ headerShown: false }} />
             <Stack.Screen name="redirect" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', headerShown: true }} />
           </Stack>
           <StatusBar style="auto" />
           <Toast config={toastConfig} />

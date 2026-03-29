@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
-    "seed:global-access": "ts-node src/scripts/grantUserGlobalAccess.ts"
+    "seed:global-access": "ts-node src/scripts/grantUserGlobalAccess.ts",
+    "notify:monthly-report": "ts-node src/scripts/sendMonthlyReports.ts"
   },
   "keywords": [
     "trip-splitter",

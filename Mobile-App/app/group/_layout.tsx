@@ -6,14 +6,12 @@ export default function GroupLayout() {
       <Stack.Screen
         name="create"
         options={{
-          title: 'Create Group',
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="[id]"
         options={{
-          title: 'Group Details',
           headerShown: false,
         }}
       />
@@ -36,7 +34,6 @@ export default function GroupLayout() {
       <Stack.Screen
         name="expense/[id]"
         options={{
-          title: 'Expense Details',
           headerShown: false,
           presentation: 'modal',
           animation: 'slide_from_bottom',
@@ -45,7 +42,6 @@ export default function GroupLayout() {
       <Stack.Screen
         name="settlement"
         options={{
-          title: 'Settle Up',
           headerShown: false,
         }}
       />

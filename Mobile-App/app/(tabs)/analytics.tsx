@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useAnalytics } from '@/src/hooks/useAnalytics';
 import { ChartToggle } from '@/src/components/analytics/ChartToggle';
 import { MonthSelector } from '@/src/components/analytics/MonthSelector';
@@ -115,7 +116,11 @@ export default function AnalyticsScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7C5CFC" />}
             >
                 <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
+                        <Ionicons name="chevron-back" size={24} color="#F0F0FF" />
+                    </TouchableOpacity>
                     <Text style={styles.headerTitle}>Analytics</Text>
+                    <View style={styles.backBtnPlaceholder} />
                 </View>
 
                 <View style={styles.monthSelectorRow}>
@@ -353,11 +358,23 @@ const styles = StyleSheet.create({
         marginTop: 10,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+    },
+    backBtn: {
+        padding: 8,
+        marginLeft: -8,
+    },
+    backBtnPlaceholder: {
+        width: 40,
     },
     headerTitle: {
         color: '#F0F0FF',
-        fontSize: 22,
-        fontFamily: 'Syne_800ExtraBold',
+        fontSize: 28,
+        fontFamily: 'Syne_700Bold',
+        fontWeight: '700',
+        flex: 1,
+        textAlign: 'center',
     },
     monthSelectorRow: {
         marginTop: 10,

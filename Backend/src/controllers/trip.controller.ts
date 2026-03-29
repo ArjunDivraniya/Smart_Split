@@ -276,7 +276,14 @@ export const addMemberToTrip = async (req: AuthRequest, res: Response) => {
     await trip.save();
 
     if (newMemberId) {
-      await sendNotification([newMemberId.toString()], userId!, id, `Invited you to join "${trip.name}"`, 'invite');
+      const actor = await User.findById(userId).select('name').lean();
+      await sendNotification(
+        [newMemberId.toString()],
+        userId!,
+        id,
+        `${actor?.name || 'Someone'} added you to ${trip.name}`,
+        'group_invite'
+      );
     }
 
     return res.status(200).json({

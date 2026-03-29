@@ -51,6 +51,13 @@ const NOTIFICATION_TITLES: Record<string, string> = {
   settled: 'Settlement Update',
   expense_added: 'New Expense Added',
   budget_alert: 'Budget Alert',
+  payment_reminder: 'Payment Reminder',
+  group_invite: 'Group Invitation',
+  monthly_report: 'Monthly Report',
+  payment_received: 'Payment Received',
+  payment_confirmed: 'Payment Confirmed',
+  partial_payment: 'Partial Payment',
+  mark_received: 'Payment Received Confirmation',
 };
 
 const mapNotificationForResponse = (notification: any) => {

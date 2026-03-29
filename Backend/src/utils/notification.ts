@@ -5,7 +5,21 @@ export async function sendNotification(
   senderId: string,
   tripId: string,
   message: string,
-  type: 'invite' | 'expense' | 'activity' | 'system' | 'settled' | 'expense_added'
+  type:
+    | 'invite'
+    | 'expense'
+    | 'activity'
+    | 'system'
+    | 'settled'
+    | 'expense_added'
+    | 'budget_alert'
+    | 'payment_reminder'
+    | 'group_invite'
+    | 'monthly_report'
+    | 'payment_received'
+    | 'payment_confirmed'
+    | 'partial_payment'
+    | 'mark_received'
 ) {
   try {
     // Filter out the sender so they don't notify themselves

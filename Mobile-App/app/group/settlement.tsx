@@ -496,8 +496,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerTitle: {
-    fontSize: 17,
-    fontFamily: 'DMSans_700Bold',
+    fontSize: 18,
+    fontFamily: 'Syne_700Bold',
+    fontWeight: '700',
   },
   headerSpacer: {
     width: 24,

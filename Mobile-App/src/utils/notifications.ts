@@ -60,6 +60,26 @@ export const getNotificationTypeConfig = (type: string): NotificationTypeConfig 
       backgroundColor: '#38BDF8',
       borderColor: 'rgba(56,189,248,0.3)',
     },
+    payment_received: {
+      emoji: '💰',
+      backgroundColor: '#00E5B0',
+      borderColor: 'rgba(0,229,176,0.3)',
+    },
+    payment_confirmed: {
+      emoji: '✅',
+      backgroundColor: '#22C55E',
+      borderColor: 'rgba(34,197,94,0.3)',
+    },
+    partial_payment: {
+      emoji: '🧾',
+      backgroundColor: '#FFB547',
+      borderColor: 'rgba(255,181,71,0.3)',
+    },
+    mark_received: {
+      emoji: '✔️',
+      backgroundColor: '#14B8A6',
+      borderColor: 'rgba(20,184,166,0.3)',
+    },
   };
 
   return (

@@ -667,6 +667,15 @@ export const addGroupMember = async (req: Request, res: Response) => {
       { new: true }
     );
 
+    const actor = await User.findById(userId).select('name').lean();
+    await Notification.create({
+      recipient: userToAdd._id,
+      sender: userId,
+      group: group._id,
+      message: `${actor?.name || 'Someone'} added you to ${group.name}`,
+      type: 'group_invite',
+    });
+
     const updatedGroup = await Group.findById(id)
       .populate('createdBy', 'name email profileImage avatar')
       .populate('members.userId', 'name email profileImage avatar phone upiId')

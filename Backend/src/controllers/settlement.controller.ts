@@ -210,7 +210,7 @@ export const getSettlements = async (req: AuthRequest, res: Response) => {
 export const recordSettlement = async (req: AuthRequest, res: Response) => {
   try {
     const fromUserId = req.userId;
-    const { groupId, to, amount, method = 'cash', note } = req.body || {};
+    const { groupId, to, amount, method = 'cash', note, paymentProvider, paymentStatus } = req.body || {};
 
     if (!fromUserId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -281,6 +281,22 @@ export const recordSettlement = async (req: AuthRequest, res: Response) => {
       message: `${fromUser?.name || 'Someone'} settled ₹${parsedAmount.toFixed(2)} with you ✅`,
       type: 'settled',
     });
+
+    if (String(paymentProvider || '').toLowerCase() === 'razorpay' && String(paymentStatus || '').toLowerCase() === 'confirmed') {
+      await Notification.create({
+        recipient: to,
+        sender: fromUserId,
+        message: `₹${parsedAmount.toFixed(2)} received from ${fromUser?.name || 'Someone'} via Razorpay ✅`,
+        type: 'payment_received',
+      });
+
+      await Notification.create({
+        recipient: fromUserId,
+        sender: to,
+        message: `Payment of ₹${parsedAmount.toFixed(2)} to ${toUser?.name || 'user'} confirmed ✅`,
+        type: 'payment_confirmed',
+      });
+    }
 
     const populatedSettlement = await Settlement.findById(settlement._id)
       .populate('fromUser', '_id name email profileImage')
@@ -897,7 +913,7 @@ export const recordPartialSettlementPayment = async (req: AuthRequest, res: Resp
       recipient: settlement.toUser,
       sender: settlement.fromUser,
       message: `${payer?.name || 'Someone'} paid ₹${parsedPaidAmount.toFixed(2)} of ₹${totalAmount} — ₹${remainingAmount} remaining`,
-      type: 'settled',
+      type: 'partial_payment',
     });
 
     const updatedSettlement = await Settlement.findById(settlement._id)
@@ -967,6 +983,7 @@ export const sendSettlementReminder = async (req: AuthRequest, res: Response) =>
     await settlement.save();
 
     const fromUser = settlement.fromUser as any;
+    const toUser = settlement.toUser as any;
     const group = settlement.group as any;
 
     const phone = String(fromUser?.phone || '').replace(/\D/g, '');
@@ -978,6 +995,14 @@ export const sendSettlementReminder = async (req: AuthRequest, res: Response) =>
     const message = `Hey ${friendName}! Just a reminder — you owe me ₹${amount} from ${groupName}. It's been ${daysPending} days. Please settle when you can 🙏`;
     const whatsappUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
     const canRemindAgainAt = new Date(now.getTime() + cooldownMs).toISOString();
+
+    await Notification.create({
+      recipient: settlement.fromUser,
+      sender: settlement.toUser,
+      group: settlement.group,
+      message: `${toUser?.name || 'Someone'} sent you a payment reminder for ₹${amount}`,
+      type: 'payment_reminder',
+    });
 
     return res.status(200).json({
       success: true,
@@ -1021,8 +1046,8 @@ export const markSettlementAsReceived = async (req: AuthRequest, res: Response) 
     await Notification.create({
       recipient: settlement.fromUser,
       sender: settlement.toUser,
-      message: `Your payment of ₹${Number(settlement.amount || 0).toFixed(2)} was confirmed received ✅`,
-      type: 'settled',
+      message: `${(await User.findById(settlement.toUser).select('name').lean())?.name || 'Someone'} confirmed receiving your payment of ₹${Number(settlement.amount || 0).toFixed(2)} ✅`,
+      type: 'mark_received',
     });
 
     const updatedSettlement = await Settlement.findById(settlement._id)

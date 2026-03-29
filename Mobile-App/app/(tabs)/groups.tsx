@@ -287,7 +287,8 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 28,
         fontWeight: '800',
-        fontFamily: 'Syne',
+        fontFamily: 'Syne_700Bold',
+        color: '#F0F0FF',
     },
     headerSubtitle: {
         fontSize: 12,
@@ -425,7 +426,8 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '700',
         marginTop: 8,
-        fontFamily: 'Syne',
+        fontFamily: 'Syne_700Bold',
+        color: '#F0F0FF',
     },
     emptySubtitle: {
         fontSize: 14,
