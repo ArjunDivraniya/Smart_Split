@@ -89,26 +89,43 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [paidFilter, setPaidFilter] = useState<'all' | 'me' | 'others'>('all');
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [showFilters, setShowFilters] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  // Search debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(localSearchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localSearchQuery]);
 
   // Only fetch on mount and when groupId changes
   useEffect(() => {
     if (groupId) {
       setLoading(true);
-      fetchExpenses();
+      fetchExpenses(true);
     }
   }, [groupId, refreshKey]);
 
-  // Refetch when filters/sort/search change
+  // Refetch when filters/sort change
   useEffect(() => {
-    if (!loading && expenses.length > 0) {
-      fetchExpenses();
+    if (!loading) {
+      fetchExpenses(false);
     }
-  }, [selectedCategory, paidFilter, sortBy, sortOrder, searchQuery]);
+  }, [selectedCategory, paidFilter, sortBy, sortOrder]);
+
+  // Refetch when debounced search query changes
+  useEffect(() => {
+    if (!loading && searchQuery !== undefined) {
+      fetchExpenses(false, true);
+    }
+  }, [searchQuery]);
 
   // Refetch when tab is focused
   useFocusEffect(
@@ -119,10 +136,12 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
     }, [groupId])
   );
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (isInitial = false, isSearch = false) => {
     try {
       setError(null);
-      setLoading(true);
+      if (isInitial) setLoading(true);
+      if (isSearch) setSearching(true);
+
       const params: any = {
         sortBy,
         sortOrder,
@@ -179,6 +198,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setSearching(false);
     }
   };
 
@@ -234,16 +254,18 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
           style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search expenses..."
           placeholderTextColor={colors.icon}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+          value={localSearchQuery}
+          onChangeText={setLocalSearchQuery}
           onSubmitEditing={handleSearch}
           returnKeyType="search"
         />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => { setSearchQuery(''); fetchExpenses(); }}>
+        {searching ? (
+          <ActivityIndicator size="small" color={colors.violet} style={{ marginRight: 4 }} />
+        ) : localSearchQuery.length > 0 ? (
+          <TouchableOpacity onPress={() => { setLocalSearchQuery(''); setSearchQuery(''); }}>
             <Ionicons name="close-circle" size={20} color={colors.icon} />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       <TouchableOpacity

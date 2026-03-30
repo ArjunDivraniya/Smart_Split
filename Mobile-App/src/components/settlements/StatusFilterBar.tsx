@@ -1,6 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SettlementStatus } from '@/src/types/settlement.types';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type FilterValue = SettlementStatus | 'all';
 
@@ -18,21 +20,6 @@ interface StatusFilterBarProps {
   counts: StatusCounts;
 }
 
-const COLORS = {
-  elevated: '#1A1A2B',
-  borderMuted: 'rgba(255, 255, 255, 0.10)',
-  textMuted: '#9A9AB6',
-  violet: '#7C5CFC',
-  violetBg: 'rgba(124, 92, 252, 0.14)',
-  coral: '#FF5F7E',
-  coralBg: 'rgba(255, 95, 126, 0.14)',
-  amber: '#FFB547',
-  amberBg: 'rgba(255, 181, 71, 0.16)',
-  done: '#8B8BA9',
-  doneBg: 'rgba(139, 139, 169, 0.14)',
-  dangerDot: '#FF4D6D',
-};
-
 interface PillConfig {
   label: string;
   value: FilterValue;
@@ -43,92 +30,133 @@ interface PillConfig {
 }
 
 export function StatusFilterBar({ activeFilter, onFilterChange, counts }: StatusFilterBarProps) {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors[colorScheme];
+
   const pills: PillConfig[] = [
-    { label: 'All', value: 'all', color: COLORS.violet, bg: COLORS.violetBg, count: counts.all },
-    { label: 'Pending', value: 'pending', color: COLORS.violet, bg: COLORS.violetBg, count: counts.pending },
+    { 
+      label: 'All', 
+      value: 'all', 
+      color: colors.violet, 
+      bg: `${colors.violet}15`, 
+      count: counts.all 
+    },
+    { 
+      label: 'Pending', 
+      value: 'pending', 
+      color: colors.violet, 
+      bg: `${colors.violet}15`, 
+      count: counts.pending 
+    },
     {
       label: 'Overdue',
       value: 'overdue',
-      color: COLORS.coral,
-      bg: COLORS.coralBg,
+      color: colors.coral,
+      bg: `${colors.coral}15`,
       count: counts.overdue,
       showAlertDot: counts.overdue > 0,
     },
-    { label: 'Partial', value: 'partial', color: COLORS.amber, bg: COLORS.amberBg, count: counts.partial },
-    { label: 'Done', value: 'completed', color: COLORS.done, bg: COLORS.doneBg, count: counts.done },
+    { 
+      label: 'Partial', 
+      value: 'partial', 
+      color: colors.amber, 
+      bg: `${colors.amber}15`, 
+      count: counts.partial 
+    },
+    { 
+      label: 'Done', 
+      value: 'completed', 
+      color: colors.mint, 
+      bg: `${colors.mint}15`, 
+      count: counts.done 
+    },
   ];
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.contentContainer}
-    >
-      {pills.map((pill) => {
-        const isActive = activeFilter === pill.value;
+    <View style={styles.container}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        {pills.map((pill) => {
+          const isActive = activeFilter === pill.value;
 
-        return (
-          <TouchableOpacity
-            key={pill.value}
-            style={[
-              styles.pill,
-              isActive
-                ? {
-                    backgroundColor: pill.bg,
-                    borderColor: `${pill.color}4D`,
-                  }
-                : styles.pillInactive,
-            ]}
-            onPress={() => onFilterChange(pill.value)}
-            activeOpacity={0.9}
-          >
-            <View style={styles.pillInner}>
-              {pill.showAlertDot ? <View style={styles.alertDot} /> : null}
-              <Text style={[styles.pillText, isActive ? { color: pill.color } : styles.pillTextInactive]}>
-                {pill.label} ({pill.count})
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+          return (
+            <TouchableOpacity
+              key={pill.value}
+              style={[
+                styles.pill,
+                {
+                  backgroundColor: isActive ? pill.bg : colors.elevated,
+                  borderColor: isActive ? `${pill.color}40` : `${colors.violet}15`,
+                }
+              ]}
+              onPress={() => onFilterChange(pill.value)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.pillInner}>
+                {pill.showAlertDot ? <View style={[styles.alertDot, { backgroundColor: colors.coral }]} /> : null}
+                <Text style={[styles.pillText, { color: isActive ? pill.color : colors.icon }]}>
+                  {pill.label}
+                </Text>
+                <View style={[styles.countBadge, { backgroundColor: isActive ? `${pill.color}20` : `${colors.icon}15` }]}>
+                  <Text style={[styles.countText, { color: isActive ? pill.color : colors.tabIconDefault }]}>
+                    {pill.count}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
 export default StatusFilterBar;
 
 const styles = StyleSheet.create({
+  container: {
+    marginVertical: 4,
+  },
   contentContainer: {
-    gap: 10,
-    paddingVertical: 2,
-    paddingHorizontal: 1,
+    gap: 8,
+    paddingHorizontal: 4,
   },
   pill: {
+    height: 38,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
     borderWidth: 1,
-  },
-  pillInactive: {
-    backgroundColor: COLORS.elevated,
-    borderColor: COLORS.borderMuted,
+    minWidth: 80,
   },
   pillInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
   },
   alertDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: COLORS.dangerDot,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   pillText: {
     fontFamily: 'DMSans_700Bold',
-    fontSize: 12,
+    fontSize: 13,
   },
-  pillTextInactive: {
-    color: COLORS.textMuted,
+  countBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+    minWidth: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: {
+    fontSize: 10,
+    fontFamily: 'Syne_700Bold',
   },
 });

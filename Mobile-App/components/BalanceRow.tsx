@@ -32,64 +32,63 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
     if (isSettled) {
       return 'Settled up';
     } else if (isCreditor) {
-      return isCurrentUser ? 'gets back' : 'owes you';
+      return isCurrentUser ? 'Gives back' : 'Owes you';
     } else {
-      return isCurrentUser ? 'owes' : 'is owed';
+      return isCurrentUser ? 'You Owe' : 'Is owed';
     }
   };
 
   const getBalanceColor = () => {
-    if (isSettled) return '#94a3b8';
-    if (isCreditor) return '#22c55e';
-    return '#ef4444';
+    if (isSettled) return colors.icon;
+    if (isCreditor) return colors.mint;
+    return colors.coral;
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
-      <View style={styles.avatarContainer}>
-        <View style={[styles.avatar, isSettled && styles.avatarSettled]}>
-          <Text style={styles.avatarText}>
+    <View style={[styles.container, { backgroundColor: colors.elevated, borderColor: `${colors.violet}10` }]}> 
+      <View style={styles.avatarWrap}>
+        <View style={[styles.avatar, { backgroundColor: isSettled ? `${colors.icon}20` : `${colors.violet}20` }]}>
+          <Text style={[styles.avatarText, { color: isSettled ? colors.icon : colors.violet }]}>
             {balance.userName.charAt(0).toUpperCase()}
           </Text>
         </View>
         {isCurrentUser && (
-          <View style={styles.youBadge}>
-            <Text style={styles.youBadgeText}>You</Text>
+          <View style={[styles.youBadge, { backgroundColor: colors.mint, borderColor: colors.elevated }]}>
+            <Text style={styles.youBadgeText}>YOU</Text>
           </View>
         )}
       </View>
 
-      <View style={styles.contentContainer}>
-        <Text style={[styles.userName, { color: colors.text }]}>
-          {isCurrentUser ? 'You' : balance.userName}
+      <View style={styles.infoSection}>
+        <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
+          {isCurrentUser ? 'Your Balance' : balance.userName}
         </Text>
-        <View style={styles.detailsRow}>
-          <Text style={[styles.statusText, { color: colors.icon }]}>{getBalanceText()}</Text>
+        <View style={styles.amountRow}>
+          <Text style={[styles.statusLabel, { color: colors.icon }]}>{getBalanceText()}</Text>
           {!isSettled && (
-            <Text style={[styles.amount, { color: getBalanceColor() }]}>
-              ₹{Math.abs(balance.netBalance).toFixed(2)}
+            <Text style={[styles.netAmount, { color: getBalanceColor() }]}>
+              ₹{Math.abs(balance.netBalance).toLocaleString('en-IN')}
             </Text>
           )}
         </View>
-        <View style={styles.breakdownRow}>
-          <Text style={[styles.breakdownText, { color: colors.icon }]}>
-            Paid: ₹{balance.paid.toFixed(2)} • Owes: ₹{balance.owedShare.toFixed(2)}
-          </Text>
-        </View>
+        <Text style={[styles.breakdownSub, { color: colors.tabIconDefault }]}>
+          Paid ₹{balance.paid.toLocaleString('en-IN')} · Share ₹{balance.owedShare.toLocaleString('en-IN')}
+        </Text>
       </View>
 
       {!isCurrentUser && !isSettled && onSettle && (
         <TouchableOpacity
           style={[
-            styles.settleButton,
-            isDebtor ? styles.settleButtonOwed : styles.settleButtonOwe,
+            styles.settleQuickBtn,
+            { backgroundColor: isDebtor ? `${colors.coral}15` : `${colors.mint}15`, borderColor: isDebtor ? `${colors.coral}30` : `${colors.mint}30` }
           ]}
           onPress={onSettle}
+          activeOpacity={0.7}
         >
           <Ionicons
-            name={isDebtor ? 'wallet' : 'checkmark-circle'}
-            size={20}
-            color="#ffffff"
+            name={isDebtor ? 'arrow-up' : 'arrow-down'}
+            size={18}
+            color={isDebtor ? colors.coral : colors.mint}
           />
         </TouchableOpacity>
       )}
@@ -101,96 +100,77 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    padding: 16,
+    padding: 14,
     marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    marginVertical: 4,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 12,
   },
-  avatarContainer: {
+  avatarWrap: {
     position: 'relative',
-    marginRight: 12,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#6366f1',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarSettled: {
-    backgroundColor: '#94a3b8',
   },
   avatarText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: '800',
+    fontFamily: 'Syne_800ExtraBold',
   },
   youBadge: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
-    backgroundColor: '#22c55e',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#ffffff',
+    bottom: -2,
+    right: -2,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1.5,
   },
   youBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontSize: 7,
+    fontWeight: '900',
+    fontFamily: 'DMSans_700Bold',
+    color: '#080810',
   },
-  contentContainer: {
+  infoSection: {
     flex: 1,
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  statusText: {
-    fontSize: 13,
-    color: '#64748b',
-    marginRight: 8,
-  },
-  amount: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: 'Syne_700Bold',
+    marginBottom: 2,
   },
-  breakdownRow: {
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusLabel: {
+    fontSize: 12,
+    fontFamily: 'DMSans_500Medium',
+  },
+  netAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'Syne_800ExtraBold',
+  },
+  breakdownSub: {
+    fontSize: 10,
+    fontFamily: 'DMSans_400Regular',
     marginTop: 2,
   },
-  breakdownText: {
-    fontSize: 12,
-    color: '#94a3b8',
-  },
-  settleButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  settleQuickBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
-  },
-  settleButtonOwed: {
-    backgroundColor: '#ef4444',
-  },
-  settleButtonOwe: {
-    backgroundColor: '#22c55e',
+    borderWidth: 1,
   },
 });

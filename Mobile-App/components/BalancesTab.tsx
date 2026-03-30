@@ -114,10 +114,9 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
       const response = await apiService.groupExpenses.getBalances(groupId);
       const balancesData = response?.data?.data || response?.data || [];
       
-      // Transform backend response to component format
       const transformedBalances = (Array.isArray(balancesData) ? balancesData : []).map((item: any) => ({
         userId: item.userId || '',
-        userName: item.user || item.userName || 'Unknown', // Backend returns 'user', component expects 'userName'
+        userName: item.user || item.userName || 'Unknown',
         netBalance: Number(item.netBalance || 0),
         paid: Number(item.paid || 0),
         owedShare: Number(item.owedShare || 0),
@@ -138,7 +137,6 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     try {
       const response = await apiService.groups.getSettlements(groupId);
       const data = response?.data?.data || response?.data || {};
-      // Support both legacy and current backend response shapes.
       const rawOptimized = Array.isArray(data.optimizedSettlements)
         ? data.optimizedSettlements
         : Array.isArray(data.optimized)
@@ -186,7 +184,6 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     const amount = Math.abs(balance.netBalance);
 
     if (isDebtor) {
-      // Current user owes this person
       setModalState({
         visible: true,
         fromUser: { id: currentUserId, name: currentUserName },
@@ -194,7 +191,6 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
         amount,
       });
     } else {
-      // This person owes current user
       setModalState({
         visible: true,
         fromUser: { id: balance.userId, name: balance.userName },
@@ -275,58 +271,50 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     }
 
     return (
-      <View style={styles.pendingSection}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="hourglass-outline" size={20} color="#f59e0b" />
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Pending Settlements</Text>
+      <View style={[styles.pendingSection, { backgroundColor: `${colors.amber}08`, borderRadius: 16, padding: 12, marginHorizontal: 16 }]}>
+        <View style={styles.sectionHeaderCompact}>
+          <Ionicons name="hourglass" size={18} color={colors.amber} />
+          <Text style={[styles.sectionTitleSmall, { color: colors.text }]}>Pending Settlements</Text>
         </View>
 
         {groupPendingSettlements.map((item) => {
           const isYouOwe = item.direction === 'you_owe';
-          const statusColor =
-            item.status === 'overdue' ? '#FF5F7E' : item.status === 'partial' ? '#FFB547' : '#8B8BA9';
 
           return (
             <View
               key={item.id}
-              style={[styles.pendingRow, { backgroundColor: colors.card, borderColor: colors.elevated }]}
+              style={[styles.pendingRow, { backgroundColor: colors.elevated, borderColor: `${colors.violet}20` }]}
             >
               <View style={styles.pendingLeftCol}>
-                <Ionicons
-                  name={isYouOwe ? 'arrow-forward' : 'arrow-back'}
-                  size={16}
-                  color={isYouOwe ? '#FF5F7E' : '#00E5B0'}
-                />
+                <View style={[styles.directionDot, { backgroundColor: isYouOwe ? colors.coral : colors.mint }]} />
                 <Text style={[styles.pendingFriendName, { color: colors.text }]} numberOfLines={1}>
                   {item.friend.name}
                 </Text>
               </View>
 
               <Text style={[styles.pendingAmount, { color: colors.text }]}>
-                ₹{Number(item.remaining || item.amount || 0).toFixed(2)}
+                ₹{Number(item.remaining || item.amount || 0).toLocaleString('en-IN')}
               </Text>
 
-              <View style={[styles.statusBadge, { borderColor: `${statusColor}66`, backgroundColor: `${statusColor}1A` }]}>
-                <Text style={[styles.statusBadgeText, { color: statusColor }]}>{item.status}</Text>
-              </View>
-
               <TouchableOpacity
-                style={[styles.pendingActionBtn, isYouOwe ? styles.pendingPayBtn : styles.pendingRemindBtn]}
+                style={[styles.pendingActionBtn, { backgroundColor: isYouOwe ? `${colors.coral}15` : `${colors.violet}15`, borderColor: isYouOwe ? `${colors.coral}30` : `${colors.violet}30` }]}
                 onPress={() => (isYouOwe ? handlePendingPay(item) : handlePendingRemind(item))}
-                activeOpacity={0.9}
+                activeOpacity={0.7}
               >
-                <Text style={styles.pendingActionText}>{isYouOwe ? 'Pay' : 'Remind'}</Text>
+                <Text style={[styles.pendingActionText, { color: isYouOwe ? colors.coral : colors.violet }]}>
+                  {isYouOwe ? 'Pay' : 'Remind'}
+                </Text>
               </TouchableOpacity>
             </View>
           );
         })}
 
         <TouchableOpacity
-          style={styles.pendingViewAllBtn}
+          style={[styles.pendingViewAllBtn, { backgroundColor: `${colors.violet}15`, borderColor: `${colors.violet}30` }]}
           onPress={() => router.push({ pathname: '/settlements' as any, params: { groupId } })}
-          activeOpacity={0.9}
+          activeOpacity={0.8}
         >
-          <Text style={styles.pendingViewAllText}>View All →</Text>
+          <Text style={[styles.pendingViewAllText, { color: colors.violet }]}>View All Settlements →</Text>
         </TouchableOpacity>
       </View>
     );
@@ -336,7 +324,6 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     const yourBalance = balances.find((b) => b.userId === currentUserId);
     const yourNet = Number(yourBalance?.netBalance || 0);
 
-    // Show personal, real amounts instead of whole-group totals.
     const lentAmount = Math.max(yourNet, 0);
     const owedAmount = Math.max(-yourNet, 0);
 
@@ -344,31 +331,31 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     const owedToCount = settlements.filter((s) => s.from === currentUserId).length;
 
     return (
-      <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
+      <View style={[styles.summaryCard, { backgroundColor: colors.elevated, borderColor: `${colors.violet}20` }]}> 
         <View style={styles.summaryHeader}>
-          <Ionicons name="wallet" size={24} color="#6366f1" />
-          <Text style={[styles.summaryTitle, { color: colors.text }]}>Your Balance</Text>
+          <View style={[styles.summaryIconBox, { backgroundColor: `${colors.violet}15` }]}>
+            <Ionicons name="wallet" size={20} color={colors.violet} />
+          </View>
+          <Text style={[styles.summaryTitle, { color: colors.text }]}>Group Balance</Text>
         </View>
         
         <View style={styles.summaryContent}>
-          <View style={styles.summaryRow}>
-            <Text style={yourNet >= 0 ? styles.positiveAmount : styles.negativeAmount}>
-              ₹{Math.abs(yourNet).toFixed(2)}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: colors.icon }]}>
-              {yourNet > 0 ? 'You are owed' : yourNet < 0 ? 'You owe' : 'All settled'}
-            </Text>
-          </View>
+          <Text style={[yourNet >= 0 ? styles.positiveAmount : styles.negativeAmount, { color: colors.text }]}>
+            ₹{Math.abs(yourNet).toLocaleString('en-IN')}
+          </Text>
+          <Text style={[styles.summaryLabel, { color: colors.icon }]}>
+            {yourNet > 0 ? 'Total to receive' : yourNet < 0 ? 'Total you owe' : 'Group is settled'}
+          </Text>
 
-          <View style={[styles.summaryDetails, { borderTopColor: colors.elevated }]}> 
-            <View style={styles.summaryDetailItem}>
-              <Text style={[styles.summaryDetailValue, { color: colors.text }]}>₹{lentAmount.toFixed(2)}</Text>
-              <Text style={[styles.summaryDetailLabel, { color: colors.icon }]}>Lent ({lentToCount})</Text>
+          <View style={[styles.summaryStatsRow, { borderTopColor: `${colors.violet}10` }]}> 
+            <View style={styles.summaryStatItem}>
+              <Text style={[styles.statSubValue, { color: colors.mint }]}>₹{lentAmount.toLocaleString('en-IN')}</Text>
+              <Text style={[styles.statSubLabel, { color: colors.icon }]}>Lent ({lentToCount})</Text>
             </View>
-            <View style={[styles.summaryDivider, { backgroundColor: colors.elevated }]} />
-            <View style={styles.summaryDetailItem}>
-              <Text style={[styles.summaryDetailValue, { color: colors.text }]}>₹{owedAmount.toFixed(2)}</Text>
-              <Text style={[styles.summaryDetailLabel, { color: colors.icon }]}>Owed ({owedToCount})</Text>
+            <View style={[styles.statDivider, { backgroundColor: `${colors.violet}10` }]} />
+            <View style={styles.summaryStatItem}>
+              <Text style={[styles.statSubValue, { color: colors.coral }]}>₹{owedAmount.toLocaleString('en-IN')}</Text>
+              <Text style={[styles.statSubLabel, { color: colors.icon }]}>Owed ({owedToCount})</Text>
             </View>
           </View>
         </View>
@@ -379,8 +366,8 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   const renderOptimizedSettlements = () => {
     if (settlements.length === 0) {
       return (
-        <View style={[styles.settledContainer, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
-          <Ionicons name="checkmark-circle" size={64} color="#22c55e" />
+        <View style={[styles.settledContainer, { backgroundColor: colors.elevated, borderColor: `${colors.mint}30` }]}> 
+          <Ionicons name="checkmark-circle" size={56} color={colors.mint} />
           <Text style={styles.settledTitle}>All Settled Up!</Text>
           <Text style={[styles.settledSubtitle, { color: colors.icon }]}>Everyone's balance is clear</Text>
         </View>
@@ -390,7 +377,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
     return (
       <View style={styles.optimizedSection}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="flash" size={20} color="#f59e0b" />
+          <Ionicons name="flash" size={20} color={colors.amber} />
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Optimized Settlements</Text>
         </View>
         <Text style={[styles.optimizedDescription, { color: colors.icon }]}>
@@ -403,42 +390,40 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
           
           if (!fromBalance || !toBalance) return null;
 
-          const isCurrentUserInvolved =
-            settlement.from === currentUserId || settlement.to === currentUserId;
+          const isCurrentUserInvolved = settlement.from === currentUserId || settlement.to === currentUserId;
 
           return (
             <TouchableOpacity
               key={`${settlement.from}-${settlement.to}-${index}`}
               style={[
                 styles.settlementCard,
-                { backgroundColor: colors.card, borderColor: colors.elevated },
-                isCurrentUserInvolved && styles.settlementCardHighlight,
+                { backgroundColor: colors.elevated, borderColor: isCurrentUserInvolved ? colors.violet : `${colors.violet}15` },
               ]}
               onPress={() => handleSettleFromOptimized(settlement)}
             >
               <View style={styles.settlementFlow}>
                 <View style={styles.settlementUser}>
-                  <Text style={[styles.settlementUserName, { color: colors.text }]}>
+                  <Text style={[styles.settlementUserName, { color: settlement.from === currentUserId ? colors.violet : colors.text }]} numberOfLines={1}>
                     {settlement.from === currentUserId ? 'You' : fromBalance.userName}
                   </Text>
                 </View>
                 
-                <View style={styles.settlementArrow}>
-                  <Text style={styles.settlementAmount}>₹{settlement.amount.toFixed(2)}</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#6366f1" />
+                <View style={styles.settlementArrowWrap}>
+                  <Text style={[styles.settlementAmount, { color: colors.text }]}>₹{settlement.amount.toLocaleString('en-IN')}</Text>
+                  <Ionicons name="arrow-forward" size={18} color={colors.violet} />
                 </View>
                 
-                <View style={styles.settlementUser}>
-                  <Text style={[styles.settlementUserName, { color: colors.text }]}>
+                <View style={[styles.settlementUser, { alignItems: 'flex-end' }]}>
+                  <Text style={[styles.settlementUserName, { color: settlement.to === currentUserId ? colors.violet : colors.text }]} numberOfLines={1}>
                     {settlement.to === currentUserId ? 'You' : toBalance.userName}
                   </Text>
                 </View>
               </View>
 
               {isCurrentUserInvolved && (
-                <View style={[styles.recordButtonContainer, { borderTopColor: colors.elevated }]}>
-                  <Ionicons name="checkmark-circle" size={16} color="#6366f1" />
-                  <Text style={styles.recordButtonText}>Tap to record</Text>
+                <View style={[styles.recordActionRow, { borderTopColor: `${colors.violet}10` }]}>
+                  <Ionicons name="flash" size={14} color={colors.violet} />
+                  <Text style={[styles.recordActionText, { color: colors.violet }]}>Involved in this payment · Tap to record</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -451,7 +436,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   const renderBalancesList = () => (
     <View style={styles.balancesSection}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="people" size={20} color="#6366f1" />
+        <Ionicons name="people" size={20} color={colors.violet} />
         <Text style={[styles.sectionTitle, { color: colors.text }]}>All Balances</Text>
       </View>
 
@@ -478,9 +463,9 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
       : 'Recently';
 
     return (
-      <View style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}> 
+      <View style={[styles.historyCard, { backgroundColor: colors.elevated, borderColor: `${colors.mint}20` }]}> 
         <View style={styles.historyIcon}>
-          <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.mint} />
         </View>
         <View style={styles.historyContent}>
           <Text style={[styles.historyText, { color: colors.text }]}>
@@ -489,7 +474,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
           <Text style={[styles.historyDate, { color: colors.icon }]}>{date}</Text>
           {item.note && <Text style={[styles.historyNote, { color: colors.icon }]}>{item.note}</Text>}
         </View>
-        <Text style={styles.historyAmount}>₹{Number(item.amount || 0).toFixed(2)}</Text>
+        <Text style={[styles.historyAmount, { color: colors.mint }]}>₹{item.amount.toLocaleString('en-IN')}</Text>
       </View>
     );
   };
@@ -497,7 +482,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color={colors.violet} />
       </View>
     );
   }
@@ -550,7 +535,6 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   loadingContainer: {
     flex: 1,
@@ -558,209 +542,126 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     margin: 16,
     padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: 24,
   },
   summaryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    gap: 12,
+  },
+  summaryIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   summaryTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
-    marginLeft: 12,
+    fontFamily: 'Syne_700Bold',
   },
   summaryContent: {
     alignItems: 'center',
   },
-  summaryRow: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   positiveAmount: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '800',
-    color: '#22c55e',
+    fontFamily: 'Syne_800ExtraBold',
+    marginBottom: 4,
   },
   negativeAmount: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '800',
-    color: '#ef4444',
+    fontFamily: 'Syne_800ExtraBold',
+    marginBottom: 4,
   },
   summaryLabel: {
-    fontSize: 15,
-    color: '#64748b',
-    marginTop: 4,
+    fontSize: 14,
+    fontFamily: 'DMSans_500Medium',
+    marginBottom: 24,
   },
-  summaryDetails: {
+  summaryStatsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     width: '100%',
-    justifyContent: 'space-around',
-    paddingTop: 16,
+    paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
-  summaryDetailItem: {
+  summaryStatItem: {
+    flex: 1,
     alignItems: 'center',
   },
-  summaryDetailValue: {
-    fontSize: 20,
+  statSubValue: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    fontFamily: 'Syne_700Bold',
+    marginBottom: 2,
   },
-  summaryDetailLabel: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginTop: 4,
+  statSubLabel: {
+    fontSize: 11,
+    fontFamily: 'DMSans_500Medium',
+    textTransform: 'uppercase',
   },
-  summaryDivider: {
+  statDivider: {
     width: 1,
-    height: 40,
-    backgroundColor: '#e2e8f0',
+    height: '70%',
+    alignSelf: 'center',
   },
   settledContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    paddingVertical: 48,
+    paddingVertical: 40,
     marginHorizontal: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
   },
   settledTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#22c55e',
     marginTop: 16,
+    fontFamily: 'Syne_700Bold',
   },
   settledSubtitle: {
-    fontSize: 15,
-    color: '#64748b',
+    fontSize: 14,
+    fontFamily: 'DMSans_400Regular',
     marginTop: 8,
   },
   optimizedSection: {
     marginBottom: 24,
   },
-  pendingSection: {
-    marginBottom: 24,
-  },
-  pendingRow: {
-    marginHorizontal: 16,
-    marginVertical: 5,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pendingLeftCol: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minWidth: 0,
-  },
-  pendingFriendName: {
-    fontSize: 13,
-    fontWeight: '600',
-    flexShrink: 1,
-  },
-  pendingAmount: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  statusBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  pendingActionBtn: {
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  pendingPayBtn: {
-    backgroundColor: 'rgba(124, 92, 252, 0.18)',
-    borderColor: 'rgba(124, 92, 252, 0.34)',
-  },
-  pendingRemindBtn: {
-    backgroundColor: 'rgba(0, 229, 176, 0.14)',
-    borderColor: 'rgba(0, 229, 176, 0.30)',
-  },
-  pendingActionText: {
-    color: '#F3F3FF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  pendingViewAllBtn: {
-    paddingHorizontal: 16,
-    marginTop: 6,
-    alignSelf: 'flex-start',
-  },
-  pendingViewAllText: {
-    color: '#9B7FFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
+    gap: 8,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#1e293b',
-    marginLeft: 8,
+    fontFamily: 'Syne_700Bold',
   },
   optimizedDescription: {
     fontSize: 13,
-    color: '#64748b',
+    fontFamily: 'DMSans_400Regular',
     paddingHorizontal: 16,
     marginBottom: 12,
   },
   settlementCard: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     marginHorizontal: 16,
     marginVertical: 6,
     padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  settlementCardHighlight: {
-    backgroundColor: '#eef2ff',
-    borderWidth: 2,
-    borderColor: '#6366f1',
+    borderRadius: 16,
   },
   settlementFlow: {
     flexDirection: 'row',
@@ -768,39 +669,109 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   settlementUser: {
-    flex: 1,
+    flex: 1.2,
   },
   settlementUserName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    fontFamily: 'DMSans_700Bold',
   },
-  settlementArrow: {
+  settlementArrowWrap: {
+    flex: 1,
     alignItems: 'center',
-    marginHorizontal: 12,
   },
   settlementAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#6366f1',
+    fontFamily: 'Syne_700Bold',
     marginBottom: 4,
   },
-  recordButtonContainer: {
+  recordActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#c7d2fe',
+    gap: 6,
   },
-  recordButtonText: {
-    fontSize: 13,
+  recordActionText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#6366f1',
-    marginLeft: 6,
+    fontFamily: 'DMSans_500Medium',
+  },
+  pendingSection: {
+    marginVertical: 12,
+    marginBottom: 24,
+  },
+  sectionHeaderCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  sectionTitleSmall: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Syne_700Bold',
+    textTransform: 'uppercase',
+  },
+  pendingRow: {
+    marginVertical: 4,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pendingLeftCol: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  directionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  pendingFriendName: {
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+    flexShrink: 1,
+  },
+  pendingAmount: {
+    fontSize: 14,
+    fontFamily: 'Syne_700Bold',
+  },
+  pendingActionBtn: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  pendingActionText: {
+    fontSize: 11,
+    fontFamily: 'DMSans_700Bold',
+  },
+  pendingViewAllBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    alignSelf: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  pendingViewAllText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   balancesSection: {
+    marginTop: 12,
     marginBottom: 24,
   },
   historySection: {
@@ -809,17 +780,11 @@ const styles = StyleSheet.create({
   historyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 6,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderRadius: 16,
   },
   historyIcon: {
     marginRight: 12,
@@ -829,24 +794,21 @@ const styles = StyleSheet.create({
   },
   historyText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1e293b',
+    fontFamily: 'DMSans_500Medium',
   },
   historyDate: {
-    fontSize: 12,
-    color: '#94a3b8',
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular',
     marginTop: 2,
   },
   historyNote: {
-    fontSize: 12,
-    color: '#64748b',
-    fontStyle: 'italic',
-    marginTop: 4,
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular_Italic',
+    marginTop: 2,
   },
   historyAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#22c55e',
+    fontSize: 14,
+    fontFamily: 'Syne_700Bold',
     marginLeft: 12,
   },
 });

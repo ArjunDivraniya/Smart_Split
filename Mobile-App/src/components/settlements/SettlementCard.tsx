@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -298,9 +298,9 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontFamily: 'DMSans_700Bold',
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
   },
   friendName: {
     fontFamily: 'DMSans_700Bold',
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     maxWidth: '46%',
   },
   middleRow: {
-    marginTop: 10,
+    marginTop: 8,
   },
   metaText: {
     color: COLORS.textSecondary,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   partialWrap: {
-    marginTop: 12,
+    marginTop: 8,
   },
   partialLabel: {
     color: COLORS.amber,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.amber,
   },
   daysRow: {
-    marginTop: 12,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   actionsContainer: {
-    marginTop: 8,
+    marginTop: 4,
   },
   btn: {
     minHeight: 34,
