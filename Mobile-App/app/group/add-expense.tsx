@@ -12,7 +12,9 @@ import {
   Platform,
   Dimensions,
   Image,
+  Pressable,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -399,11 +401,21 @@ export function ExpenseFormView({
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6366f1" />
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />
+        </Pressable>
+
+        <View style={[styles.sheetWrap, { backgroundColor: colors.background, minHeight: 400 }]}>
+          <View style={styles.sheetHandle} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.violet} />
+          </View>
         </View>
-      </SafeAreaView>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -423,11 +435,17 @@ export function ExpenseFormView({
     : '';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+    <KeyboardAvoidingView
+      style={styles.overlay}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />
+      </Pressable>
+
+      <View style={[styles.sheetWrap, { backgroundColor: colors.background }]}>
+        <View style={styles.sheetHandle} />
+        
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.elevated }]}>
         <TouchableOpacity onPress={onClose}>
@@ -667,8 +685,8 @@ export function ExpenseFormView({
           <Text style={styles.footerHintText}>{footerHint}</Text>
         )}
       </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -691,13 +709,33 @@ export default function AddExpenseScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  overlay: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    justifyContent: 'flex-end',
   },
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  sheetWrap: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    height: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 2,
   },
   loadingContainer: {
     flex: 1,

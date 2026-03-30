@@ -5,6 +5,8 @@ import User from '../models/User.model';
 import Expense from '../models/Expense.model';
 import Settlement from '../models/Settlement.model';
 import Notification from '../models/Notification.model';
+import { sendNotification } from '../utils/notification';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 const toStringId = (value: any): string => {
   if (!value) return '';
@@ -763,6 +765,15 @@ export const removeGroupMember = async (req: Request, res: Response) => {
       .populate('members.userId', 'name email profileImage avatar phone upiId')
       .lean();
 
+    const actor = await User.findById(userId).select('name').lean();
+    await Notification.create({
+      recipient: new mongoose.Types.ObjectId(memberId),
+      sender: userId,
+      group: group._id,
+      message: `${actor?.name || 'Someone'} removed you from ${group.name}`,
+      type: 'activity',
+    });
+
     return res.status(200).json({
       success: true,
       message: 'Member removed successfully',
@@ -821,6 +832,23 @@ export const deleteGroup = async (req: Request, res: Response) => {
     });
 
     const deletedSettlements = await Settlement.deleteMany({ group: id });
+
+    const actor = await User.findById(userId).select('name').lean();
+    const recipientIds = [
+      String(group.createdBy),
+      ...group.members.map((m) => String(m.userId)),
+    ].filter((id) => id !== userId);
+
+    if (recipientIds.length > 0) {
+      await sendNotification(
+        recipientIds,
+        userId!,
+        String(group._id),
+        `${actor?.name || 'Someone'} deleted the group "${group.name}"`,
+        'system',
+        false
+      );
+    }
 
     await Group.findByIdAndDelete(id);
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -43,8 +43,14 @@ export default function SelectGroupForExpenseScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Pressable style={styles.backdrop} onPress={() => router.back()}>
+        <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />
+      </Pressable>
+
+      <View style={[styles.sheetWrap, { backgroundColor: colors.background }]}>
+        <View style={styles.sheetHandle} />
+
         <View style={[styles.header, { borderBottomColor: colors.elevated }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
             <Ionicons name="chevron-back" size={22} color={colors.text} />
@@ -111,16 +117,38 @@ export default function SelectGroupForExpenseScreen() {
           />
         )}
       </View>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  overlay: {
     flex: 1,
+    justifyContent: 'flex-end',
   },
-  container: {
-    flex: 1,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  sheetWrap: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    height: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 2,
   },
   header: {
     flexDirection: 'row',

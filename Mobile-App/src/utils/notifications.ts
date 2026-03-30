@@ -80,6 +80,26 @@ export const getNotificationTypeConfig = (type: string): NotificationTypeConfig 
       backgroundColor: '#14B8A6',
       borderColor: 'rgba(20,184,166,0.3)',
     },
+    expense: {
+      emoji: '📝',
+      backgroundColor: '#38BDF8',
+      borderColor: 'rgba(56,189,248,0.3)',
+    },
+    activity: {
+      emoji: '🏃',
+      backgroundColor: '#FFB547',
+      borderColor: 'rgba(255,181,71,0.3)',
+    },
+    system: {
+      emoji: '⚙️',
+      backgroundColor: '#80809E',
+      borderColor: 'rgba(128,128,158,0.3)',
+    },
+    invite: {
+      emoji: '💌',
+      backgroundColor: '#F472B6',
+      borderColor: 'rgba(244,114,182,0.3)',
+    },
   };
 
   return (

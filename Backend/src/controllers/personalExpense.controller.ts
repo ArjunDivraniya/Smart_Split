@@ -122,6 +122,14 @@ export const createPersonalExpense = async (req: AuthRequest, res: Response) => 
 
     const savedExpense = await PersonalExpense.create(expenseData);
 
+    // Create a general notification for the expense
+    await Notification.create({
+      recipient: userId,
+      message: `Personal expense added: ${savedExpense.description} ₹${Number(savedExpense.amount).toFixed(2)}`,
+      type: 'expense_added',
+    });
+
+
     // Budget alert logic: notify once when monthly category spend crosses 80% threshold.
     const user = await User.findById(userId).select('expenseCategories preferences.notifications').lean();
     const budgetLimit = getCategoryBudgetLimit(user, String(category));

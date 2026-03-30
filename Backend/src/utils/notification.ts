@@ -3,7 +3,7 @@ import Notification from '../models/Notification.model';
 export async function sendNotification(
   recipients: string[],
   senderId: string,
-  tripId: string,
+  contextId: string,
   message: string,
   type:
     | 'invite'
@@ -19,7 +19,8 @@ export async function sendNotification(
     | 'payment_received'
     | 'payment_confirmed'
     | 'partial_payment'
-    | 'mark_received'
+    | 'mark_received',
+  isTrip: boolean = true
 ) {
   try {
     // Filter out the sender so they don't notify themselves
@@ -30,7 +31,7 @@ export async function sendNotification(
     const notifications = targets.map((recipientId) => ({
       recipient: recipientId,
       sender: senderId,
-      trip: tripId,
+      [isTrip ? 'trip' : 'group']: contextId,
       message,
       type,
       isRead: false,

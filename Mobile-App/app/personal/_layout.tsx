@@ -13,7 +13,7 @@ export default function PersonalLayout() {
         name="add"
         options={{
           headerShown: false,
-          presentation: 'modal',
+          presentation: 'transparentModal',
           animation: 'slide_from_bottom',
         }}
       />
@@ -21,7 +21,7 @@ export default function PersonalLayout() {
         name="[id]"
         options={{
           headerShown: false,
-          presentation: 'modal',
+          presentation: 'transparentModal',
           animation: 'slide_from_bottom',
         }}
       />

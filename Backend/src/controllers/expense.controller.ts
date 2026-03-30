@@ -330,16 +330,21 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
 
     await expense.save();
 
-    if (expense.trip) {
+    if (expense.trip || expense.group) {
       const notifyTargets = Array.isArray(expense.splitBetween)
         ? expense.splitBetween.map((memberId: any) => memberId.toString())
         : [];
+      const parentId = (expense.trip || expense.group)?.toString() || '';
+      if (!parentId) return; // Should not happen given the if check
+
+      const isTrip = !!expense.trip;
       await sendNotification(
         notifyTargets,
         userId,
-        expense.trip.toString(),
+        parentId,
         `Updated expense "${expense.title}" to ₹${Number(expense.amount).toFixed(2)}`,
-        'expense'
+        'expense',
+        isTrip
       );
     }
 
@@ -402,6 +407,15 @@ export const deleteExpense = async (req: AuthRequest, res: Response) => {
       await Group.findByIdAndUpdate(expense.group, {
         $pull: { expenses: id },
       });
+
+      await sendNotification(
+        expense.splitBetween.map((memberId) => memberId.toString()),
+        userId!,
+        expense.group.toString(),
+        `Deleted expense "${expenseTitle}"`,
+        'expense',
+        false
+      );
     }
 
     await Expense.findByIdAndDelete(id);

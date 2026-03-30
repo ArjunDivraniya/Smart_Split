@@ -25,7 +25,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
     const handleAddGroup = () => {
         setModalVisible(false);
-        router.push('/(tabs)/groups?mode=add-expense');
+        router.push('/group/select-expense');
     };
 
     return (

@@ -8,7 +8,7 @@ export default function BudgetLayout() {
         name="set"
         options={{
           headerShown: false,
-          presentation: 'modal',
+          presentation: 'fullScreenModal',
           animation: 'slide_from_bottom',
         }}
       />

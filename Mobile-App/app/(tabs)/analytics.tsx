@@ -52,22 +52,23 @@ export default function AnalyticsScreen() {
     const chartTranslateY = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        // Initial entrance animation only
         chartOpacity.setValue(0);
         chartTranslateY.setValue(16);
 
         Animated.parallel([
             Animated.timing(chartOpacity, {
                 toValue: 1,
-                duration: 300,
+                duration: 500,
                 useNativeDriver: true,
             }),
             Animated.timing(chartTranslateY, {
                 toValue: 0,
-                duration: 300,
+                duration: 500,
                 useNativeDriver: true,
             }),
         ]).start();
-    }, [activeChart, chartOpacity, chartTranslateY]);
+    }, []); // Only on mount
 
     const onRefresh = async () => {
         try {
@@ -186,13 +187,6 @@ export default function AnalyticsScreen() {
                             )}
                         </View>
 
-                        <View style={styles.sectionSpacing}>
-                            <ChartToggle
-                                active={activeChart === 'monthly' ? 'categories' : 'monthly-trend'}
-                                onChange={(value) => setActiveChart(value === 'categories' ? 'monthly' : 'group-vs-personal')}
-                            />
-                        </View>
-
                         <Animated.View
                             style={[
                                 styles.sectionSpacing,
@@ -202,11 +196,18 @@ export default function AnalyticsScreen() {
                                 },
                             ]}
                         >
-                            <Text style={styles.chartTitle}>{activeChart === 'monthly' ? 'Category Share' : 'Monthly Trend (Last 6 Months)'}</Text>
-                            {loading && !categoryData.length && !monthlyData.length ? (
+                            <Text style={styles.chartTitle}>Category Share</Text>
+                            {loading && !categoryData.length ? (
                                 <ChartSkeletonLoader />
-                            ) : activeChart === 'monthly' ? (
+                            ) : (
                                 <DonutChart categories={categoryData} totalAmount={categoryGrandTotal} />
+                            )}
+
+                            <View style={{ height: 24 }} />
+
+                            <Text style={styles.chartTitle}>Monthly Trend (Last 6 Months)</Text>
+                            {loading && !monthlyData.length ? (
+                                <ChartSkeletonLoader />
                             ) : (
                                 <BarChart monthlyData={monthlyData} mode="split" />
                             )}

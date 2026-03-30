@@ -10,8 +10,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -201,10 +202,13 @@ export default function PersonalAddExpenseScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.sheetWrap}>
-          <View style={styles.sheetHandle} />
+    <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Pressable style={styles.backdrop} onPress={() => router.back()}>
+        <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />
+      </Pressable>
+
+      <View style={styles.sheetWrap}>
+        <View style={styles.sheetHandle} />
 
           <View style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
@@ -379,23 +383,31 @@ export default function PersonalAddExpenseScreen() {
               <Text style={styles.saveText}>{saving ? 'Saving...' : isEditMode ? 'Update Expense' : 'Save Expense'}</Text>
             </TouchableOpacity>
           </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   sheetWrap: {
-    flex: 1,
     backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    height: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   sheetHandle: {
     width: 48,

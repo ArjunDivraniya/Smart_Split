@@ -19,7 +19,7 @@ export default function GroupLayout() {
         name="add-expense"
         options={{
           headerShown: false,
-          presentation: 'modal',
+          presentation: 'transparentModal',
           animation: 'slide_from_bottom',
         }}
       />
@@ -27,7 +27,7 @@ export default function GroupLayout() {
         name="select-expense"
         options={{
           headerShown: false,
-          presentation: 'modal',
+          presentation: 'transparentModal',
           animation: 'slide_from_bottom',
         }}
       />
@@ -35,7 +35,7 @@ export default function GroupLayout() {
         name="expense/[id]"
         options={{
           headerShown: false,
-          presentation: 'modal',
+          presentation: 'transparentModal',
           animation: 'slide_from_bottom',
         }}
       />

@@ -7,8 +7,11 @@ import {
   Text,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -117,8 +120,15 @@ export default function FriendDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
+    <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Pressable style={styles.backdrop} onPress={handleBack}>
+        <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />
+      </Pressable>
+
+      <View style={styles.sheetWrap}>
+        <View style={styles.sheetHandle} />
+
+        <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.85}>
           <Ionicons name="chevron-back" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
@@ -167,15 +177,41 @@ export default function FriendDetailScreen() {
             })
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  overlay: {
     flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  sheetWrap: {
     backgroundColor: COLORS.bg,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    height: '75%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 2,
   },
   header: {
     paddingHorizontal: 16,

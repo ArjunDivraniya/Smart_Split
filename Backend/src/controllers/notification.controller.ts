@@ -1,10 +1,15 @@
 import { Response } from 'express';
 import Notification from '../models/Notification.model';
+import User from '../models/User.model';
+import Group from '../models/Group.model';
+import Trip from '../models/Trip.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 const getTimeAgo = (dateValue: Date): string => {
+  if (!dateValue) return 'Unknown time';
   const now = new Date();
   const createdAt = new Date(dateValue);
+  if (Number.isNaN(createdAt.getTime())) return 'Unknown time';
   const diffMs = now.getTime() - createdAt.getTime();
 
   const minuteMs = 60 * 1000;
