@@ -993,7 +993,16 @@ export const sendSettlementReminder = async (req: AuthRequest, res: Response) =>
     const daysPending = getDaysPending(settlement.createdAt);
 
     const message = `Hey ${friendName}! Just a reminder — you owe me ₹${amount} from ${groupName}. It's been ${daysPending} days. Please settle when you can 🙏`;
-    const whatsappUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
+    
+    let formattedPhone = phone;
+    if (formattedPhone && formattedPhone.length <= 10 && !formattedPhone.startsWith('91')) {
+      formattedPhone = `91${formattedPhone}`;
+    }
+    
+    let whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    if (formattedPhone) {
+      whatsappUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
+    }
     const canRemindAgainAt = new Date(now.getTime() + cooldownMs).toISOString();
 
     await Notification.create({

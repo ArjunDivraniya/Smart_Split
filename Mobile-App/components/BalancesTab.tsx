@@ -249,20 +249,42 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
   };
 
   const handlePendingRemind = async (item: PendingSettlement) => {
-    const result = await remindFriend(item.id);
-    if (!result?.whatsappUrl) {
-      Alert.alert('Unable to send reminder', 'No reminder link could be generated.');
-      return;
-    }
+    const isPersisted = /^[a-f\d]{24}$/i.test(String(item.id || ''));
 
-    const canOpen = await Linking.canOpenURL(result.whatsappUrl);
-    if (!canOpen) {
-      Alert.alert('WhatsApp not available', 'Please install WhatsApp to send reminder.');
-      return;
-    }
+    if (isPersisted) {
+      const result = await remindFriend(item.id);
+      if (!result?.whatsappUrl) {
+        Alert.alert('Unable to send reminder', 'No reminder link could be generated.');
+        return;
+      }
 
-    await Linking.openURL(result.whatsappUrl);
-    showInfoToast('📱 Reminder sent via WhatsApp');
+      const canOpen = await Linking.canOpenURL(result.whatsappUrl);
+      if (!canOpen) {
+        Alert.alert('WhatsApp not available', 'Please install WhatsApp to send reminder.');
+        return;
+      }
+
+      await Linking.openURL(result.whatsappUrl);
+      showInfoToast('📱 Reminder sent via WhatsApp');
+    } else {
+      const amount = Number(item.remaining > 0 ? item.remaining : item.amount).toFixed(2);
+      const groupName = item.group?.name || 'our group';
+
+      const message = item.direction === 'they_owe'
+        ? `Hi ${item.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.`
+        : `Hi ${item.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.`;
+
+      const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+      const canOpen = await Linking.canOpenURL(whatsappUrl);
+      
+      if (!canOpen) {
+        Alert.alert('WhatsApp not available', 'Please install WhatsApp to send reminder.');
+        return;
+      }
+
+      await Linking.openURL(whatsappUrl);
+      showInfoToast('📱 Reminder sent via WhatsApp');
+    }
   };
 
   const renderPendingSettlementsCompact = () => {

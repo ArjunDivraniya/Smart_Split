@@ -35,36 +35,7 @@ const FALLBACK_SUMMARY = {
 
 const isPersistedSettlementId = (id?: string): boolean => /^[a-f\d]{24}$/i.test(String(id || ''));
 
-const buildSettlementDeepLink = (
-  settlement: Settlement,
-  recipientDirection: 'you_owe' | 'they_owe'
-): string => {
-  const queryParams: Record<string, string> = {
-    friendId: settlement.friend.id,
-    direction: recipientDirection,
-    action: recipientDirection === 'you_owe' ? 'pay' : 'view',
-  };
-
-  if (settlement.group?.id) {
-    queryParams.groupId = settlement.group.id;
-  }
-
-  return ExpoLinking.createURL('/settlements', { queryParams });
-};
-
-const appendDeepLinkToWhatsAppUrl = (whatsappUrl: string, deepLink: string): string => {
-  try {
-    const parsed = new URL(whatsappUrl);
-    const existingText = parsed.searchParams.get('text') || '';
-    const withLink = existingText
-      ? `${existingText}\n\nOpen in SmartSplit: ${deepLink}`
-      : `Open in SmartSplit: ${deepLink}`;
-    parsed.searchParams.set('text', withLink);
-    return parsed.toString();
-  } catch {
-    return whatsappUrl;
-  }
-};
+// Deep links removed from WhatsApp messages per user request
 
 export default function SettlementsScreen() {
   const router = useRouter();
@@ -219,13 +190,11 @@ export default function SettlementsScreen() {
   const handleShare = async (settlement: Settlement) => {
     const amount = Number(settlement.remaining || settlement.amount || 0).toFixed(2);
     const groupName = settlement.group?.name || 'Personal';
-    const recipientDirection = settlement.direction === 'you_owe' ? 'they_owe' : 'you_owe';
-    const deepLink = buildSettlementDeepLink(settlement, recipientDirection);
     const message =
       settlement.direction === 'you_owe'
-        ? `Hi ${settlement.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.\n\nOpen in SmartSplit: ${deepLink}`
-        : `Hi ${settlement.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.\n\nOpen in SmartSplit: ${deepLink}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        ? `Hi ${settlement.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.`
+        : `Hi ${settlement.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.`;
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
 
     const canOpen = await Linking.canOpenURL(whatsappUrl);
     if (!canOpen) {
@@ -247,13 +216,9 @@ export default function SettlementsScreen() {
       return;
     }
 
-    const recipientDirection = settlement.direction === 'you_owe' ? 'they_owe' : 'you_owe';
-    const deepLink = buildSettlementDeepLink(settlement, recipientDirection);
-    const whatsappWithLink = appendDeepLinkToWhatsAppUrl(reminder.whatsappUrl, deepLink);
-
-    const canOpen = await Linking.canOpenURL(whatsappWithLink);
+    const canOpen = await Linking.canOpenURL(reminder.whatsappUrl);
     if (canOpen) {
-      await Linking.openURL(whatsappWithLink);
+      await Linking.openURL(reminder.whatsappUrl);
       showInfoToast('📱 Reminder sent via WhatsApp');
       return;
     }
