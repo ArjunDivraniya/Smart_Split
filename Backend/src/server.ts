@@ -5,6 +5,10 @@ import morgan from 'morgan';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+
+// Configure dot env immediately before importing internal modules that rely on it
+dotenv.config();
+
 import { connectDB } from './config/database';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -19,8 +23,6 @@ import personalExpenseRoutes from './routes/personalExpense.routes';
 import friendsRoutes from './routes/friends.routes';
 import { errorHandler } from './middleware/errorHandler';
 
-// Load environment variables
-dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
@@ -59,8 +61,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Debug middleware - Log all requests
 app.use((req, res, next) => {

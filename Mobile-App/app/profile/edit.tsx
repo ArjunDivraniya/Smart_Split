@@ -166,6 +166,7 @@ export default function EditProfileScreen() {
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.8,
+          base64: true,
         });
       } else {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -179,11 +180,16 @@ export default function EditProfileScreen() {
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.8,
+          base64: true,
         });
       }
 
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        setAvatar(result.assets[0].uri);
+      if (!result.canceled && result.assets?.[0]) {
+        if (result.assets[0].base64) {
+          setAvatar(`data:image/jpeg;base64,${result.assets[0].base64}`);
+        } else {
+          setAvatar(result.assets[0].uri);
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to pick photo. Please try again.');
@@ -243,23 +249,8 @@ export default function EditProfileScreen() {
         updateData.savingsGoal = parseFloat(savingsGoal);
       }
 
-      // Upload profile image if changed and is a local file
-      if (avatar !== initialValues.avatar && avatar.startsWith('file://')) {
-        const formData = new FormData();
-        formData.append('file', {
-          uri: avatar,
-          name: 'profile.jpg',
-          type: 'image/jpeg',
-        } as any);
-
-        try {
-          await apiService.user.uploadProfileImage(formData);
-        } catch (uploadError) {
-          console.error('Image upload error:', uploadError);
-          // Continue with profile update even if image upload fails
-        }
-      } else if (avatar && !avatar.startsWith('file://')) {
-        // If avatar is a URL, pass it directly
+      // Pass the avatar (either a URL or base64) to updateProfile
+      if (avatar !== initialValues.avatar && avatar) {
         updateData.avatar = avatar;
       }
 

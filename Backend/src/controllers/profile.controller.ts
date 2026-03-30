@@ -7,6 +7,7 @@ import PersonalExpense from '../models/PersonalExpense.model';
 import Settlement from '../models/Settlement.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 import bcrypt from 'bcryptjs';
+import cloudinary from '../config/cloudinary';
 
 const formatMemberSince = (createdAt?: Date): string => {
   const date = createdAt ? new Date(createdAt) : new Date();
@@ -153,7 +154,37 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     }
 
     if (avatar !== undefined) {
-      updateData.profileImage = String(avatar).trim();
+      const avatarStr = String(avatar).trim();
+      if (avatarStr.startsWith('data:image')) {
+        try {
+          const existingUser = await User.findById(userId);
+          if (existingUser && existingUser.publicId) {
+             try { await cloudinary.uploader.destroy(existingUser.publicId); } catch(e) { console.log('Delete old image error ignored:', e); }
+          }
+          
+          const base64Data = avatarStr.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(base64Data, "base64");
+
+          const uploadRes: any = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: 'trip-splitter-profiles' },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            );
+            stream.end(buffer);
+          });
+          
+          updateData.profileImage = uploadRes.secure_url;
+          updateData.publicId = uploadRes.public_id;
+        } catch (uploadErr: any) {
+          console.error('Cloudinary upload error:', uploadErr);
+          return res.status(500).json({ message: 'Failed to upload image to Cloudinary: ' + (uploadErr?.message || 'Unknown error') });
+        }
+      } else {
+        updateData.profileImage = avatarStr;
+      }
     }
 
     if (monthlyIncome !== undefined) {
