@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   RefreshControl,
   ScrollView,
@@ -18,7 +20,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { hapticImpactLight, hapticNotifyWarning } from '@/src/utils/haptics';
 
 import { COLORS as ThemeColors } from '@/src/constants/theme';
-import { getBudgetStatus } from '@/src/services/budget.service';
+import { getBudgetStatus, copyPreviousBudget, deleteBudget } from '@/src/services/budget.service';
 import { getSummary as getPersonalSummary } from '@/src/services/personal.service';
 import type { BudgetStatusItem } from '@/src/types/budget.types';
 
@@ -98,7 +100,7 @@ const getSummaryAppearance = (percentage: number) => {
   return ['#00E5B0', '#00C4FF'] as const;
 };
 
-function BudgetCard({ item }: { item: BudgetStatusItem }) {
+function BudgetCard({ item, onEdit, onDelete }: { item: BudgetStatusItem; onEdit: (item: BudgetStatusItem) => void; onDelete: (item: BudgetStatusItem) => void; }) {
   const fillAnim = useRef(new Animated.Value(0)).current;
 
   const percentage = Number(item.percentage || 0);
@@ -134,6 +136,14 @@ function BudgetCard({ item }: { item: BudgetStatusItem }) {
         <Text style={styles.categoryTitle}>{emoji} {item.category}</Text>
 
         <View style={styles.cardTopRight}>
+          <View style={{flexDirection: 'row', gap: 14, alignItems: 'center', marginBottom: 6}}>
+            <TouchableOpacity onPress={() => onEdit(item)} hitSlop={10} activeOpacity={0.7}>
+              <Ionicons name="pencil-outline" size={15} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onDelete(item)} hitSlop={10} activeOpacity={0.7}>
+              <Ionicons name="trash-outline" size={15} color={COLORS.coral} />
+            </TouchableOpacity>
+          </View>
           {badgeType !== 'none' ? (
             <View
               style={[
@@ -211,6 +221,7 @@ export default function BudgetOverviewScreen() {
   const [error, setError] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<BudgetStatusItem[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
+  const [isCopying, setIsCopying] = useState(false);
   const budgetLimitHapticKey = useRef('');
 
   const skeletonPulse = useRef(new Animated.Value(0.45)).current;
@@ -267,6 +278,54 @@ export default function BudgetOverviewScreen() {
     loadData();
   }, [loadData]);
 
+  const handleCopyPreviousBudget = async () => {
+    try {
+      setIsCopying(true);
+      const success = await copyPreviousBudget(month, year);
+      if (success) {
+        void hapticImpactLight();
+        await loadData();
+      }
+    } catch (err: any) {
+      console.log('Copy budget error:', err);
+      Alert.alert('Copy Failed', err?.response?.data?.message || 'Could not copy budgets');
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  const handleEdit = useCallback((item: BudgetStatusItem) => {
+    router.push({
+      pathname: '/budget/set' as any,
+      params: { 
+        month: String(month), 
+        year: String(year), 
+        category: item.category,
+        amount: String(item.limit),
+        budgetId: item.id
+      },
+    });
+  }, [month, year, router]);
+
+  const handleDelete = useCallback((item: BudgetStatusItem) => {
+    Alert.alert('Remove Budget', `Are you sure you want to remove the budget for ${item.category}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteBudget(item.id);
+            void hapticImpactLight();
+            await loadData();
+          } catch (err: any) {
+            Alert.alert('Error', 'Failed to remove budget');
+          }
+        },
+      },
+    ]);
+  }, [loadData]);
+
   useEffect(() => {
     if (!budgets.length) {
       return;
@@ -303,18 +362,29 @@ export default function BudgetOverviewScreen() {
 
         <Text style={styles.headerTitle}>Budget</Text>
 
-        <TouchableOpacity
-          style={styles.setBudgetBtn}
-          onPress={() =>
-            router.push({
-              pathname: '/budget/set' as any,
-              params: { month: String(month), year: String(year) },
-            })
-          }
-          activeOpacity={0.85}
-        >
-          <Text style={styles.setBudgetBtnText}>+ Set Budget</Text>
-        </TouchableOpacity>
+        <View style={{flexDirection: 'row', gap: 8, alignItems: 'center'}}>
+          <TouchableOpacity
+            style={styles.copyHeaderBtn}
+            onPress={handleCopyPreviousBudget}
+            disabled={isCopying}
+            activeOpacity={0.85}
+          >
+            {isCopying ? <ActivityIndicator size="small" color={COLORS.violetLight} /> : <Ionicons name="copy-outline" size={16} color={COLORS.violetLight} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.setBudgetBtn}
+            onPress={() =>
+              router.push({
+                pathname: '/budget/set' as any,
+                params: { month: String(month), year: String(year) },
+              })
+            }
+            activeOpacity={0.85}
+          >
+            <Text style={styles.setBudgetBtnText}>+ Set Budget</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.monthSelectorRow}>
@@ -364,26 +434,45 @@ export default function BudgetOverviewScreen() {
             <BudgetCardSkeleton pulse={skeletonPulse} />
             <BudgetCardSkeleton pulse={skeletonPulse} />
           </>
-        ) : error ? (
-          <ErrorState onRetry={onRefresh} style={styles.emptyWrap} />
         ) : budgets.length === 0 ? (
-          <EmptyState
-            emoji="🎯"
-            title="No budgets set yet"
-            subtitle="Set spending limits to track your expenses"
-            actionLabel="Set Your First Budget"
-            onAction={() =>
-              router.push({
-                pathname: '/budget/set' as any,
-                params: { month: String(month), year: String(year) },
-              })
-            }
-            style={styles.emptyWrap}
-          />
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyEmoji}>🎯</Text>
+            <Text style={styles.emptyTitle}>No budgets set yet</Text>
+            <Text style={styles.emptySubtitle}>Set spending limits to track your expenses or copy them from the previous month.</Text>
+            
+            <View style={styles.emptyActionRow}>
+              <TouchableOpacity 
+                style={[styles.emptyActionBtn, isCopying && { opacity: 0.7 }]} 
+                onPress={handleCopyPreviousBudget}
+                disabled={isCopying}
+                activeOpacity={0.8}
+              >
+                {isCopying ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                   <Text style={styles.emptyActionText}>Copy from Past Month</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.emptyActionBtnSecondary}
+                onPress={() =>
+                  router.push({
+                    pathname: '/budget/set' as any,
+                    params: { month: String(month), year: String(year) },
+                  })
+                }
+                disabled={isCopying}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.emptyActionTextSecondary}>Start Fresh</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : (
           <>
             {budgets.map((item) => (
-              <BudgetCard key={item.id} item={item} />
+              <BudgetCard key={item.id} item={item} onEdit={handleEdit} onDelete={handleDelete} />
             ))}
 
             {noBudgetCategories.length > 0 ? (
@@ -455,6 +544,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 7,
+    backgroundColor: 'rgba(124,92,252,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(124,92,252,0.3)',
+  },
+  copyHeaderBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(124,92,252,0.15)',
     borderWidth: 1,
     borderColor: 'rgba(124,92,252,0.3)',
@@ -689,9 +788,35 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   emptyActionText: {
     color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: 'DMSans_700Bold',
+  },
+  emptyActionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    paddingHorizontal: 10,
+    marginTop: 4,
+  },
+  emptyActionBtnSecondary: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  emptyActionTextSecondary: {
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontFamily: 'DMSans_700Bold',
   },

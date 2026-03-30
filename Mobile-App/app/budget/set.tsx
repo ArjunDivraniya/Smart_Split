@@ -91,14 +91,16 @@ const resolveCategoryFromParam = (input?: string): string => {
 export default function SetBudgetScreen() {
   const router = useRouter();
   const handleBack = useBackNavigation('/budget' as any, undefined, { alwaysUseFallback: true });
-  const params = useLocalSearchParams<{ month?: string; year?: string; category?: string }>();
+  const params = useLocalSearchParams<{ month?: string; year?: string; category?: string; amount?: string; budgetId?: string }>();
 
   const now = new Date();
   const initialMonth = Number(params.month || now.getMonth() + 1);
   const initialYear = Number(params.year || now.getFullYear());
+  const initialAmount = params.amount ? String(params.amount) : '0';
+  const passedBudgetId = params.budgetId as string | undefined;
 
   const [selectedCategory, setSelectedCategory] = useState<string>(() => resolveCategoryFromParam(String(params.category || '')));
-  const [amountInput, setAmountInput] = useState('0');
+  const [amountInput, setAmountInput] = useState(initialAmount);
   const [month, setMonth] = useState(initialMonth >= 1 && initialMonth <= 12 ? initialMonth : now.getMonth() + 1);
   const [year, setYear] = useState(initialYear >= 2000 ? initialYear : now.getFullYear());
   const [saving, setSaving] = useState(false);
@@ -123,7 +125,9 @@ export default function SetBudgetScreen() {
     return Number(exact || 0);
   }, [selectedCategory, spentByCategory]);
 
-  const isEditMode = Boolean(existingBudget?.id);
+  const activeBudgetId = existingBudget?.id || passedBudgetId;
+  const isEditMode = Boolean(activeBudgetId);
+  const isEditRoute = Boolean(passedBudgetId);
 
   const validateAmount = useCallback((amountValue: number): string => {
     if (!amountValue || amountValue <= 0) {
@@ -162,7 +166,7 @@ export default function SetBudgetScreen() {
       if (match) {
         setAmountInput(String(Math.round(Number(match.limit || 0))));
         setAmountError('');
-      } else {
+      } else if (!isEditRoute) {
         setAmountInput('0');
       }
     } catch (error) {
@@ -222,16 +226,14 @@ export default function SetBudgetScreen() {
       const payload = {
         category: selectedCategory,
         limit: numericAmount,
-        monthlyLimit: numericAmount,
+        monthlyLimit: numericAmount, // Included for backward compatibility if needed
         month,
         year,
-      } as any;
+      };
 
-      if (existingBudget?.id) {
-        await updateBudget(existingBudget.id, { limit: numericAmount });
-      } else {
-        await createBudget(payload);
-      }
+      // Since createBudget (POST /api/budgets) natively performs an upsert based precisely 
+      // on category, month, and year, we completely bypass any complex ID referencing vulnerabilities.
+      await createBudget(payload as any);
 
       showSuccessToast('🎯 Budget saved');
 
@@ -260,7 +262,9 @@ export default function SetBudgetScreen() {
         onPress: async () => {
           try {
             setDeleting(true);
-            await deleteBudget(existingBudget.id);
+            if (activeBudgetId) {
+              await deleteBudget(activeBudgetId);
+            }
             router.replace({
               pathname: '/budget' as any,
               params: { month: String(month), year: String(year) },
@@ -294,11 +298,15 @@ export default function SetBudgetScreen() {
             <View style={styles.categoryGrid}>
               {CATEGORY_OPTIONS.map((item) => {
                 const selected = selectedCategory === item.key;
+                const disabled = isEditRoute && !selected;
                 return (
                   <TouchableOpacity
                     key={item.key}
-                    style={[styles.categoryCell, selected && styles.categoryCellSelected]}
-                    onPress={() => handleCategoryPress(item.key)}
+                    style={[styles.categoryCell, selected && styles.categoryCellSelected, disabled && { opacity: 0.5 }]}
+                    onPress={() => {
+                      if (disabled) return;
+                      handleCategoryPress(item.key);
+                    }}
                     activeOpacity={0.85}
                   >
                     {selected ? (

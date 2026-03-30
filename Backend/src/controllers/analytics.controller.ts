@@ -4,6 +4,7 @@ import Budget from '../models/Budget.model';
 import Expense from '../models/Expense.model';
 import PersonalExpense from '../models/PersonalExpense.model';
 import Trip from '../models/Trip.model';
+import Settlement from '../models/Settlement.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 // Category to Emoji mapping
@@ -482,7 +483,7 @@ export const getRecentActivity = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Find all trips where user is a member or creator
+    // 1. Find all trips/groups where user is a member
     const userTrips = await Trip.find({
       $or: [
         { createdBy: userId },
@@ -492,35 +493,80 @@ export const getRecentActivity = async (req: AuthRequest, res: Response) => {
 
     const tripIds = userTrips.map(trip => trip._id);
 
-    // Get last 10 expenses from these trips
-    const expenses = await Expense.find({ trip: { $in: tripIds } })
-      .sort({ date: -1 })
-      .limit(10)
-      .populate('paidBy', 'name email')
-      .populate('trip', 'name');
+    // 2. Fetch last 10 items of each type
+    const [groupExpenses, personalExpenses, settlements] = await Promise.all([
+      Expense.find({ trip: { $in: tripIds } })
+        .sort({ date: -1 })
+        .limit(10)
+        .populate('paidBy', 'name email')
+        .populate('trip', 'name'),
+      PersonalExpense.find({ user: userId })
+        .sort({ expenseDate: -1 })
+        .limit(10),
+      Settlement.find({ $or: [{ fromUser: userId }, { toUser: userId }] })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('fromUser', 'name email')
+        .populate('toUser', 'name email')
+        .populate('group', 'name'),
+    ]);
 
-    // Format for mobile app
-    const activities = expenses.map((expense: any) => {
-      const isPaidByCurrentUser = expense.paidBy._id.toString() === userId;
-      const userName = expense.paidBy.name;
-      const tripName = expense.trip?.name || 'Unknown Trip';
+    // 3. Format into a unified activity feed
+    const activities: any[] = [];
 
-      return {
-        id: expense._id.toString(),
-        name: userName,
-        description: `${expense.title} • ${tripName}`,
-        amount: expense.amount,
-        type: isPaidByCurrentUser ? 'paid' : 'owe',
-        date: expense.date,
-        category: expense.category,
-        avatarLabel: userName.charAt(0).toUpperCase(),
-        avatarColor: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.2)`,
-      };
+    // Format Group Expenses
+    groupExpenses.forEach((exp: any) => {
+      const isPaidByMe = exp.paidBy._id.toString() === userId;
+      activities.push({
+        id: exp._id.toString(),
+        type: 'group',
+        title: exp.title || 'Group Expense',
+        description: `Paid by ${isPaidByMe ? 'You' : exp.paidBy.name} • ${exp.trip?.name || 'Group'}`,
+        amount: exp.amount,
+        date: exp.date,
+        itemType: isPaidByMe ? 'paid' : 'owe',
+        category: exp.category,
+      });
     });
+
+    // Format Personal Expenses
+    personalExpenses.forEach((exp: any) => {
+      activities.push({
+        id: exp._id.toString(),
+        type: 'personal',
+        title: exp.description || 'Personal Expense',
+        description: `Personal • ${exp.category}`,
+        amount: exp.amount,
+        date: exp.expenseDate,
+        itemType: 'personal',
+        category: exp.category,
+      });
+    });
+
+    // Format Settlements
+    settlements.forEach((set: any) => {
+      const isFromMe = set.fromUser._id.toString() === userId;
+      const otherUser = isFromMe ? set.toUser : set.fromUser;
+      
+      activities.push({
+        id: set._id.toString(),
+        type: 'settlement',
+        title: `${set.fromUser.name} → ${set.toUser.name}`,
+        description: `Settlement via ${set.method} ${set.group ? `• ${set.group.name}` : ''}`,
+        amount: set.amount,
+        date: set.createdAt,
+        itemType: isFromMe ? 'paid' : 'received',
+      });
+    });
+
+    // 4. Sort all by date descending and take top 10
+    const finalActivities = activities
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
 
     return res.status(200).json({
       success: true,
-      data: activities,
+      data: finalActivities,
     });
   } catch (error: any) {
     console.error('Get recent activity error:', error);

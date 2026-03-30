@@ -44,11 +44,17 @@ export const deleteBudget = async (budgetId: string): Promise<boolean> => {
   return Boolean(response?.data?.success ?? true);
 };
 
+export const copyPreviousBudget = async (targetMonth: number, targetYear: number): Promise<boolean> => {
+  const response = await api.post('/budgets/copy', { targetMonth, targetYear });
+  return Boolean(response?.data?.success);
+};
+
 export const budgetService = {
   getBudgetStatus,
   createBudget,
   updateBudget,
   deleteBudget,
+  copyPreviousBudget,
 };
 
 export default budgetService;

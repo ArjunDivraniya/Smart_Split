@@ -205,20 +205,18 @@ export default function DashboardScreen() {
       try {
         const activityResponse = await apiService.analytics.getRecentActivity();
         if (activityResponse.data?.success) {
-          const normalized = (activityResponse.data.data || []).slice(0, 10).map((item: any, index: number) => {
-            const type = item?.type === 'settlement'
-              ? 'settlement'
-              : item?.type === 'personal'
-                ? 'personal-expense'
-                : 'group-expense';
+          const normalized = (activityResponse.data.data || []).map((item: any, index: number) => {
+            let type: FeedType = 'group-expense';
+            if (item.type === 'personal') type = 'personal-expense';
+            if (item.type === 'settlement') type = 'settlement';
 
             return {
-              id: String(item?.id || `activity-${index}`),
-              title: String(item?.name || 'Activity'),
-              subtitle: String(item?.description || 'No description'),
-              amount: Number(item?.amount || 0),
+              id: item.id || `activity-${index}`,
+              title: item.title || 'Activity',
+              subtitle: item.description || 'No description',
+              amount: Number(item.amount || 0),
               type,
-              date: item?.date || item?.timestamp,
+              date: item.date,
             } as FeedItem;
           });
 
@@ -242,26 +240,13 @@ export default function DashboardScreen() {
         try {
           const settlementsResponse = await apiService.settlements.getUserSettlements();
           const settlements = settlementsResponse.data?.data || [];
-          if (Array.isArray(settlements) && settlements.length > 0) {
+          if (Array.isArray(settlements)) {
             const unsettled = settlements.filter((s: any) => ['pending', 'overdue', 'partial'].includes(String(s?.status || '').toLowerCase())).length;
-            setUnsettledBalances(unsettled || settlements.length);
-
-            const settlementActivities: FeedItem[] = settlements.slice(0, 3).map((settlement: any, index: number) => ({
-              id: `settlement-${index}`,
-              title: `${settlement.fromUserName || 'Friend'} → ${settlement.toUserName || 'Friend'}`,
-              subtitle: `Settlement of ₹${Number(settlement.amount || 0).toFixed(2)}`,
-              amount: settlement.amount,
-              type: 'settlement',
-              date: settlement.createdAt,
-            }));
-
-            setRecentActivity(prev => [...settlementActivities, ...prev].slice(0, 10));
+            setUnsettledBalances(unsettled || (settlements.length > 0 ? settlements.length : 2));
             successCount += 1;
-          } else {
-            setUnsettledBalances(2);
           }
         } catch (error) {
-          console.log('Could not fetch settlements:', error);
+          console.log('Could not fetch settlements for balance count:', error);
           setUnsettledBalances(2);
         }
 

@@ -139,6 +139,7 @@ router.get('/status', async (req: any, res) => {
           _id: String(budget._id),
           category: String(budget.category),
           monthlyLimit,
+          limit: monthlyLimit,
           month: Number(budget.month),
           year: Number(budget.year),
           alertSent: Boolean(budget.alertSent),
@@ -155,6 +156,8 @@ router.get('/status', async (req: any, res) => {
     const overallPercentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
     return res.status(200).json({
+      success: true,
+      data: budgetsWithStatus,
       budgets: budgetsWithStatus,
       month,
       year,
@@ -177,11 +180,17 @@ router.put('/:id', async (req: any, res) => {
     }
 
     const { id } = req.params;
-    const { monthlyLimit } = req.body || {};
-    const parsedLimit = Number(monthlyLimit);
+    
+    // Safety check for Expo Router serializing undefined as 'undefined'
+    if (!id || id === 'undefined' || id === 'null' || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid budget reference ID' });
+    }
+
+    const { monthlyLimit, limit } = req.body || {};
+    const parsedLimit = Number(monthlyLimit ?? limit);
 
     if (!Number.isFinite(parsedLimit) || parsedLimit <= 0) {
-      return res.status(400).json({ success: false, message: 'monthlyLimit must be > 0' });
+      return res.status(400).json({ success: false, message: 'limit must be a positive number' });
     }
 
     const budget = await Budget.findById(id);
@@ -193,13 +202,16 @@ router.put('/:id', async (req: any, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    budget.limit = parsedLimit;
-    budget.alertSent = false;
-    await budget.save();
+    const updatedBudget = await Budget.findByIdAndUpdate(
+      id,
+      { $set: { limit: parsedLimit, alertSent: false } },
+      { new: true, runValidators: true }
+    );
 
-    return res.status(200).json(budget);
+    return res.status(200).json(updatedBudget);
   } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message });
+    console.error('Update Budget Error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Internal server error' });
   }
 });
 
@@ -225,6 +237,52 @@ router.delete('/:id', async (req: any, res) => {
     await Budget.findByIdAndDelete(id);
 
     return res.status(200).json({ success: true, message: 'Budget removed' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/budgets/copy
+router.post('/copy', async (req: any, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { targetMonth, targetYear } = req.body || {};
+    if (!targetMonth || !targetYear) {
+      return res.status(400).json({ success: false, message: 'targetMonth and targetYear required' });
+    }
+
+    const month = Number(targetMonth);
+    const year = Number(targetYear);
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+
+    const prevBudgets = await Budget.find({ user: userId, month: prevMonth, year: prevYear });
+    
+    if (!prevBudgets || prevBudgets.length === 0) {
+      return res.status(404).json({ success: false, message: 'No budgets found in previous month' });
+    }
+
+    let newCount = 0;
+    for (const pb of prevBudgets) {
+      const existing = await Budget.findOne({ user: userId, category: pb.category, month, year });
+      if (!existing) {
+        await Budget.create({
+          user: userId,
+          category: pb.category,
+          limit: pb.limit,
+          month,
+          year,
+          alertSent: false,
+        });
+        newCount++;
+      }
+    }
+
+    return res.status(200).json({ success: true, message: `Copied ${newCount} budgets` });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
   }

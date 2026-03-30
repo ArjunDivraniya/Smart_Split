@@ -8,9 +8,24 @@ interface MonthSelectorProps {
   onChange: (month: number, year: number) => void;
 }
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 const getMonthLabel = (month: number, year: number) => {
-  const date = new Date(year, month - 1, 1);
-  return date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  const monthName = MONTH_NAMES[month - 1] || 'Unknown';
+  return `${monthName} ${year}`;
 };
 
 export const MonthSelector = ({ month, year, onChange }: MonthSelectorProps) => {
@@ -117,12 +132,12 @@ export const MonthSelector = ({ month, year, onChange }: MonthSelectorProps) => 
         </TouchableOpacity>
       </View>
 
-      {showSwipeHint ? (
+      <View style={[styles.hintContainer, { opacity: showSwipeHint ? 1 : 0 }]}>
         <Animated.View style={[styles.swipeHintRow, { transform: [{ translateX: swipeHintX }] }]}> 
           <Ionicons name="swap-horizontal" size={13} color="#9B7FFF" />
           <Text style={styles.swipeHintText}>Swipe left or right to change month</Text>
         </Animated.View>
-      ) : null}
+      </View>
     </View>
   );
 };
@@ -160,6 +175,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Syne_700Bold',
     textAlign: 'center',
+  },
+  hintContainer: {
+    height: 24, // Reserve space so it doesn't shift layout when it disappears
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   swipeHintRow: {
     marginTop: 6,

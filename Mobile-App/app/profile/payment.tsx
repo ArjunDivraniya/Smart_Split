@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { apiService } from '@/src/services/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = {
   surface: '#0F0F1A',
@@ -104,11 +105,12 @@ export default function PaymentPreferencesScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <StatusBar style="light" />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <StatusBar style="light" />
 
       <LinearGradient
         colors={['rgba(124, 92, 252, 0.15)', 'transparent']}
@@ -239,7 +241,8 @@ export default function PaymentPreferencesScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -247,6 +250,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.surface,
+  },
+  flex: {
+    flex: 1,
   },
   headerGradient: {
     paddingTop: Platform.OS === 'ios' ? 60 : 16,

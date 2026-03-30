@@ -56,84 +56,102 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.elevated,
+          borderColor: `${colors.violet}30`,
+        },
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={styles.iconContainer}>
+      <View style={styles.leftSection}>
         <View
           style={[
             styles.iconCircle,
-            { backgroundColor: `${colors.violet}22` },
-            isPaidByCurrentUser && styles.iconCirclePaid,
+            { backgroundColor: `${isPaidByCurrentUser ? colors.mint : colors.violet}15` },
           ]}
         >
           <Ionicons
             name={getCategoryIcon(expense.category) as any}
-            size={24}
-            color={isPaidByCurrentUser ? '#22c55e' : '#6366f1'}
+            size={22}
+            color={isPaidByCurrentUser ? colors.mint : colors.violet}
           />
         </View>
       </View>
 
-      <View style={styles.contentContainer}>
-        <Text style={[styles.description, { color: colors.text }]}>{expense.description}</Text>
+      <View style={styles.contentSection}>
+        <Text style={[styles.description, { color: colors.text }]} numberOfLines={1}>
+          {expense.description}
+        </Text>
         <View style={styles.metaRow}>
-          <Text style={[styles.paidBy, { color: colors.icon }]}>
-            {`${payerName} paid`}
+          <Text style={[styles.metaText, { color: colors.icon }]}>
+            {payerName} · {formattedDate}
           </Text>
-          <Text style={[styles.date, { color: colors.icon }]}> • {formattedDate}</Text>
           {expense.category && (
-            <View style={[styles.categoryBadge, { backgroundColor: colors.elevated }]}> 
-              <Text style={[styles.categoryText, { color: colors.text }]}>{expense.category}</Text>
+            <View style={[styles.categoryTag, { backgroundColor: `${colors.violet}10` }]}>
+              <Text style={[styles.categoryTagText, { color: colors.icon }]}>
+                {expense.category}
+              </Text>
             </View>
           )}
         </View>
-        {splitCount > 0 && (
-          <Text style={[styles.splitInfo, { color: colors.icon }]}>Split among {splitCount} people</Text>
-        )}
-        {expense.notes && (
-          <Text style={[styles.notes, { color: colors.icon }]} numberOfLines={1}>
+        
+        {expense.notes ? (
+          <Text style={[styles.notesText, { color: colors.tabIconDefault }]} numberOfLines={1}>
             {expense.notes}
           </Text>
-        )}
+        ) : splitCount > 0 ? (
+          <Text style={[styles.splitText, { color: colors.tabIconDefault }]}>
+            Split among {splitCount} people
+          </Text>
+        ) : null}
       </View>
 
-      <View style={styles.rightContainer}>
-        <Text style={[styles.amount, isPaidByCurrentUser && styles.amountPaid]}>
-          ₹{expense.amount.toFixed(2)}
-        </Text>
-        {expense.receiptUrl && (
-          <Ionicons name="receipt" size={16} color="#94a3b8" />
-        )}
-      </View>
-
-      {(onEdit || onDelete) && (
-        <View style={styles.actionsContainer}>
-          {onEdit && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-            >
-              <Ionicons name="pencil" size={20} color="#6366f1" />
-            </TouchableOpacity>
-          )}
-          {onDelete && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              <Ionicons name="trash" size={20} color="#ef4444" />
-            </TouchableOpacity>
+      <View style={styles.rightSection}>
+        <View style={styles.amountContainer}>
+          <Text
+            style={[
+              styles.amountText,
+              { color: isPaidByCurrentUser ? colors.mint : colors.text },
+            ]}
+          >
+            ₹{expense.amount.toLocaleString('en-IN')}
+          </Text>
+          {expense.receiptUrl && (
+            <Ionicons name="receipt-outline" size={12} color={colors.icon} style={styles.receiptIcon} />
           )}
         </View>
-      )}
+
+        {(onEdit || onDelete) && (
+          <View style={styles.actionRow}>
+            {onEdit && (
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="pencil" size={18} color={colors.violet} />
+              </TouchableOpacity>
+            )}
+            {onDelete && (
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                style={{ marginLeft: 12 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.coral} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
     </TouchableOpacity>
   );
 };
@@ -141,96 +159,84 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    padding: 16,
+    padding: 12,
     marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    marginVertical: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 12,
   },
-  iconContainer: {
-    marginRight: 12,
+  leftSection: {
+    justifyContent: 'center',
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#eef2ff',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCirclePaid: {
-    backgroundColor: '#dcfce7',
-  },
-  contentContainer: {
+  contentSection: {
     flex: 1,
+    justifyContent: 'center',
   },
   description: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Syne_700Bold',
     marginBottom: 4,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 2,
   },
-  paidBy: {
-    fontSize: 13,
-    color: '#64748b',
+  metaText: {
+    fontSize: 12,
+    fontFamily: 'DMSans_500Medium',
   },
-  date: {
-    fontSize: 13,
-    color: '#94a3b8',
-  },
-  categoryBadge: {
-    marginLeft: 8,
-    paddingHorizontal: 8,
+  categoryTag: {
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
+    borderRadius: 6,
   },
-  categoryText: {
+  categoryTagText: {
+    fontSize: 10,
+    fontFamily: 'DMSans_700Bold',
+    textTransform: 'uppercase',
+  },
+  notesText: {
     fontSize: 11,
-    color: '#475569',
-    fontWeight: '500',
+    fontFamily: 'DMSans_400Regular_Italic',
+    marginTop: 2,
   },
-  notes: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 4,
-    fontStyle: 'italic',
+  splitText: {
+    fontSize: 11,
+    fontFamily: 'DMSans_400Regular',
+    marginTop: 2,
   },
-  splitInfo: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  rightContainer: {
+  rightSection: {
     alignItems: 'flex-end',
-    marginLeft: 12,
+    justifyContent: 'center',
   },
-  amount: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#6366f1',
-    marginBottom: 4,
-  },
-  amountPaid: {
-    color: '#22c55e',
-  },
-  actionsContainer: {
+  amountContainer: {
     flexDirection: 'row',
-    marginLeft: 8,
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
   },
-  actionButton: {
-    padding: 8,
-    marginLeft: 4,
+  amountText: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: 'Syne_800ExtraBold',
+  },
+  receiptIcon: {
+    marginTop: 2,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

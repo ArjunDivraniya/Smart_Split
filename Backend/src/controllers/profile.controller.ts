@@ -609,9 +609,21 @@ export const updatePaymentPreferences = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ message: 'Payment preferences are required' });
     }
 
+    const updateData: any = {
+      $set: {
+        'paymentPreferences.upiId': paymentPreferences.upiId,
+        'paymentPreferences.bankAccount': paymentPreferences.bankAccount,
+        'paymentPreferences.autoPay': paymentPreferences.autoPay,
+      }
+    };
+
+    if (paymentPreferences.upiId !== undefined) {
+      updateData.$set.upiId = paymentPreferences.upiId;
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
-      { paymentPreferences },
+      updateData,
       { new: true }
     );
 
