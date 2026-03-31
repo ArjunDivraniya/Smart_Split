@@ -118,8 +118,31 @@ export default function OnboardingScreen() {
   const [index, setIndex] = useState(0);
 
   const handleComplete = async () => {
-    await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
-    router.replace('/(auth)/login');
+    try {
+      console.log('🏁 Completing onboarding...');
+      
+      // 1. Set completion flag
+      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
+      console.log('✅ Onboarding flag saved to storage');
+
+      // 2. Small delay to ensure storage write and UI stability
+      console.log('⏳ Waiting 100ms before transition...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 3. Attempt navigation
+      console.log('➡️ Navigating to Login screen: /(auth)/login');
+      router.replace('/(auth)/login');
+      
+    } catch (error: any) {
+      console.error('❌ Onboarding completion failed:', error);
+      
+      // Standalone build debugging
+      const { Alert } = require('react-native');
+      Alert.alert(
+        'Navigation Error',
+        `Failed to reach login: ${error?.message || 'Unknown error'}. Please check if (auth)/login route exists.`
+      );
+    }
   };
 
   const handleNext = () => {
