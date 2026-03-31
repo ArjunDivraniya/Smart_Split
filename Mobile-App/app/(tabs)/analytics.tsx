@@ -52,19 +52,19 @@ export default function AnalyticsScreen() {
     const chartTranslateY = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Initial entrance animation only
-        chartOpacity.setValue(0);
-        chartTranslateY.setValue(16);
+        // Subtle entrance animation from current state
+        chartOpacity.setValue(0.7);
+        chartTranslateY.setValue(10);
 
         Animated.parallel([
             Animated.timing(chartOpacity, {
                 toValue: 1,
-                duration: 500,
+                duration: 400,
                 useNativeDriver: true,
             }),
             Animated.timing(chartTranslateY, {
                 toValue: 0,
-                duration: 500,
+                duration: 400,
                 useNativeDriver: true,
             }),
         ]).start();

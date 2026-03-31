@@ -176,30 +176,30 @@ export const GroupHeroHeader: React.FC<GroupHeroHeaderProps> = ({
       </View>
 
       {/* Stats row */}
-      <View style={[styles.statsRowContainer, { marginBottom: 12 }]}>
-        <View style={[styles.statCellBox, { borderColor: colors.elevated }]}>
-          <Text style={[styles.statLabel, { color: colors.icon }]}>Total Spent</Text>
-          <Text style={[styles.statValue, { color: colors.text }]}>Rs {totalSpent.toLocaleString('en-IN')}</Text>
+      <View style={[styles.statsRowContainer, { marginBottom: 16 }]}>
+        <View style={[styles.statCellBox, { borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)' }]}>
+          <Text style={[styles.statLabel, { color: '#B0B0CC' }]}>Total Spent</Text>
+          <Text style={[styles.statValue, { color: '#FFFFFF' }]}>Rs {totalSpent.toLocaleString('en-IN')}</Text>
         </View>
 
         <View
           style={[
             styles.statCellBox,
             {
-              borderColor: colors.elevated,
-              backgroundColor: netBalance < 0 ? `${colors.coral}14` : `${colors.mint}14`,
+              borderColor: netBalance < 0 ? 'rgba(255, 95, 126, 0.3)' : 'rgba(0, 229, 176, 0.2)',
+              backgroundColor: netBalance < 0 ? 'rgba(255, 95, 126, 0.08)' : 'rgba(0, 229, 176, 0.08)',
             },
           ]}
         >
-          <Text style={[styles.statLabel, { color: colors.icon }]}>{netBalanceLabel}</Text>
+          <Text style={[styles.statLabel, { color: '#B0B0CC' }]}>{netBalanceLabel}</Text>
           <Text style={[styles.statValue, { color: netBalanceColor }]}>
             Rs {Math.abs(netBalance).toLocaleString('en-IN')}
           </Text>
         </View>
 
-        <View style={[styles.statCellBox, { borderColor: colors.elevated }]}>
-          <Text style={[styles.statLabel, { color: colors.icon }]}>Your Share</Text>
-          <Text style={[styles.statValue, { color: colors.text }]}>Rs {yourShare.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Text>
+        <View style={[styles.statCellBox, { borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.04)' }]}>
+          <Text style={[styles.statLabel, { color: '#B0B0CC' }]}>Your Share</Text>
+          <Text style={[styles.statValue, { color: '#FFFFFF' }]}>Rs {yourShare.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Text>
         </View>
       </View>
 

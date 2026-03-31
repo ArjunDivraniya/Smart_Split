@@ -15,14 +15,25 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["whatsapp"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo/playstore.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.arjun.smartsplit"
+      "package": "com.arjun.smartsplit",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "whatsapp"
+          }
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/logo/playstore.png"

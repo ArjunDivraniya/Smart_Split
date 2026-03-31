@@ -154,6 +154,8 @@ const styles = StyleSheet.create({
   cardContainer: {
     borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: '#14141F', // Ensure it's opaque to hide the button behind it
+    zIndex: 2, // Higher than the delete button
   },
   card: {
     flexDirection: 'row',
@@ -164,14 +166,14 @@ const styles = StyleSheet.create({
     minHeight: 76,
   },
   unreadCard: {
-    backgroundColor: 'rgba(124,92,252,0.06)',
+    backgroundColor: 'rgba(124,92,252,0.12)', // Increased opacity for better contrast
   },
   unreadContainer: {
     borderRadius: 12,
     overflow: 'hidden',
   },
   leftBorder: {
-    width: 3,
+    width: 6, // Slightly wider
     height: '100%',
     backgroundColor: '#7C5CFC',
     marginRight: 10,
@@ -197,14 +199,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#F0F0FF',
-    fontSize: 13,
-    fontFamily: 'DMSans_600SemiBold',
+    fontSize: 14, // Slightly larger
+    fontFamily: 'DMSans_700Bold',
     marginBottom: 4,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   titleBold: {
-    fontFamily: 'DMSans_700Bold',
-    fontWeight: '700',
+    color: '#FFFFFF',
   },
   message: {
     fontSize: 12,
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   messageUnread: {
-    color: '#D0D0E0',
+    color: '#F3F3FF', // Lighter for unread
   },
   messageRead: {
     color: '#80809E',
@@ -230,22 +231,26 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_500Medium',
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#38BDF8',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#7C5CFC', // Matching brand color
     marginTop: 2,
+    shadowColor: '#7C5CFC',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
   },
   deleteButton: {
     position: 'absolute',
     right: 0,
     top: 0,
     bottom: 0,
-    width: 100,
+    width: 90, // Match the toValue in panRelease
     backgroundColor: '#FF5F7E',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: 1, // Lower than the card container
     borderRadius: 12,
   },
   deleteText: {

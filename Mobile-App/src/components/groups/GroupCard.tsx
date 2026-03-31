@@ -16,12 +16,12 @@ const COLORS = {
   violet: '#7C5CFC',
   mint: '#00E5B0',
   coral: '#FF5F7E',
-  textPrimary: '#F3F3FF',
-  textSecondary: '#AAAAC4',
-  textMuted: '#70708E',
-  border: 'rgba(255, 255, 255, 0.09)',
-  badgeActiveBg: 'rgba(0, 229, 176, 0.16)',
-  badgeEndedBg: 'rgba(255, 95, 126, 0.14)',
+  textPrimary: '#FFFFFF', // Bright white for primary
+  textSecondary: '#D1D1E8', // Lighter secondary
+  textMuted: '#9595B0', // Light enough to read
+  border: 'rgba(255, 255, 255, 0.12)', // More distinct border
+  badgeActiveBg: 'rgba(0, 229, 176, 0.18)',
+  badgeEndedBg: 'rgba(255, 95, 126, 0.16)',
 };
 
 const normalizeId = (value: unknown): string => {
