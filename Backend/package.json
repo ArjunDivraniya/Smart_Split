@@ -5,11 +5,10 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon src/server.ts",
-    "build": "tsc",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
     "start": "node dist/server.js",
-    "lint": "eslint src --ext .ts",
-    "seed:global-access": "ts-node src/scripts/grantUserGlobalAccess.ts",
-    "notify:monthly-report": "ts-node src/scripts/sendMonthlyReports.ts"
+    "render-build": "npm install && npm run build"
   },
   "keywords": [
     "trip-splitter",
