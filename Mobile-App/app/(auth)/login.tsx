@@ -76,9 +76,12 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password);
 
-      router.replace('/(tabs)');
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Login failed.';
+      // AuthContext already maps the error
+      const message = err?.message || 'Login failed.';
       setError(message);
     } finally {
       setLoading(false);

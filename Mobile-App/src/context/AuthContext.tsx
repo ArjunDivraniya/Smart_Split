@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService, setAuthToken, setRefreshToken, clearAuthToken, getRefreshToken } from '../services/api';
 import { STORAGE_KEYS } from '../constants/categories';
+import { mapErrorMessage } from '../utils/errorMapper';
 
 // User Interface
 export interface User {
@@ -109,7 +110,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('✅ Login successful');
     } catch (error: any) {
       console.error('Login error:', error);
-      throw new Error(error.response?.data?.message || 'Login failed');
+      const friendlyMessage = mapErrorMessage(error, 'Login failed. Please check your credentials.');
+      throw new Error(friendlyMessage);
     }
   };
 
@@ -123,7 +125,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await login(email, password);
     } catch (error: any) {
       console.error('Registration error:', error);
-      throw new Error(error.response?.data?.message || 'Registration failed');
+      const friendlyMessage = mapErrorMessage(error, 'Registration failed. Please try again.');
+      throw new Error(friendlyMessage);
     }
   };
 

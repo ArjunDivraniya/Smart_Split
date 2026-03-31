@@ -4,6 +4,12 @@ import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import Image from 'next/image';
 import { UserPlus, PlusCircle, BarChart3, CheckCircle2 } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 const steps = [
   {
@@ -167,7 +173,21 @@ const StepText = ({ step, index, progress }: StepTextProps) => {
       </div>
       
       <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-        {step.title}
+        {step.title.split(" ").map((word: string, i: number) => (
+          <motion.span
+            key={i}
+            initial={{ opacity: 0, y: 10, filter: 'blur(8px)' }}
+            animate={{ 
+              opacity: 1, 
+              y: 0, 
+              filter: 'blur(0px)',
+              transition: { duration: 0.6, delay: 0.1 + i * 0.1, ease: [0.16, 1, 0.3, 1] } 
+            }}
+            className="inline-block mr-3"
+          >
+            {word}
+          </motion.span>
+        ))}
       </h2>
       <p className="text-lg text-slate-400 max-w-md leading-relaxed">
         {step.description}

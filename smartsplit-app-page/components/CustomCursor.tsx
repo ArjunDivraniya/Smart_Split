@@ -10,8 +10,8 @@ const CustomCursor = () => {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Smooth out the movement with spring physics
-  const springConfig = { damping: 25, stiffness: 200, mass: 0.5 };
+  // High-fidelity spring physics (Heavy/Smooth)
+  const springConfig = { damping: 30, stiffness: 250, mass: 0.6 };
   const cursorX = useSpring(mouseX, springConfig);
   const cursorY = useSpring(mouseY, springConfig);
 
@@ -19,8 +19,9 @@ const CustomCursor = () => {
     setMounted(true);
     
     const handleMouseMove = (e: MouseEvent) => {
-      mouseX.set(e.clientX - 16);
-      mouseY.set(e.clientY - 16);
+      // Offset by half of cursor size
+      mouseX.set(e.clientX - 20);
+      mouseY.set(e.clientY - 20);
       
       const target = e.target as HTMLElement;
       setIsHovering(
@@ -28,7 +29,8 @@ const CustomCursor = () => {
         target.tagName === 'A' || 
         target.closest('button') !== null || 
         target.closest('a') !== null ||
-        target.classList.contains('cursor-pointer')
+        target.classList.contains('cursor-pointer') ||
+        target.getAttribute('role') === 'button'
       );
     };
 
@@ -40,19 +42,51 @@ const CustomCursor = () => {
 
   return (
     <>
-      {/* Central Pointer Dot */}
+      {/* Precision Crosshair Cursor */}
       <motion.div
         style={{
           x: cursorX,
           y: cursorY,
-          scale: isHovering ? 2.5 : 1,
         }}
-        className="fixed top-0 left-0 w-8 h-8 rounded-full border-2 border-[#00FF9D]/30 pointer-events-none z-[9999] hidden lg:flex items-center justify-center mix-blend-difference"
+        className="fixed top-0 left-0 w-10 h-10 pointer-events-none z-[9999] hidden lg:block"
       >
-        <div className="w-1.5 h-1.5 bg-[#00FF9D] rounded-full" />
+        {/* Central Core Point */}
+        <motion.div 
+            animate={{ scale: isHovering ? 0.5 : 1, opacity: isHovering ? 1 : 1 }}
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#00FF9D] rounded-full shadow-[0_0_10px_#00FF9D] transition-colors ${isHovering ? 'bg-white' : 'bg-[#00FF9D]'}`}
+        />
+
+        {/* 4 Corners (Precision Frame) */}
+        {[0, 90, 180, 270].map((rotation) => (
+          <motion.div
+            key={rotation}
+            animate={{ 
+                rotate: rotation,
+                x: isHovering ? (rotation === 90 || rotation === 180 ? 12 : -12) : 0,
+                y: isHovering ? (rotation === 180 || rotation === 270 ? 12 : -12) : 0,
+                opacity: isHovering ? 1 : 0.4
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 border-t-2 border-l-2 border-[#00FF9D]"
+            style={{ 
+                borderRadius: '2px 0 0 0',
+                borderColor: isHovering ? '#FFF' : '#00FF9D'
+            }}
+          />
+        ))}
+
+        {/* Interactive Ring */}
+        <motion.div
+            animate={{ 
+                scale: isHovering ? 1.5 : 0,
+                opacity: isHovering ? 0.2 : 0,
+                borderWidth: isHovering ? '1px' : '0px'
+            }}
+            className="absolute inset-0 rounded-full border-[#00FF9D] bg-[#00FF9D]/10 blur-[2px]"
+        />
       </motion.div>
 
-      {/* Large Spotlight Glow */}
+      {/* Subtle Distance Glow (Smaller than previous Spotlight) */}
       <motion.div
         style={{
           x: cursorX,
@@ -60,7 +94,7 @@ const CustomCursor = () => {
           translateX: '-45%',
           translateY: '-45%',
         }}
-        className="fixed top-0 left-0 w-[400px] h-[400px] bg-[#00FF9D]/5 rounded-full blur-[80px] pointer-events-none z-[9998] hidden lg:block"
+        className={`fixed top-0 left-0 w-[300px] h-[300px] rounded-full blur-[100px] pointer-events-none z-[9998] hidden lg:block transition-all duration-700 ${isHovering ? 'bg-[#3B82F6]/10' : 'bg-[#00FF9D]/5'}`}
       />
     </>
   );

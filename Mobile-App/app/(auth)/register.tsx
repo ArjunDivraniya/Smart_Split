@@ -76,9 +76,13 @@ export default function RegisterScreen() {
 
     try {
       await register(name.trim(), email.trim(), password);
-      router.replace('/(tabs)');
+      // Wait a tiny bit to ensure context state is synced or just use router.replace
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Registration failed.';
+      // AuthContext already maps the error, but we can double check here
+      const message = err?.message || 'Registration failed.';
       setError(message);
     } finally {
       setLoading(false);

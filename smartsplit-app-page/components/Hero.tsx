@@ -5,7 +5,20 @@ import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 
-const Hero = () => {
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+import Magnetic from './Magnetic';
+
+interface HeroProps {
+  onWatchDemo: () => void;
+}
+
+const Hero = ({ onWatchDemo }: HeroProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   
   const { scrollYProgress } = useScroll({
@@ -51,15 +64,22 @@ const Hero = () => {
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="text-6xl md:text-8xl font-bold text-white mb-8 leading-[0.9] tracking-tighter"
           >
-            Split Smarter. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00FF9D] via-[#3B82F6] to-[#A855F7] animate-gradient-x">
-              Live Better.
-            </span>
+            {["Split", "Smarter.", "Live", "Better."].map((word, i) => (
+              <motion.span
+                key={i}
+                initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.8, delay: 0.2 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className={cn(
+                  "inline-block mr-4",
+                  (word === "Live" || word === "Better.") && "text-transparent bg-clip-text bg-gradient-to-r from-[#00FF9D] via-[#3B82F6] to-[#A855F7] animate-gradient-x"
+                )}
+              >
+                {word}
+              </motion.span>
+            ))}
           </motion.h1>
 
           <motion.p
@@ -71,21 +91,34 @@ const Hero = () => {
             The all-in-one app to manage group expenses, track personal spending, and settle balances instantly with zero friction.
           </motion.p>
 
+import Magnetic from './Magnetic';
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="flex flex-col sm:flex-row items-center gap-6 justify-center lg:justify-start"
           >
-            <button className="w-full sm:w-auto bg-white text-black px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#00FF9D] hover:shadow-[0_0_50px_rgba(0,255,157,0.4)] transition-all active:scale-95 group">
-              Get Started <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button className="w-full sm:w-auto bg-transparent border border-white/10 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-white/5 transition-all active:scale-95 group">
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                 <Play size={14} className="fill-white translate-x-[1px]" />
-              </div>
-              Watch Demo
-            </button>
+            <Magnetic>
+              <button 
+                onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/9357e0ec-b1a8-4fba-9d95-d50b460ba5ad', '_blank')}
+                className="w-full sm:w-auto bg-white text-black px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#00FF9D] hover:shadow-[0_0_50px_rgba(0,255,157,0.4)] transition-all active:scale-95 group"
+              >
+                Get Started <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </Magnetic>
+            
+            <Magnetic>
+              <button 
+                onClick={onWatchDemo}
+                className="w-full sm:w-auto bg-transparent border border-white/10 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-white/5 transition-all active:scale-95 group"
+              >
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                   <Play size={14} className="fill-white translate-x-[1px]" />
+                </div>
+                Watch Demo
+              </button>
+            </Magnetic>
           </motion.div>
 
           {/* Social Proof */}
@@ -116,9 +149,9 @@ const Hero = () => {
         {/* Right Phone Mockup with Parallax & Float */}
         <motion.div
           style={{ y: phoneY }}
-          initial={{ opacity: 0, scale: 0.8, rotateY: 20 }}
-          animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-          transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, scale: 0.8, rotateY: 30, rotateX: 10 }}
+          animate={{ opacity: 1, scale: 1, rotateY: 0, rotateX: 0 }}
+          transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
           className="relative flex justify-center perspective-1000"
         >
           {/* Glowing Ring behind phone */}

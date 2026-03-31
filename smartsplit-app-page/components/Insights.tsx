@@ -4,6 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { PieChart, TrendingUp, Wallet2, ArrowUpRight, Target } from 'lucide-react';
 
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 const Insights = () => {
   return (
     <section id="insights" className="py-32 bg-gradient-to-b from-transparent to-black/30 relative overflow-hidden">
@@ -25,14 +32,23 @@ const Insights = () => {
           
           <div className="space-y-6">
             <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-bold text-white leading-[1.1] tracking-tight"
             >
-              Insights that help <br />
-              <span className="text-[#3B82F6]">you save more.</span>
+              {["Insights", "that", "help", "you", "save", "more."].map((word, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
+                  whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  className={cn(
+                    "inline-block mr-3",
+                    (word === "save" || word === "more.") && "text-[#3B82F6]"
+                  )}
+                >
+                  {word}
+                </motion.span>
+              ))}
             </motion.h2>
             
             <motion.p
@@ -92,6 +108,13 @@ const Insights = () => {
                 </div>
 
                 <div className="space-y-10 relative z-10">
+                  {/* Vertical Scan Line */}
+                  <motion.div 
+                    animate={{ x: ["0%", "100%", "0%"] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    className="absolute top-0 bottom-0 w-[1px] bg-[#00FF9D]/30 shadow-[0_0_10px_#00FF9D] z-20 pointer-events-none"
+                  />
+                  
                   <InsightBar label="Food & Drinks" value="45%" color="#00FF9D" width="45%" delay={0.6} />
                   <InsightBar label="Travel & Trips" value="30%" color="#3B82F6" width="30%" delay={0.7} />
                   <InsightBar label="Entertainment" value="25%" color="#A855F7" width="25%" delay={0.8} />

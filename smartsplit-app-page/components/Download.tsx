@@ -1,9 +1,16 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Smartphone, PlayCircle, QrCode, Sparkles, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import Magnetic from './Magnetic';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 const DownloadCTA = () => {
   return (
@@ -44,14 +51,23 @@ const DownloadCTA = () => {
                 </motion.div>
 
                 <motion.h2 
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
                     className="text-5xl md:text-7xl font-bold text-white leading-tight tracking-tighter"
                 >
-                    Take Control <br /> 
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00FF9D] to-[#3B82F6]">of Your Future.</span>
+                    {["Take", "Control", "of", "Your", "Future."].map((word, i) => (
+                      <motion.span
+                        key={i}
+                        initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
+                        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                        className={cn(
+                          "inline-block mr-4",
+                          (word === "Your" || word === "Future.") && "text-transparent bg-clip-text bg-gradient-to-r from-[#00FF9D] to-[#3B82F6]"
+                        )}
+                      >
+                        {word}
+                      </motion.span>
+                    ))}
                 </motion.h2>
                 
                 <motion.p
@@ -65,14 +81,17 @@ const DownloadCTA = () => {
                 </motion.p>
 
                 <div className="flex flex-col sm:flex-row items-center gap-6 pt-4">
-                    <motion.button
-                        whileHover={{ scale: 1.05, y: -5 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="w-full sm:w-auto bg-[#00FF9D] text-black px-12 py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.15em] flex items-center justify-center gap-4 shadow-[0_0_50px_rgba(0,255,157,0.4)] transition-all group"
-                    >
-                        <Download size={22} className="group-hover:translate-y-0.5 transition-transform" />
-                        Download APK
-                    </motion.button>
+                    <Magnetic>
+                      <motion.button
+                          onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/9357e0ec-b1a8-4fba-9d95-d50b460ba5ad', '_blank')}
+                          whileHover={{ scale: 1.05, y: -5 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="w-full sm:w-auto bg-[#00FF9D] text-black px-12 py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.15em] flex items-center justify-center gap-4 shadow-[0_0_50px_rgba(0,255,157,0.4)] transition-all group"
+                      >
+                          <Download size={22} className="group-hover:translate-y-0.5 transition-transform" />
+                          Download APK
+                      </motion.button>
+                    </Magnetic>
                     
                     <motion.button
                         whileHover={{ scale: 1.05, y: -5 }}

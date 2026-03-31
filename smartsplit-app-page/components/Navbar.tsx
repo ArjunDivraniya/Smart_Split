@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 import { Menu, X, Rocket } from 'lucide-react';
+import Magnetic from './Magnetic';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -30,15 +31,27 @@ const Navbar = () => {
     { name: 'Insights', href: '#insights' },
   ];
 
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
+
   if (!mounted) return null;
 
   return (
     <nav
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-4',
-        isScrolled ? 'top-4' : 'top-0'
+        isScrolled ? 'top-2' : 'top-0'
       )}
     >
+      {/* Scroll Progress Bar */}
+      <motion.div 
+        className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#00FF9D] via-[#3B82F6] to-[#A855F7] origin-left z-[100]"
+        style={{ scaleX }}
+      />
       <div
         className={cn(
           'max-w-7xl mx-auto rounded-2xl transition-all duration-300 flex items-center justify-between px-6 py-3',
@@ -48,12 +61,14 @@ const Navbar = () => {
         )}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 group cursor-pointer">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#00FF9D] to-[#3B82F6] flex items-center justify-center shadow-[0_0_15px_rgba(0,255,157,0.3)] group-hover:scale-110 transition-transform">
-            <Rocket className="text-black w-6 h-6" />
+        <Magnetic>
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#00FF9D] to-[#3B82F6] flex items-center justify-center shadow-[0_0_15px_rgba(0,255,157,0.3)] group-hover:scale-110 transition-transform">
+              <Rocket className="text-black w-6 h-6" />
+            </div>
+            <span className="text-white font-bold text-xl tracking-tight">SmartSplit</span>
           </div>
-          <span className="text-white font-bold text-xl tracking-tight">SmartSplit</span>
-        </div>
+        </Magnetic>
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
@@ -66,9 +81,14 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
-          <button className="bg-white text-black px-6 py-2 rounded-full text-sm font-bold hover:bg-[#00FF9D] hover:shadow-[0_0_20px_rgba(0,255,157,0.4)] transition-all active:scale-95">
-            Download App
-          </button>
+          <Magnetic>
+            <button 
+              onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/9357e0ec-b1a8-4fba-9d95-d50b460ba5ad', '_blank')}
+              className="bg-white text-black px-6 py-2 rounded-full text-sm font-bold hover:bg-[#00FF9D] hover:shadow-[0_0_20px_rgba(0,255,157,0.4)] transition-all active:scale-95"
+            >
+              Download App
+            </button>
+          </Magnetic>
         </div>
 
         {/* Mobile Toggle */}
