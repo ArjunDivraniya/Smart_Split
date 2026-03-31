@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { EXPENSE_CATEGORIES } from '@/src/constants/categories';
 
 interface CategoryPickerProps {
   selected: string;
@@ -9,34 +10,33 @@ interface CategoryPickerProps {
   description?: string;
 }
 
-type CategoryItem = {
-  value: string;
-  label: string;
-  emoji: string;
+const CATEGORY_EMOJIS: Record<string, string> = {
+  food: '🍕',
+  transport: '🚕',
+  accommodation: '🏨',
+  entertainment: '🎬',
+  shopping: '🛍️',
+  health: '💊',
+  utilities: '⚡',
+  drinks: '☕',
+  activities: '🎢',
+  groceries: '🛒',
+  flight: '✈️',
+  other: '📦',
 };
 
-const CATEGORIES: CategoryItem[] = [
-  { value: 'Stay', label: 'Stay', emoji: '🏨' },
-  { value: 'Food', label: 'Food', emoji: '🍔' },
-  { value: 'Transport', label: 'Transport', emoji: '🚕' },
-  { value: 'Fun', label: 'Fun', emoji: '🎬' },
-  { value: 'Shopping', label: 'Shopping', emoji: '🛍️' },
-  { value: 'Utilities', label: 'Utilities', emoji: '⚡' },
-  { value: 'Gifts', label: 'Gifts', emoji: '🎁' },
-  { value: 'Gaming', label: 'Gaming', emoji: '🎮' },
-  { value: 'Travel', label: 'Travel', emoji: '✈️' },
-  { value: 'Health', label: 'Health', emoji: '💊' },
-  { value: 'Education', label: 'Education', emoji: '📚' },
-  { value: 'Other', label: 'Other', emoji: '➕' },
-];
-
 const LEGACY_TO_DISPLAY_CATEGORY: Record<string, string> = {
-  Accommodation: 'Stay',
-  Entertainment: 'Fun',
+  Accommodation: 'accommodation',
+  Entertainment: 'entertainment',
+  Food: 'food',
+  Transport: 'transport',
+  Fun: 'entertainment',
+  Stay: 'accommodation',
 };
 
 const normalizeSelectedCategory = (category: string): string => {
-  return LEGACY_TO_DISPLAY_CATEGORY[category] || category;
+  const lower = category.toLowerCase();
+  return LEGACY_TO_DISPLAY_CATEGORY[category] || LEGACY_TO_DISPLAY_CATEGORY[lower] || lower;
 };
 
 const KEYWORD_CATEGORY_RULES: Array<{ category: string; keywords: string[] }> = [
@@ -61,7 +61,7 @@ const getSuggestedCategory = (description?: string): string | null => {
 
   for (const rule of KEYWORD_CATEGORY_RULES) {
     if (rule.keywords.some((keyword) => input.includes(keyword))) {
-      return rule.category;
+      return rule.category.toLowerCase();
     }
   }
 
@@ -101,11 +101,12 @@ export const CategoryPicker: React.FC<CategoryPickerProps> = ({ selected, onSele
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {CATEGORIES.map((category) => {
-          const isSelected = normalizedSelected === category.value;
+        {EXPENSE_CATEGORIES.map((category) => {
+          const isSelected = normalizedSelected === category.id;
+          const emoji = CATEGORY_EMOJIS[category.id] || '❓';
           return (
             <TouchableOpacity
-              key={category.value}
+              key={category.id}
               style={[
                 styles.pill,
                 {
@@ -113,17 +114,17 @@ export const CategoryPicker: React.FC<CategoryPickerProps> = ({ selected, onSele
                   borderColor: isSelected ? colors.violet : colors.elevated,
                 },
               ]}
-              onPress={() => handleSelect(category.value)}
+              onPress={() => handleSelect(category.id)}
               activeOpacity={0.8}
             >
-              <Text style={styles.pillEmoji}>{category.emoji}</Text>
+              <Text style={styles.pillEmoji}>{emoji}</Text>
               <Text
                 style={[
                   styles.pillText,
                   { color: isSelected ? '#DCCEFF' : colors.text },
                 ]}
               >
-                {category.label}
+                {category.name}
               </Text>
             </TouchableOpacity>
           );

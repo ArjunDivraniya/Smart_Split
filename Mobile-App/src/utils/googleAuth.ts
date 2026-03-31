@@ -37,10 +37,16 @@ export const useGoogleAuth = () => {
     path: 'redirect',
   });
 
+  // Safe client IDs - use a placeholder if empty to prevent some native crashes,
+  // though valid IDs are required for functional login.
+  const androidClientId = GOOGLE_CLIENT_ID_ANDROID || 'android-placeholder';
+  const iosClientId = GOOGLE_CLIENT_ID_IOS || 'ios-placeholder';
+  const webClientId = GOOGLE_CLIENT_ID_WEB || 'web-placeholder';
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: GOOGLE_CLIENT_ID_ANDROID,
-    iosClientId: GOOGLE_CLIENT_ID_IOS,
-    webClientId: GOOGLE_CLIENT_ID_WEB,
+    androidClientId,
+    iosClientId,
+    webClientId,
     redirectUri,
   });
 

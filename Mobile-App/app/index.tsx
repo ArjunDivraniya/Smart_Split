@@ -40,30 +40,45 @@ export default function SplashScreen() {
       let hasToken = false;
       let hasOnboarded = false;
       try {
+        console.log('🚀 Bootstrapping app status...');
         const [token, refreshToken, onboardingComplete] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN),
-          getRefreshToken(),
-          AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE),
+          AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN).catch(() => null),
+          getRefreshToken().catch(() => null),
+          AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE).catch(() => null),
         ]);
+        
         hasToken = !!token || !!refreshToken;
         hasOnboarded = onboardingComplete === 'true';
-      } catch {
+        
+        console.log('📊 App State:', { hasToken, hasOnboarded });
+      } catch (err) {
+        console.error('❌ Bootstrap failure:', err);
         hasToken = false;
         hasOnboarded = false;
       }
+
+      if (cancelled) return;
 
       const elapsed = Date.now() - start;
       const remaining = Math.max(0, 2000 - elapsed);
 
       setTimeout(() => {
-        if (cancelled) {
-          return;
+        if (cancelled) return;
+
+        try {
+          if (hasToken) {
+            console.log('➡️ Navigating to Tabs');
+            router.replace('/(tabs)');
+          } else if (hasOnboarded) {
+            console.log('➡️ Navigating to Login');
+            router.replace('/(auth)/login');
+          } else {
+            console.log('➡️ Navigating to Onboarding');
+            router.replace('/(auth)/onboarding');
+          }
+        } catch (navErr) {
+          console.error('❌ Navigation failed:', navErr);
         }
-        if (hasToken) {
-          router.replace('/(tabs)');
-          return;
-        }
-        router.replace(hasOnboarded ? '/(auth)/login' : '/(auth)/onboarding');
       }, remaining);
     };
 

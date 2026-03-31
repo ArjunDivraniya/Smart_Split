@@ -8,6 +8,7 @@ import React, { useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
 import Toast from 'react-native-toast-message';
 
@@ -74,28 +75,30 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AuthProvider>
-          <Stack screenOptions={customHeaderOptions}>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="group" options={{ headerShown: false, presentation: 'transparentModal' }} />
-            <Stack.Screen name="settlements" options={{ headerShown: false }} />
-            <Stack.Screen name="notifications" options={{ headerShown: false }} />
-            <Stack.Screen name="friends" options={{ headerShown: false, presentation: 'transparentModal' }} />
-            <Stack.Screen name="profile" options={{ headerShown: false }} />
-            <Stack.Screen name="budget" options={{ headerShown: false }} />
-            <Stack.Screen name="analytics" options={{ headerShown: false }} />
-            <Stack.Screen name="analytics/[category]" options={{ headerShown: false }} />
-            <Stack.Screen name="personal" options={{ headerShown: false, presentation: 'transparentModal' }} />
-            <Stack.Screen name="redirect" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'fullScreenModal', title: 'Modal', headerShown: true }} />
-          </Stack>
-          <StatusBar style="auto" />
-          <Toast config={toastConfig} />
-        </AuthProvider>
-      </ThemeProvider>
+      <SafeAreaProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <AuthProvider>
+            <Stack screenOptions={customHeaderOptions}>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="group" options={{ headerShown: false, presentation: 'transparentModal' }} />
+              <Stack.Screen name="settlements" options={{ headerShown: false }} />
+              <Stack.Screen name="notifications" options={{ headerShown: false }} />
+              <Stack.Screen name="friends" options={{ headerShown: false, presentation: 'transparentModal' }} />
+              <Stack.Screen name="profile" options={{ headerShown: false }} />
+              <Stack.Screen name="budget" options={{ headerShown: false }} />
+              <Stack.Screen name="analytics" options={{ headerShown: false }} />
+              <Stack.Screen name="analytics/[category]" options={{ headerShown: false }} />
+              <Stack.Screen name="personal" options={{ headerShown: false, presentation: 'transparentModal' }} />
+              <Stack.Screen name="redirect" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'fullScreenModal', title: 'Modal', headerShown: true }} />
+            </Stack>
+            <StatusBar style="auto" />
+            <Toast config={toastConfig} />
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

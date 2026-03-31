@@ -165,9 +165,9 @@ export const TRIP_STATUS_CONFIG = {
  * Split Methods
  */
 export const SPLIT_METHODS = {
-  EQUAL: 'equal',
+  EQUALLY: 'equally',
   PERCENTAGE: 'percentage',
-  AMOUNT: 'amount',
+  UNEQUALLY: 'unequally',
   SHARES: 'shares',
 } as const;
 
@@ -177,9 +177,9 @@ export type SplitMethod = typeof SPLIT_METHODS[keyof typeof SPLIT_METHODS];
  * Split Method Labels
  */
 export const SPLIT_METHOD_LABELS = {
-  [SPLIT_METHODS.EQUAL]: 'Equal Split',
+  [SPLIT_METHODS.EQUALLY]: 'Equal Split',
   [SPLIT_METHODS.PERCENTAGE]: 'By Percentage',
-  [SPLIT_METHODS.AMOUNT]: 'By Amount',
+  [SPLIT_METHODS.UNEQUALLY]: 'Exact Amount',
   [SPLIT_METHODS.SHARES]: 'By Shares',
 };
 

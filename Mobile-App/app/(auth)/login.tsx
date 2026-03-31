@@ -29,16 +29,23 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Google Auth
+  // Google Auth - Temporarily disabled for debugging
+  /*
   const { request, response, promptAsync } = useGoogleAuth();
+  */
+  const request = null;
+  const response = null;
+  const promptAsync = async () => {};
   const [googleLoading, setGoogleLoading] = useState(false);
 
   // Handle Google Sign-In response
+  /*
   useEffect(() => {
     if (response) {
       handleGoogleAuthResponse();
     }
   }, [response]);
+  */
 
   const handleGoogleAuthResponse = async () => {
     if (!response) return;
@@ -139,6 +146,8 @@ export default function LoginScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        {/* Google Auth - Temporarily disabled for debugging */}
+        {/* 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>OR</Text>
@@ -160,6 +169,7 @@ export default function LoginScreen() {
             </>
           )}
         </TouchableOpacity>
+        */}
 
         <Text style={styles.helper}>Forgot password?</Text>
 

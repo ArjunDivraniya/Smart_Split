@@ -1,63 +1,36 @@
 {
   "expo": {
-    "name": "SmartSplit",
-    "slug": "SmartSplit",
+    "name": "Smartsplit",
+    "slug": "smartsplit",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "smartsplit",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "icon": "./assets/logo/appstore.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo/playstore.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/logo/playstore.png",
+        "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
-          "data": [
-            {
-              "scheme": "smartsplit"
-            }
-          ]
-        }
-      ]
+      "package": "com.arjun.smartsplit"
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/logo/playstore.png"
     },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ],
-      "@react-native-community/datetimepicker"
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "extra": {
+      "eas": {
+        "projectId": "ffeda28a-53aa-4df8-aa11-ee95d0f75556"
+      }
     }
   }
 }
