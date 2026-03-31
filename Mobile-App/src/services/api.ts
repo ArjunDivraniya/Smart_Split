@@ -41,7 +41,7 @@ const getDevBaseUrl = (): string => {
 // Backend API Base URL
 const BASE_URL = __DEV__
   ? getDevBaseUrl()
-  : 'https://smartsplit-app-cv3e.onrender.com/api';
+  : 'https://smart-split-oomn.onrender.com/api';
 
 console.log('🔗 API Base URL:', BASE_URL);
 

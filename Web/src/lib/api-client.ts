@@ -2,13 +2,13 @@
  * API Client for Trip Splitter Express Backend
  * Handles all communication with express backend
  * 
- * Base Backend URL: https://smartsplit-app-cv3e.onrender.com (from NEXT_PUBLIC_BACKEND_URL env)
+ * Base Backend URL: https://smart-split-oomn.onrender.com (from NEXT_PUBLIC_BACKEND_URL env)
  * API Path Prefix: /api
  * 
  * All routes are constructed as: {BACKEND_URL}/api{endpoint}
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://smartsplit-app-cv3e.onrender.com';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://smart-split-oomn.onrender.com';
 const API_URL = `${BACKEND_URL}/api`;
 
 interface ApiRequest {

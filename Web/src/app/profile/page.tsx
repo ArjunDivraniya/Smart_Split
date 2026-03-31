@@ -124,7 +124,7 @@ const Profile = () => {
     const formData = new FormData();
     formData.append("file", file);
 
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smartsplit-app-cv3e.onrender.com";
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smart-split-oomn.onrender.com";
     const endpoint = type === "profile" ? `${BACKEND_URL}/api/user/upload-profile` : `${BACKEND_URL}/api/user/upload-qr`;
 
     try {

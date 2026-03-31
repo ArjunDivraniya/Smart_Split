@@ -1,9 +1,10 @@
-import NextAuth, { type NextAuthOptions, type JWT } from "next-auth";
+import NextAuth, { type NextAuthOptions } from "next-auth";
+import { type JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
 // Backend URL from environment - all routes are constructed in this file
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smartsplit-app-cv3e.onrender.com";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smart-split-oomn.onrender.com";
 const API_URL = `${BACKEND_URL}/api`;
 
 /**
@@ -161,8 +162,8 @@ export const authOptions: NextAuthOptions = {
             body: JSON.stringify({
               email: profile.email,
               name: profile.name || user.name,
-              googleId: profile.sub || profile.id,
-              profileImage: profile.image || user.image,
+              googleId: (profile as any).sub || (profile as any).id,
+              profileImage: (profile as any).picture || (user as any).image,
             }),
             credentials: "include",
           });

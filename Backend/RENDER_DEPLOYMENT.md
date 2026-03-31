@@ -90,7 +90,7 @@ PORT = 5000
 3. Wait for deployment (2-5 minutes)
 4. Once live, you'll see your service URL like:
    ```
-   https://trip-splitter-backend.onrender.com
+   https://smart-split-oomn.onrender.com
    ```
 
 ---
@@ -99,8 +99,8 @@ PORT = 5000
 
 Update your frontend `.env` file to use the Render backend URL:
 ```
-REACT_APP_API_URL=https://trip-splitter-backend.onrender.com
-VITE_API_URL=https://trip-splitter-backend.onrender.com
+REACT_APP_API_URL=https://smart-split-oomn.onrender.com
+VITE_API_URL=https://smart-split-oomn.onrender.com
 ```
 
 ---
@@ -111,10 +111,10 @@ Test your backend endpoints:
 
 ```bash
 # Health check
-curl https://trip-splitter-backend.onrender.com/health
+curl https://smart-split-oomn.onrender.com/health
 
 # Test registration
-curl -X POST https://trip-splitter-backend.onrender.com/api/auth/register \
+curl -X POST https://smart-split-oomn.onrender.com/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"name":"Test","email":"test@example.com","password":"pass123"}'
 ```

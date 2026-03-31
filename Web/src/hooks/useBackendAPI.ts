@@ -35,7 +35,7 @@ export function useBackendAPI(): UseBackendAPIResponse {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smartsplit-app-cv3e.onrender.com";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smart-split-oomn.onrender.com";
   const API_URL = `${BACKEND_URL}/api`;
 
   // Ensure backendToken is available when session loads

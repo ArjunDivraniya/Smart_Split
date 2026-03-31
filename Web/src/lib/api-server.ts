@@ -9,7 +9,7 @@
  * For Server Components: Pass token from session or getServerSession
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smartsplit-app-cv3e.onrender.com";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://smart-split-oomn.onrender.com";
 const API_URL = `${BACKEND_URL}/api`;
 
 interface APIOptions extends RequestInit {
