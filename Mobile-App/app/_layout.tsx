@@ -21,7 +21,7 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = 'dark'; // Forced dark mode for premium production look
   const [fontsLoaded] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,
@@ -77,7 +77,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <ThemeProvider value={DarkTheme}>
           <AuthProvider>
             <Stack screenOptions={customHeaderOptions}>
               <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -95,7 +95,7 @@ export default function RootLayout() {
               <Stack.Screen name="redirect" options={{ headerShown: false }} />
               <Stack.Screen name="modal" options={{ presentation: 'fullScreenModal', title: 'Modal', headerShown: true }} />
             </Stack>
-            <StatusBar style="auto" />
+            <StatusBar style="light" />
             <Toast config={toastConfig} />
           </AuthProvider>
         </ThemeProvider>

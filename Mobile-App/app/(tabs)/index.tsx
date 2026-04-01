@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import SettlementWidget from '@/src/components/dashboard/SettlementWidget';
 import NudgeBanner from '@/src/components/dashboard/NudgeBanner';
-import ActivityFeed, { type FeedItem } from '@/src/components/dashboard/ActivityFeed';
+import ActivityFeed, { type FeedItem, type FeedType } from '@/src/components/dashboard/ActivityFeed';
 import { apiService } from '@/src/services/api';
 import { getCategoryBreakdown, getInsights } from '@/src/services/analytics.service';
 import { getFriendBalances } from '@/src/services/friends.service';
@@ -126,7 +126,7 @@ export default function DashboardScreen() {
         { totalOwe: 0, totalGet: 0 }
       );
 
-      const monthlySpend = Number(summaryResponse?.data?.grandTotal ?? summaryResponse?.data?.total ?? 0);
+      const monthlySpend = Number(summaryResponse?.data?.total || 0);
 
       setFinancialData({
         totalOwe: Number(totals.totalOwe || 0),
@@ -173,11 +173,12 @@ export default function DashboardScreen() {
       // 1. Fetch user profile
       try {
         const userResponse = await apiService.user.getMe();
-        if (userResponse.data) {
-          setUser(userResponse.data);
+        const userData = userResponse.data?.data || userResponse.data;
+        if (userData) {
+          setUser(userData);
           await AsyncStorage.setItem(
             STORAGE_KEYS.USER_DATA,
-            JSON.stringify(userResponse.data)
+            JSON.stringify(userData)
           );
           successCount += 1;
         }
@@ -188,17 +189,19 @@ export default function DashboardScreen() {
       // 2. Fetch dashboard summary (financial data + smart alerts)
       try {
         const summaryResponse = await apiService.analytics.getDashboardSummary();
-        if (summaryResponse.data?.success) {
+        if (summaryResponse.data?.success && summaryResponse.data?.data) {
           const { financial } = summaryResponse.data.data;
-
-          const savingsGoal = financial.savingsGoal || 5000;
-          const usage = Math.min(100, Math.round(((financial.monthlySpend || 0) / Math.max(1, savingsGoal)) * 100));
-          setBudgetUsagePercent(usage);
-          successCount += 1;
+          
+          if (financial) {
+            const savingsGoal = financial.savingsGoal || 5000;
+            const usage = Math.min(100, Math.round(((financial.monthlySpend || 0) / Math.max(1, savingsGoal)) * 100));
+            setBudgetUsagePercent(usage);
+            successCount += 1;
+          }
         }
       } catch (error) {
         console.log('Could not fetch dashboard summary:', error);
-        setBudgetUsagePercent(70);
+        setBudgetUsagePercent(0);
       }
 
       // 3. Fetch recent activity

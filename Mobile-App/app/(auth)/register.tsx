@@ -23,7 +23,7 @@ const COLORS = {
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, refreshUser } = useAuth();
+  const { register, refreshUser, isAuthenticated } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,6 +34,13 @@ export default function RegisterScreen() {
   // Google Auth
   const { request, response, promptAsync } = useGoogleAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Handle Auth state change
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, router]);
 
   // Handle Google Sign-In response
   useEffect(() => {
@@ -76,10 +83,7 @@ export default function RegisterScreen() {
 
     try {
       await register(name.trim(), email.trim(), password);
-      // Wait a tiny bit to ensure context state is synced or just use router.replace
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 100);
+      // Navigation will be handled by the useEffect once isAuthenticated is true
     } catch (err: any) {
       // AuthContext already maps the error, but we can double check here
       const message = err?.message || 'Registration failed.';

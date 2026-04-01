@@ -23,7 +23,7 @@ const COLORS = {
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, refreshUser } = useAuth();
+  const { login, refreshUser, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,14 +38,14 @@ export default function LoginScreen() {
   const promptAsync = async () => {};
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Handle Google Sign-In response
-  /*
+  // Handle Auth state change
   useEffect(() => {
-    if (response) {
-      handleGoogleAuthResponse();
+    if (isAuthenticated) {
+      router.replace('/(tabs)');
     }
-  }, [response]);
-  */
+  }, [isAuthenticated, router]);
+
+  // Handle Google Sign-In response
 
   const handleGoogleAuthResponse = async () => {
     if (!response) return;
@@ -75,10 +75,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 100);
+      // Navigation will be handled by the useEffect above
     } catch (err: any) {
       // AuthContext already maps the error
       const message = err?.message || 'Login failed.';
