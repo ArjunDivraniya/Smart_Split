@@ -163,16 +163,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A2B',
     flexShrink: 0,
   },
   arrowButtonDisabled: {
-    backgroundColor: '#11111A',
+    opacity: 0.3,
   },
   label: {
     flex: 1,
     marginHorizontal: 10,
-    color: '#F0F0FF',
     fontSize: 14,
     fontFamily: 'Syne_700Bold',
     textAlign: 'center',

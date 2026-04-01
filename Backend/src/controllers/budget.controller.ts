@@ -21,8 +21,13 @@ const parseMonthYear = (monthRaw: any, yearRaw: any): { month: number; year: num
 };
 
 const getMonthDateRange = (month: number, year: number) => {
-  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const end = new Date(year, month, 1, 0, 0, 0, 0);
+  // Use UTC boundaries adjusted for IST (+5:30)
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+  start.setMinutes(start.getMinutes() - 330);
+
+  const end = new Date(Date.UTC(year, month, 1, 0, 0, 0));
+  end.setMinutes(end.getMinutes() - 330);
+
   return { start, end };
 };
 

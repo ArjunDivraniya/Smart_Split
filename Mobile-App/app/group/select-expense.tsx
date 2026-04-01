@@ -26,8 +26,7 @@ const getGroupId = (group: Group): string => normalizeId(group.id || group._id);
 
 export default function SelectGroupForExpenseScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Forced dark theme for premium look
 
   const { groups, loading, error } = useGroups();
 

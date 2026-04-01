@@ -20,6 +20,21 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   other: '📦',
 };
 
+const IST_OFFSET = 330; // 5 hours 30 minutes
+
+const getIstMonthStart = (year: number, month: number) => {
+  const date = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+  date.setMinutes(date.getMinutes() - IST_OFFSET);
+  return date;
+};
+
+const getIstNowStart = () => {
+  const now = new Date();
+  // Adjust now to its IST equivalent to get the correct current month Start
+  const nowIst = new Date(now.getTime() + (IST_OFFSET * 60000));
+  return getIstMonthStart(nowIst.getUTCFullYear(), nowIst.getUTCMonth() + 1);
+};
+
 const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   food: 'Food & Drinks',
   transport: 'Transport',
@@ -77,12 +92,12 @@ export const getMonthlyAnalytics = async (req: AuthRequest, res: Response) => {
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthStart = getIstNowStart();
 
     const months = Array.from({ length: 6 }, (_, index) => {
-      const monthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - (5 - index), 1);
-      const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+      const monthStart = getIstMonthStart(currentMonthStart.getUTCFullYear(), currentMonthStart.getUTCMonth() + 1 - (5 - index));
+      const nextMonthStart = new Date(monthStart.getTime());
+      nextMonthStart.setUTCMonth(nextMonthStart.getUTCMonth() + 1);
 
       return {
         monthStart,
@@ -157,16 +172,12 @@ export const getGroupVsPersonalAnalytics = async (req: AuthRequest, res: Respons
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthStart = getIstNowStart();
 
     const months = Array.from({ length: 6 }, (_, index) => {
-      const monthStart = new Date(
-        currentMonthStart.getFullYear(),
-        currentMonthStart.getMonth() - index,
-        1
-      );
-      const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+      const monthStart = getIstMonthStart(currentMonthStart.getUTCFullYear(), currentMonthStart.getUTCMonth() + 1 - index);
+      const nextMonthStart = new Date(monthStart.getTime());
+      nextMonthStart.setUTCMonth(nextMonthStart.getUTCMonth() + 1);
 
       return {
         monthStart,
@@ -348,8 +359,9 @@ export const getCategoryAnalytics = async (req: AuthRequest, res: Response) => {
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    const monthStart = new Date(year, month - 1, 1);
-    const nextMonthStart = new Date(year, month, 1);
+    const monthStart = getIstMonthStart(year, month);
+    const nextMonthStart = new Date(monthStart.getTime());
+    nextMonthStart.setUTCMonth(nextMonthStart.getUTCMonth() + 1);
 
     const [personalAgg, groupAgg] = await Promise.all([
       PersonalExpense.aggregate<{ _id: string | null; total: number; count: number }>([
@@ -584,10 +596,11 @@ export const getDashboardInsights = async (req: AuthRequest, res: Response) => {
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    const now = new Date();
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const thisMonthStart = getIstNowStart();
+    const nextMonthStart = new Date(thisMonthStart.getTime());
+    nextMonthStart.setUTCMonth(nextMonthStart.getUTCMonth() + 1);
+    const lastMonthStart = new Date(thisMonthStart.getTime());
+    lastMonthStart.setUTCMonth(lastMonthStart.getUTCMonth() - 1);
 
     const aggregateByCategory = async (startDate: Date, endDate: Date) => {
       const [personalAgg, groupAgg] = await Promise.all([

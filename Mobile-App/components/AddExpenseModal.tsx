@@ -13,8 +13,7 @@ interface AddExpenseModalProps {
 }
 
 export function AddExpenseModal({ isVisible, onClose, onAddPersonal, onAddGroup }: AddExpenseModalProps) {
-    const colorScheme = useColorScheme() ?? 'dark';
-    const colors = Colors[colorScheme];
+    const colors = Colors.dark; // Forced dark theme for premium look
 
     return (
         <Modal

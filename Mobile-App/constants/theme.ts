@@ -18,10 +18,10 @@ export const Colors = {
     tabIconSelected: tintColorLight,
 
     // Brand Colors
-    void: '#080810',
-    surface: '#0F0F1A',
-    card: '#14141F',
-    elevated: '#1A1A2B',
+    void: '#F8FAFC',
+    surface: '#FFFFFF',
+    card: '#FFFFFF',
+    elevated: '#F1F5F9',
     violet: '#7C5CFC',
     mint: '#00E5B0',
     coral: '#FF5F7E',

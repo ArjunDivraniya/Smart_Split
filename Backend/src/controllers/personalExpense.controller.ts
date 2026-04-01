@@ -6,8 +6,14 @@ import User from '../models/User.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 const getMonthDateRange = (month: number, year: number) => {
-  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const end = new Date(year, month, 1, 0, 0, 0, 0);
+  // Use UTC boundaries adjusted for IST (+5:30)
+  // This ensures April 1st 00:00 IST (March 31st 18:30 UTC) is included in April
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+  start.setMinutes(start.getMinutes() - 330);
+
+  const end = new Date(Date.UTC(year, month, 1, 0, 0, 0));
+  end.setMinutes(end.getMinutes() - 330);
+
   return { start, end };
 };
 
