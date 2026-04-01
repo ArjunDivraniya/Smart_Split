@@ -29,13 +29,8 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Google Auth - Temporarily disabled for debugging
-  /*
+  // Google Auth
   const { request, response, promptAsync } = useGoogleAuth();
-  */
-  const request = null;
-  const response = null;
-  const promptAsync = async () => {};
   const [googleLoading, setGoogleLoading] = useState(false);
 
   // Handle Auth state change
@@ -46,6 +41,11 @@ export default function LoginScreen() {
   }, [isAuthenticated, router]);
 
   // Handle Google Sign-In response
+  useEffect(() => {
+    if (response) {
+      handleGoogleAuthResponse();
+    }
+  }, [response]);
 
   const handleGoogleAuthResponse = async () => {
     if (!response) return;

@@ -46,10 +46,7 @@
     },
     "plugins": [
       "expo-font",
-      "expo-router",
-      "expo-linear-gradient",
-      "expo-auth-session",
-      "expo-secure-store"
+      "expo-auth-session"
     ]
   }
 }

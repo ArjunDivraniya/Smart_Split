@@ -157,7 +157,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         profileImage,
       });
       
-      const { token, refreshToken, user: userData } = response.data;
+      const responseData = response?.data;
+      if (!responseData || !responseData.token) {
+        throw new Error(responseData?.message || 'Google sign-in succeeded, but server did not provide a token.');
+      }
+      
+      const { token, refreshToken, user: userData } = responseData;
       
       // Store token and user data
       await setAuthToken(token);
@@ -208,9 +213,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.user.getProfile();
       const userData = response?.data?.data || response?.data?.user || response?.data;
       
-      setUser(userData);
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
-      console.log('✅ User data refreshed');
+      if (userData && (userData.id || userData._id)) {
+        setUser(userData);
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+        console.log('✅ User data refreshed');
+      }
     } catch (error) {
       console.error('Error refreshing user:', error);
       throw error;

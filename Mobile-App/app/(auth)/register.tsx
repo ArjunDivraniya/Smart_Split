@@ -31,13 +31,8 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Google Auth - Temporarily disabled for production stability debugging
-  /*
+  // Google Auth
   const { request, response, promptAsync } = useGoogleAuth();
-  */
-  const request = null;
-  const response = null;
-  const promptAsync = async () => {};
   const [googleLoading, setGoogleLoading] = useState(false);
   const isMounted = useRef(true);
 
