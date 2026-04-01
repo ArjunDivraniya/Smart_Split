@@ -1,0 +1,33 @@
+# EAS Build Ignore
+# This file is used by EAS CLI to decide what to upload to EAS Build.
+# By default, EAS uses .gitignore, but if this file exists, it overrides it.
+
+# Dependencies (EAS downloads these during build)
+node_modules/
+
+# Expo build artifacts
+.expo/
+dist/
+web-build/
+
+# Native folders (only include if you have custom native code and are not using Managed Workflow)
+# If EAS is building from scratch, these are auto-generated.
+/android/
+/ios/
+
+# Debug and Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# Sensitive environment files
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+*.apk
+*.aab
+*.zip
+*.tsbuildinfo
