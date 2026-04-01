@@ -33,7 +33,7 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   onDelete,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const isPaidByCurrentUser = expense.paidBy._id === currentUserId;
   const payerName = isPaidByCurrentUser ? 'You' : expense.paidBy?.name || 'Unknown';
   const splitCount = Number(expense.splitCount || 0);

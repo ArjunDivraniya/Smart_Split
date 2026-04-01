@@ -32,7 +32,7 @@ export const SplitTypeSelector: React.FC<SplitTypeSelectorProps> = ({
   participants = [],
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
 
   const percentageStatus = useMemo(() => {
     if (selected !== 'percentage') {

@@ -10,6 +10,7 @@ import {
   FlatList,
   Animated,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -74,7 +75,7 @@ const getGroupTypeColor = (groupType?: string): string => {
 
 export default function GroupDetailScreen() {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for premium consistency
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
@@ -650,9 +651,10 @@ export default function GroupDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Hero Header */}
-      <View style={[styles.heroWrap, { borderBottomColor: colors.elevated }]}>
+      <View style={[styles.heroWrap, { backgroundColor: colors.background, borderBottomColor: colors.elevated }]}>
         <View style={styles.heroTopRow}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={22} color={colors.text} />
@@ -794,7 +796,7 @@ export default function GroupDetailScreen() {
       )}
 
       {/* Quick Actions - 3 Buttons */}
-      <View style={[styles.quickActionsStickyContainer, { backgroundColor: `${colors.violet}08` }]}>
+      <View style={[styles.quickActionsStickyContainer, { backgroundColor: colors.background, borderBottomColor: colors.elevated }]}>
         <View style={styles.quickActionsRow}>
           <TouchableOpacity
             style={[

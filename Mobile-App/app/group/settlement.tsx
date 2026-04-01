@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,7 +39,7 @@ const SUCCESS_DURATION_MS = 1500;
 
 export default function SettlementScreen() {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const router = useRouter();
   const { id: groupId } = useLocalSearchParams();
 
@@ -270,6 +271,7 @@ export default function SettlementScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={[styles.header, { borderBottomColor: colors.elevated }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
@@ -639,7 +641,7 @@ const styles = StyleSheet.create({
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#16A34A',
+    backgroundColor: '#080810', // Match deep background
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -647,8 +649,10 @@ const styles = StyleSheet.create({
   successIconWrap: {
     width: 120,
     height: 120,
-    borderRadius: 120,
-    backgroundColor: '#ffffff',
+    borderRadius: 60,
+    backgroundColor: '#16A34A15', // Subtle green glow
+    borderColor: '#16A34A',
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },

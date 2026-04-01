@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 interface MonthSelectorProps {
   month: number;
@@ -29,6 +31,8 @@ const getMonthLabel = (month: number, year: number) => {
 };
 
 export const MonthSelector = ({ month, year, onChange }: MonthSelectorProps) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors.dark; // Force dark theme for consistency
   const [showSwipeHint, setShowSwipeHint] = useState(true);
   const swipeHintX = useRef(new Animated.Value(0)).current;
   const now = new Date();
@@ -108,17 +112,17 @@ export const MonthSelector = ({ month, year, onChange }: MonthSelectorProps) => 
 
   return (
     <View>
-      <View style={styles.container} {...panResponder.panHandlers}>
+      <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]} {...panResponder.panHandlers}>
         <TouchableOpacity
           onPress={() => moveMonth(-1)}
           disabled={!canGoPrev}
           activeOpacity={0.75}
-          style={[styles.arrowButton, !canGoPrev && styles.arrowButtonDisabled]}
+          style={[styles.arrowButton, { backgroundColor: colors.background }, !canGoPrev && styles.arrowButtonDisabled]}
         >
-          <Ionicons name="chevron-back" size={18} color={canGoPrev ? '#F0F0FF' : '#55556A'} />
+          <Ionicons name="chevron-back" size={18} color={canGoPrev ? colors.text : colors.icon} />
         </TouchableOpacity>
 
-        <Text style={styles.label} numberOfLines={1} ellipsizeMode="tail">
+        <Text style={[styles.label, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">
           {getMonthLabel(month, year)}
         </Text>
 
@@ -126,9 +130,9 @@ export const MonthSelector = ({ month, year, onChange }: MonthSelectorProps) => 
           onPress={() => moveMonth(1)}
           disabled={!canGoNext}
           activeOpacity={0.75}
-          style={[styles.arrowButton, !canGoNext && styles.arrowButtonDisabled]}
+          style={[styles.arrowButton, { backgroundColor: colors.background }, !canGoNext && styles.arrowButtonDisabled]}
         >
-          <Ionicons name="chevron-forward" size={18} color={canGoNext ? '#F0F0FF' : '#55556A'} />
+          <Ionicons name="chevron-forward" size={18} color={canGoNext ? colors.text : colors.icon} />
         </TouchableOpacity>
       </View>
 
@@ -149,10 +153,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#14141F',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },

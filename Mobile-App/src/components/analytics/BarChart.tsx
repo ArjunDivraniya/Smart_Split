@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 import { MonthlyData } from '@/src/types/analytics.types';
 
 interface BarChartProps {
@@ -10,6 +12,8 @@ interface BarChartProps {
 const MAX_BAR_HEIGHT = 160;
 
 export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors.dark; // Force dark theme for consistency
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const animatedValuesRef = useRef<Animated.Value[]>([]);
 
@@ -53,8 +57,8 @@ export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
 
   if (!monthlyData.length) {
     return (
-      <View style={styles.emptyWrap}>
-        <Text style={styles.emptyText}>No monthly trend data available.</Text>
+      <View style={[styles.emptyWrap, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+        <Text style={[styles.emptyText, { color: colors.icon }]}>No monthly trend data available.</Text>
       </View>
     );
   }
@@ -66,12 +70,12 @@ export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
       {mode === 'split' ? (
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#7C5CFC' }]} />
-            <Text style={styles.legendText}>Group</Text>
+            <View style={[styles.legendDot, { backgroundColor: colors.violet }]} />
+            <Text style={[styles.legendText, { color: colors.icon }]}>Group</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#00E5B0' }]} />
-            <Text style={styles.legendText}>Personal</Text>
+            <View style={[styles.legendDot, { backgroundColor: colors.mint }]} />
+            <Text style={[styles.legendText, { color: colors.icon }]}>Personal</Text>
           </View>
         </View>
       ) : null}
@@ -117,8 +121,8 @@ export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
                       },
                     ]}
                   >
-                    <View style={[styles.segment, { flex: personalRatio, backgroundColor: '#00E5B0' }]} />
-                    <View style={[styles.segment, { flex: groupRatio, backgroundColor: '#7C5CFC' }]} />
+                    <View style={[styles.segment, { flex: personalRatio, backgroundColor: colors.mint }]} />
+                    <View style={[styles.segment, { flex: groupRatio, backgroundColor: colors.violet }]} />
                   </Animated.View>
                 )}
               </View>
@@ -129,11 +133,11 @@ export const BarChart = ({ monthlyData, mode = 'split' }: BarChartProps) => {
       </View>
 
       {selected ? (
-        <View style={styles.tooltip}>
-          <Text style={styles.tooltipTitle}>{selected.label}</Text>
-          <Text style={styles.tooltipText}>Total: ₹{Math.round(selected.total).toLocaleString('en-IN')}</Text>
-          <Text style={styles.tooltipText}>Group: ₹{Math.round(selected.group).toLocaleString('en-IN')}</Text>
-          <Text style={styles.tooltipText}>Personal: ₹{Math.round(selected.personal).toLocaleString('en-IN')}</Text>
+        <View style={[styles.tooltip, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+          <Text style={[styles.tooltipTitle, { color: colors.text }]}>{selected.label}</Text>
+          <Text style={[styles.tooltipText, { color: colors.icon }]}>Total: ₹{Math.round(selected.total).toLocaleString('en-IN')}</Text>
+          <Text style={[styles.tooltipText, { color: colors.icon }]}>Group: ₹{Math.round(selected.group).toLocaleString('en-IN')}</Text>
+          <Text style={[styles.tooltipText, { color: colors.icon }]}>Personal: ₹{Math.round(selected.personal).toLocaleString('en-IN')}</Text>
         </View>
       ) : null}
     </View>
@@ -166,9 +170,6 @@ const styles = StyleSheet.create({
   chartArea: {
     minHeight: 220,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: '#14141F',
     paddingHorizontal: 10,
     paddingTop: 18,
     paddingBottom: 12,

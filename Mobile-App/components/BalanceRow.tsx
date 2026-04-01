@@ -22,7 +22,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   onSettle,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const isCurrentUser = balance.userId === currentUserId;
   const isCreditor = balance.netBalance > 0;
   const isDebtor = balance.netBalance < 0;

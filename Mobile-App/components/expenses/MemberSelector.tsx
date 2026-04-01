@@ -23,7 +23,7 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
   currentUserId,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const isSelected = (userId: string) => selected.some((s) => s.userId === userId);
   const getValue = (userId: string) => selected.find((s) => s.userId === userId)?.value || 0;
 
@@ -182,17 +182,11 @@ export const MemberSelector: React.FC<MemberSelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     padding: 16,
     borderRadius: 16,
     marginHorizontal: 16,
     marginTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   header: {
     flexDirection: 'row',
@@ -203,15 +197,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
   },
   count: {
     fontSize: 13,
-    color: '#64748b',
   },
   sublabel: {
     fontSize: 13,
-    color: '#64748b',
     marginBottom: 12,
   },
   membersList: {
@@ -232,7 +223,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -263,7 +253,6 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#1e293b',
   },
   youBadge: {
     marginLeft: 8,
@@ -280,9 +269,7 @@ const styles = StyleSheet.create({
   valueInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -292,12 +279,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
     textAlign: 'right',
   },
   valueSuffix: {
     fontSize: 13,
-    color: '#64748b',
     marginLeft: 6,
   },
   sharesStepper: {
@@ -313,7 +298,6 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderColor: '#e2e8f0',
   },
   stepperValueWrap: {
     flex: 1,
@@ -336,7 +320,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   selectAllText: {
     fontSize: 14,

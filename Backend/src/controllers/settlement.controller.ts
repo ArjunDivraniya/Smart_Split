@@ -999,9 +999,9 @@ export const sendSettlementReminder = async (req: AuthRequest, res: Response) =>
       formattedPhone = `91${formattedPhone}`;
     }
     
-    let whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    let whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     if (formattedPhone) {
-      whatsappUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
+      whatsappUrl = `https://wa.me/${formattedPhone}/?text=${encodeURIComponent(message)}`;
     }
     const canRemindAgainAt = new Date(now.getTime() + cooldownMs).toISOString();
 

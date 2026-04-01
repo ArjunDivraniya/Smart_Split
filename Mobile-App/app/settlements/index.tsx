@@ -194,14 +194,7 @@ export default function SettlementsScreen() {
       settlement.direction === 'you_owe'
         ? `Hi ${settlement.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.`
         : `Hi ${settlement.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.`;
-    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
-
-    const canOpen = await Linking.canOpenURL(whatsappUrl);
-    if (!canOpen) {
-      Alert.alert('Unable to open WhatsApp', 'Please check if WhatsApp is installed.');
-      return;
-    }
-
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     await Linking.openURL(whatsappUrl);
   };
 

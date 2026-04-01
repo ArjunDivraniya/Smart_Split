@@ -1,4 +1,5 @@
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, Platform, Alert } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -43,7 +44,7 @@ const getGroupKey = (group: Group, index: number): string => {
 
 export default function GroupsScreen() {
     const colorScheme = useColorScheme() ?? 'dark';
-    const colors = Colors[colorScheme];
+    const colors = Colors.dark; // Force dark theme for premium look
     const router = useRouter();
     const { mode } = useLocalSearchParams<{ mode?: string }>();
     const insets = useSafeAreaInsets();
@@ -177,8 +178,9 @@ export default function GroupsScreen() {
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+             <StatusBar style="light" />
             <View style={[styles.container, { backgroundColor: colors.background }]}>
-                <View style={[styles.header, { borderBottomColor: colors.elevated }]}> 
+                <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.elevated }]}> 
                     <Text style={[styles.headerTitle, { color: colors.text }]}>
                         {isExpensePickerMode ? 'Select Group' : 'Groups'}
                     </Text>

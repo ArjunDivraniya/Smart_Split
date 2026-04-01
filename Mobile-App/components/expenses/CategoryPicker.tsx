@@ -70,7 +70,7 @@ const getSuggestedCategory = (description?: string): string | null => {
 
 export const CategoryPicker: React.FC<CategoryPickerProps> = ({ selected, onSelect, description }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const [manualOverride, setManualOverride] = useState(false);
   const lastSuggestionRef = useRef<string | null>(null);
 

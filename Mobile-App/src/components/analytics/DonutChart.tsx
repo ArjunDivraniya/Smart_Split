@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 import { CategoryData } from '@/src/types/analytics.types';
 
 interface DonutChartProps {
@@ -56,6 +58,8 @@ const getCategoryColorMap = (categories: CategoryData[]): Record<string, string>
 };
 
 export const DonutChart = ({ categories, totalAmount }: DonutChartProps) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors.dark; // Force dark theme for consistency
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
   const categoryColorMap = useMemo(() => getCategoryColorMap(categories), [categories]);
@@ -73,8 +77,8 @@ export const DonutChart = ({ categories, totalAmount }: DonutChartProps) => {
 
   if (!categories.length) {
     return (
-      <View style={styles.emptyWrap}>
-        <Text style={styles.emptyText}>No category data for this month yet.</Text>
+      <View style={[styles.emptyWrap, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+        <Text style={[styles.emptyText, { color: colors.icon }]}>No category data for this month yet.</Text>
       </View>
     );
   }
@@ -91,14 +95,14 @@ export const DonutChart = ({ categories, totalAmount }: DonutChartProps) => {
             focusOnPress
             onPress={(_item: unknown, index: number) => setSelectedIndex(index)}
             sectionAutoFocus
-            innerCircleColor="#14141F"
+            innerCircleColor={colors.card}
             isAnimated
             animationDuration={800}
             initialAngle={-90}
             centerLabelComponent={() => (
               <View style={styles.centerLabel}>
-                <Text style={styles.totalAmount}>₹{Math.round(totalAmount).toLocaleString('en-IN')}</Text>
-                <Text style={styles.totalLabel}>This Month</Text>
+                <Text style={[styles.totalAmount, { color: colors.text }]}>₹{Math.round(totalAmount).toLocaleString('en-IN')}</Text>
+                <Text style={[styles.totalLabel, { color: colors.icon }]}>This Month</Text>
               </View>
             )}
           />
@@ -106,9 +110,9 @@ export const DonutChart = ({ categories, totalAmount }: DonutChartProps) => {
 
         <View style={styles.inChartLegendWrap}>
           {categories.map((item) => (
-            <View key={item.category} style={styles.inChartLegendItem}>
+            <View key={item.category} style={[styles.inChartLegendItem, { backgroundColor: colors.background, borderColor: colors.elevated }]}>
               <View style={[styles.dot, { backgroundColor: categoryColorMap[item.category] || '#55556A' }]} />
-              <Text style={styles.inChartLegendText} numberOfLines={1}>
+              <Text style={[styles.inChartLegendText, { color: colors.text }]} numberOfLines={1}>
                 {item.category}
               </Text>
             </View>
@@ -117,11 +121,11 @@ export const DonutChart = ({ categories, totalAmount }: DonutChartProps) => {
       </View>
 
       {selected ? (
-        <View style={styles.detailCard}>
+        <View style={[styles.detailCard, { backgroundColor: colors.background, borderColor: colors.elevated }]}>
           <View style={[styles.dot, { backgroundColor: categoryColorMap[selected.category] || '#55556A' }]} />
           <View style={styles.detailContent}>
-            <Text style={styles.detailCategory}>{selected.category}</Text>
-            <Text style={styles.detailMeta}>
+            <Text style={[styles.detailCategory, { color: colors.text }]}>{selected.category}</Text>
+            <Text style={[styles.detailMeta, { color: colors.icon }]}>
               ₹{Math.round(selected.total).toLocaleString('en-IN')} · {selected.percentage}% · {selected.count} txns
             </Text>
           </View>
@@ -139,9 +143,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 320,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: '#14141F',
     paddingTop: 10,
     paddingHorizontal: 10,
     paddingBottom: 12,

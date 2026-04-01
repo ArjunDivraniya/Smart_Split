@@ -13,7 +13,7 @@ interface AmountInputProps {
 
 export const AmountInput: React.FC<AmountInputProps> = ({ value, onChange, error }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const [displayValue, setDisplayValue] = useState(value || '0');
   const [cursorVisible, setCursorVisible] = useState(true);
 
@@ -199,17 +199,11 @@ export const AmountInput: React.FC<AmountInputProps> = ({ value, onChange, error
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     padding: 24,
     borderRadius: 16,
     marginHorizontal: 16,
     marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -242,13 +236,11 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 56,
     fontWeight: '800',
-    color: '#1e293b',
     minWidth: 200,
     textAlign: 'center',
   },
   formattedAmount: {
     fontSize: 18,
-    color: '#64748b',
     textAlign: 'center',
     marginTop: 4,
     marginBottom: 16,
@@ -260,7 +252,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#fef2f2',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderRadius: 8,
   },
   errorText: {
@@ -278,14 +270,12 @@ const styles = StyleSheet.create({
     minWidth: 68,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#f1f5f9',
     borderRadius: 8,
     alignItems: 'center',
   },
   quickButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#475569',
   },
   keypadWrap: {
     marginTop: 10,

@@ -78,7 +78,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
 }) => {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const { settlements: pendingSettlementsData, remindFriend } = useSettlements();
   const [balances, setBalances] = useState<Balance[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -258,12 +258,6 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
         return;
       }
 
-      const canOpen = await Linking.canOpenURL(result.whatsappUrl);
-      if (!canOpen) {
-        Alert.alert('WhatsApp not available', 'Please install WhatsApp to send reminder.');
-        return;
-      }
-
       await Linking.openURL(result.whatsappUrl);
       showInfoToast('📱 Reminder sent via WhatsApp');
     } else {
@@ -274,14 +268,7 @@ export const BalancesTab: React.FC<BalancesTabProps> = ({
         ? `Hi ${item.friend.name}, this is a reminder that you owe me Rs ${amount} for ${groupName}. Please settle when possible.`
         : `Hi ${item.friend.name}, I still owe you Rs ${amount} for ${groupName}. I will settle this soon.`;
 
-      const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
-      const canOpen = await Linking.canOpenURL(whatsappUrl);
-      
-      if (!canOpen) {
-        Alert.alert('WhatsApp not available', 'Please install WhatsApp to send reminder.');
-        return;
-      }
-
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       await Linking.openURL(whatsappUrl);
       showInfoToast('📱 Reminder sent via WhatsApp');
     }
@@ -614,7 +601,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     paddingTop: 20,
-    borderTopWidth: 1,
   },
   summaryStatItem: {
     flex: 1,
@@ -651,6 +637,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 16,
     fontFamily: 'Syne_700Bold',
+    color: Colors.dark.text,
   },
   settledSubtitle: {
     fontSize: 14,

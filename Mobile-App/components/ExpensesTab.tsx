@@ -81,7 +81,7 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
   refreshKey,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -437,7 +437,6 @@ export const ExpensesTab: React.FC<ExpensesTabProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   loadingContainer: {
     flex: 1,
@@ -447,15 +446,12 @@ const styles = StyleSheet.create({
   filterBarContainer: {
     flexDirection: 'row',
     padding: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
     borderRadius: 10,
     paddingHorizontal: 12,
     marginRight: 12,
@@ -465,27 +461,24 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     fontSize: 15,
-    color: '#1e293b',
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#eef2ff',
+    backgroundColor: `${Colors.dark.violet}22`,
     borderRadius: 10,
   },
   filterButtonText: {
     marginLeft: 6,
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366f1',
+    color: Colors.dark.violet,
   },
   filtersContainer: {
-    backgroundColor: '#ffffff',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   filterSection: {
     marginBottom: 12,
@@ -493,25 +486,24 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#64748b',
+    color: Colors.dark.icon,
     marginLeft: 16,
     marginBottom: 8,
   },
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#f1f5f9',
     borderRadius: 20,
     marginHorizontal: 4,
     marginLeft: 12,
   },
   filterChipActive: {
-    backgroundColor: '#6366f1',
+    backgroundColor: Colors.dark.violet,
   },
   filterChipText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#475569',
+    color: Colors.dark.icon,
   },
   filterChipTextActive: {
     color: '#ffffff',
@@ -564,7 +556,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#6366f1',
+    backgroundColor: Colors.dark.violet,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

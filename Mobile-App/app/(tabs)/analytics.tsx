@@ -9,10 +9,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 import { useAnalytics } from '@/src/hooks/useAnalytics';
 import { ChartToggle } from '@/src/components/analytics/ChartToggle';
 import { MonthSelector } from '@/src/components/analytics/MonthSelector';
@@ -26,6 +29,8 @@ import { ErrorState } from '@/components/ErrorState';
 import { hapticImpactLight } from '@/src/utils/haptics';
 
 export default function AnalyticsScreen() {
+    const colorScheme = useColorScheme() ?? 'dark';
+    const colors = Colors.dark; // Force dark theme for consistency
     const router = useRouter();
 
     const {
@@ -110,7 +115,8 @@ export default function AnalyticsScreen() {
         Number(groupVsPersonalSummary.totalPersonal || 0) > 0;
 
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+            <StatusBar style="light" />
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
@@ -118,9 +124,9 @@ export default function AnalyticsScreen() {
             >
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
-                        <Ionicons name="chevron-back" size={24} color="#F0F0FF" />
+                        <Ionicons name="chevron-back" size={24} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Analytics</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Analytics</Text>
                     <View style={styles.backBtnPlaceholder} />
                 </View>
 
@@ -136,25 +142,25 @@ export default function AnalyticsScreen() {
                 </View>
 
                 <View style={styles.monthlySnapshotRow}>
-                    <View style={styles.snapshotCard}>
-                        <Text style={styles.snapshotLabel}>Selected Month</Text>
-                        <Text style={styles.snapshotValue}>₹{Math.round(selectedMonthPoint?.total || 0).toLocaleString('en-IN')}</Text>
-                        <Text style={styles.snapshotMeta}>Total spend</Text>
+                    <View style={[styles.snapshotCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+                        <Text style={[styles.snapshotLabel, { color: colors.icon }]}>Selected Month</Text>
+                        <Text style={[styles.snapshotValue, { color: colors.text }]}>₹{Math.round(selectedMonthPoint?.total || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>Total spend</Text>
                     </View>
-                    <View style={styles.snapshotCard}>
-                        <Text style={styles.snapshotLabel}>Group</Text>
-                        <Text style={[styles.snapshotValue, { color: '#A797FF' }]}>₹{Math.round(selectedMonthPoint?.group || 0).toLocaleString('en-IN')}</Text>
-                        <Text style={styles.snapshotMeta}>Paid by you</Text>
+                    <View style={[styles.snapshotCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+                        <Text style={[styles.snapshotLabel, { color: colors.icon }]}>Group</Text>
+                        <Text style={[styles.snapshotValue, { color: colors.violet }]}>₹{Math.round(selectedMonthPoint?.group || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>Paid by you</Text>
                     </View>
-                    <View style={styles.snapshotCard}>
-                        <Text style={styles.snapshotLabel}>Personal</Text>
-                        <Text style={[styles.snapshotValue, { color: '#66EFD0' }]}>₹{Math.round(selectedMonthPoint?.personal || 0).toLocaleString('en-IN')}</Text>
-                        <Text style={styles.snapshotMeta}>Own expenses</Text>
+                    <View style={[styles.snapshotCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+                        <Text style={[styles.snapshotLabel, { color: colors.icon }]}>Personal</Text>
+                        <Text style={[styles.snapshotValue, { color: colors.mint }]}>₹{Math.round(selectedMonthPoint?.personal || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>Own expenses</Text>
                     </View>
                 </View>
 
                 {!selectedMonthPoint ? (
-                    <Text style={styles.snapshotHint}>No monthly trend point for this selection yet. Trend graph shows last 6 months.</Text>
+                    <Text style={[styles.snapshotHint, { color: colors.icon }]}>No monthly trend point for this selection yet. Trend graph shows last 6 months.</Text>
                 ) : null}
 
                 <>
@@ -178,9 +184,9 @@ export default function AnalyticsScreen() {
 
                         <View style={styles.sectionSpacing}>
                             {loading && !insights.length ? (
-                                <View style={styles.placeholderCard}>
-                                    <ActivityIndicator size="small" color="#7C5CFC" />
-                                    <Text style={styles.placeholderText}>Loading smart insights...</Text>
+                                <View style={[styles.placeholderCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+                                    <ActivityIndicator size="small" color={colors.violet} />
+                                    <Text style={[styles.placeholderText, { color: colors.icon }]}>Loading smart insights...</Text>
                                 </View>
                             ) : (
                                 <InsightCard insights={insights} />
@@ -196,7 +202,7 @@ export default function AnalyticsScreen() {
                                 },
                             ]}
                         >
-                            <Text style={styles.chartTitle}>Category Share</Text>
+                            <Text style={[styles.chartTitle, { color: colors.icon }]}>Category Share</Text>
                             {loading && !categoryData.length ? (
                                 <ChartSkeletonLoader />
                             ) : (
@@ -205,7 +211,7 @@ export default function AnalyticsScreen() {
 
                             <View style={{ height: 24 }} />
 
-                            <Text style={styles.chartTitle}>Monthly Trend (Last 6 Months)</Text>
+                            <Text style={[styles.chartTitle, { color: colors.icon }]}>Monthly Trend (Last 6 Months)</Text>
                             {loading && !monthlyData.length ? (
                                 <ChartSkeletonLoader />
                             ) : (
@@ -213,11 +219,11 @@ export default function AnalyticsScreen() {
                             )}
                         </Animated.View>
 
-                        <View style={styles.panel}>
-                            <Text style={styles.panelTitle}>Category Breakdown</Text>
+                        <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+                            <Text style={[styles.panelTitle, { color: colors.text }]}>Category Breakdown</Text>
 
                     {loading && !visibleCategories.length ? (
-                        <Text style={styles.emptyText}>Loading categories...</Text>
+                        <Text style={[styles.emptyText, { color: colors.icon }]}>Loading categories...</Text>
                     ) : null}
 
                     <View style={styles.listContainer}>
@@ -244,11 +250,11 @@ export default function AnalyticsScreen() {
                                 >
                                     <View style={styles.categoryLeft}>
                                         <Text style={styles.categoryEmoji}>{item.emoji || '📦'}</Text>
-                                        <Text style={styles.categoryName} numberOfLines={1} ellipsizeMode="tail">{item.category}</Text>
+                                        <Text style={[styles.categoryName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">{item.category}</Text>
                                     </View>
                                     <View style={styles.categoryRight}>
-                                        <Text style={styles.categoryMeta}>{item.percentage}%</Text>
-                                        <Text style={styles.categoryAmount}>₹{Math.round(item.total).toLocaleString('en-IN')}</Text>
+                                        <Text style={[styles.categoryMeta, { color: colors.icon }]}>{item.percentage}%</Text>
+                                        <Text style={[styles.categoryAmount, { color: colors.amber }]}>₹{Math.round(item.total).toLocaleString('en-IN')}</Text>
                                     </View>
                                 </TouchableOpacity>
                             ))}
@@ -257,18 +263,18 @@ export default function AnalyticsScreen() {
                         {hasMoreCategories ? (
                             <LinearGradient
                                 pointerEvents="none"
-                                colors={['rgba(20,20,31,0)', 'rgba(20,20,31,1)']}
+                                colors={['rgba(20,20,31,0)', colors.card]}
                                 style={styles.bottomFade}
                             />
                         ) : null}
                     </View>
                         </View>
 
-                        <View style={styles.panel}>
-                            <Text style={styles.panelTitle}>Group vs Personal</Text>
+                        <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+                            <Text style={[styles.panelTitle, { color: colors.text }]}>Group vs Personal</Text>
 
                     <View style={styles.ratioRow}>
-                        <Text style={styles.ratioLabel}>Group</Text>
+                        <Text style={[styles.ratioLabel, { color: colors.text }]}>Group</Text>
                         <View style={styles.progressTrack}>
                             <View
                                 style={[
@@ -280,13 +286,13 @@ export default function AnalyticsScreen() {
                                 ]}
                             />
                         </View>
-                        <Text style={styles.ratioValue}>
+                        <Text style={[styles.ratioValue, { color: colors.icon }]}>
                             {groupVsPersonalSummary.groupPercent}% ₹{Math.round(groupVsPersonalSummary.totalGroup).toLocaleString('en-IN')}
                         </Text>
                     </View>
 
                     <View style={styles.ratioRow}>
-                        <Text style={styles.ratioLabel}>Personal</Text>
+                        <Text style={[styles.ratioLabel, { color: colors.text }]}>Personal</Text>
                         <View style={styles.progressTrack}>
                             <View
                                 style={[
@@ -298,17 +304,17 @@ export default function AnalyticsScreen() {
                                 ]}
                             />
                         </View>
-                        <Text style={styles.ratioValue}>
+                        <Text style={[styles.ratioValue, { color: colors.icon }]}>
                             {groupVsPersonalSummary.personalPercent}% ₹{Math.round(groupVsPersonalSummary.totalPersonal).toLocaleString('en-IN')}
                         </Text>
                     </View>
                         </View>
 
-                        <View style={styles.panel}>
-                            <Text style={styles.panelTitle}>You spend most with</Text>
+                        <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
+                            <Text style={[styles.panelTitle, { color: colors.text }]}>You spend most with</Text>
 
                     {loading && !friendSpending.length ? (
-                        <Text style={styles.emptyText}>Loading friend spending...</Text>
+                        <Text style={[styles.emptyText, { color: colors.icon }]}>Loading friend spending...</Text>
                     ) : null}
 
                     <View style={styles.listContainer}>
@@ -326,14 +332,14 @@ export default function AnalyticsScreen() {
                         {hasMoreFriends ? (
                             <LinearGradient
                                 pointerEvents="none"
-                                colors={['rgba(20,20,31,0)', 'rgba(20,20,31,1)']}
+                                colors={['rgba(20,20,31,0)', colors.card]}
                                 style={styles.bottomFade}
                             />
                         ) : null}
                     </View>
 
                     {!friendSpending.length && !loading ? (
-                        <Text style={styles.emptyText}>No shared friend spending data yet.</Text>
+                        <Text style={[styles.emptyText, { color: colors.icon }]}>No shared friend spending data yet.</Text>
                     ) : null}
                         </View>
 
@@ -349,7 +355,6 @@ export default function AnalyticsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0F0F1A',
     },
     scrollView: {
         flex: 1,
@@ -370,7 +375,6 @@ const styles = StyleSheet.create({
         width: 40,
     },
     headerTitle: {
-        color: '#F0F0FF',
         fontSize: 28,
         fontFamily: 'Syne_700Bold',
         fontWeight: '700',

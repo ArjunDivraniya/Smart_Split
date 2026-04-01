@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 import { InsightItem } from '@/src/types/analytics.types';
 
 interface InsightCardProps {
@@ -23,6 +25,8 @@ const typeStyles = {
 };
 
 export const InsightCard = ({ insights }: InsightCardProps) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors.dark; // Force dark theme for consistency
   const { width } = useWindowDimensions();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -70,14 +74,15 @@ export const InsightCard = ({ insights }: InsightCardProps) => {
         showsHorizontalScrollIndicator={false}
         renderItem={({ item }) => {
           const palette = typeStyles[item.type] || typeStyles.info;
+          const isDark = colorScheme === 'dark';
 
           return (
             <View style={[styles.card, palette, { width: Math.max(280, width - 42) }]}>
               <View style={styles.cardContent}>
                 <Text style={styles.icon}>{item.icon}</Text>
                 <View style={styles.textWrap}>
-                  <Text style={styles.message}>{item.message}</Text>
-                  <Text style={styles.detail}>{item.detail}</Text>
+                  <Text style={[styles.message, { color: colors.text }]}>{item.message}</Text>
+                  <Text style={[styles.detail, { color: colors.icon }]}>{item.detail}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() =>
@@ -90,7 +95,7 @@ export const InsightCard = ({ insights }: InsightCardProps) => {
                   style={styles.dismissButton}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={14} color="#B6B6D3" />
+                  <Ionicons name="close" size={14} color={colors.icon} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -124,13 +129,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   message: {
-    color: '#F0F0FF',
     fontSize: 13,
     fontFamily: 'DMSans_600SemiBold',
   },
   detail: {
     marginTop: 4,
-    color: '#B6B6D3',
     fontSize: 12,
     lineHeight: 18,
     fontFamily: 'DMSans_400Regular',

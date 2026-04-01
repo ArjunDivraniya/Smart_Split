@@ -14,6 +14,7 @@ import {
   Image,
   Pressable,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -62,7 +63,7 @@ export function ExpenseFormView({
   onSuccess,
 }: ExpenseFormViewProps) {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const isEditMode = Boolean(expenseId);
   const screenHeight = Dimensions.get('window').height;
 
@@ -442,6 +443,7 @@ export function ExpenseFormView({
       <Pressable style={styles.backdrop} onPress={onClose}>
         <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />
       </Pressable>
+      <StatusBar style="light" />
 
       <View style={[styles.sheetWrap, { backgroundColor: colors.background }]}>
         <View style={styles.sheetHandle} />
@@ -748,14 +750,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1e293b',
   },
   headerSaveWrap: {
     minWidth: 42,
@@ -775,28 +774,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   section: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     padding: 16,
     borderRadius: 16,
     marginHorizontal: 16,
     marginTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   sectionLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -818,9 +808,7 @@ const styles = StyleSheet.create({
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -828,7 +816,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#1e293b',
     marginLeft: 12,
   },
   paidByList: {
@@ -855,23 +842,18 @@ const styles = StyleSheet.create({
   paidByOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
   },
   paidByOptionSelected: {
-    backgroundColor: '#eef2ff',
-    borderColor: '#6366f1',
   },
   radioOuter: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#cbd5e1',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -880,17 +862,14 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#6366f1',
   },
   paidByText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#475569',
     flex: 1,
   },
   paidByTextSelected: {
     fontWeight: '700',
-    color: '#6366f1',
   },
   youBadge: {
     paddingHorizontal: 8,
@@ -905,21 +884,18 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 16,
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366f1',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
   },
   saveButtonDisabled: {
-    backgroundColor: '#cbd5e1',
+    opacity: 0.5,
   },
   saveButtonText: {
     fontSize: 16,

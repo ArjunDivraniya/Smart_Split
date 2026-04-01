@@ -62,7 +62,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   currentUserId,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const [summary, setSummary] = useState<Summary | null>(null);
   const [settlementHistory, setSettlementHistory] = useState<SettlementHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -417,7 +417,6 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   content: {
     paddingBottom: 24,
@@ -436,18 +435,17 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.dark.text,
     marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: '#64748b',
+    color: Colors.dark.icon,
     marginTop: 8,
     textAlign: 'center',
   },
   statsCard: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     margin: 16,
     padding: 20,
@@ -465,12 +463,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1e293b',
+    color: Colors.dark.text,
     marginTop: 8,
   },
   statLabel: {
     fontSize: 12,
-    color: '#64748b',
+    color: Colors.dark.icon,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -479,7 +477,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#e2e8f0',
   },
   chartContainer: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     marginHorizontal: 16,
     marginBottom: 16,
@@ -494,11 +491,10 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e293b',
+    color: Colors.dark.text,
     marginBottom: 20,
   },
   emptyChart: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     marginHorizontal: 16,
     marginBottom: 16,
@@ -545,7 +541,7 @@ const styles = StyleSheet.create({
   barLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#475569',
+    color: Colors.dark.text,
   },
   currentUserLabel: {
     color: '#22c55e',
@@ -571,7 +567,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   listContainer: {
-    backgroundColor: '#ffffff',
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 20,
@@ -604,13 +599,13 @@ const styles = StyleSheet.create({
   listItemRank: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: Colors.dark.icon,
     width: 32,
   },
   listItemLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.dark.text,
   },
   listItemRight: {
     alignItems: 'flex-end',
@@ -618,15 +613,14 @@ const styles = StyleSheet.create({
   listItemValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6366f1',
+    color: Colors.dark.violet,
   },
   listItemCount: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: Colors.dark.icon,
     marginTop: 2,
   },
     emptyHistory: {
-      backgroundColor: '#ffffff',
       marginHorizontal: 16,
       marginBottom: 16,
       padding: 40,
@@ -660,21 +654,21 @@ const styles = StyleSheet.create({
     settlementFromTo: {
       fontSize: 14,
       fontWeight: '600',
-      color: '#1e293b',
+      color: Colors.dark.text,
     },
     settlementNote: {
       fontSize: 12,
-      color: '#94a3b8',
+      color: Colors.dark.icon,
       marginTop: 2,
     },
     settleAmount: {
       fontSize: 15,
       fontWeight: '700',
-      color: '#1e293b',
+      color: Colors.dark.text,
     },
     settlementDate: {
       fontSize: 11,
-      color: '#94a3b8',
+      color: Colors.dark.icon,
       marginTop: 2,
     },
 });

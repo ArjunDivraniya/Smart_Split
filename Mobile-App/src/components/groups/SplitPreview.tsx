@@ -21,7 +21,7 @@ export const SplitPreview: React.FC<SplitPreviewProps> = ({
   validationError,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
 
   const splitSum = useMemo(() => {
     if (!splitResults || splitResults.length === 0) {

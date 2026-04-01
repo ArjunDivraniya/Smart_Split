@@ -1,5 +1,6 @@
-import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface ChartToggleProps {
   active: 'categories' | 'monthly-trend';
@@ -12,19 +13,21 @@ const OPTIONS: Array<{ key: 'categories' | 'monthly-trend'; label: string }> = [
 ];
 
 export const ChartToggle = ({ active, onChange }: ChartToggleProps) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors.dark; // Force dark theme for consistency
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
       {OPTIONS.map((option) => {
         const isActive = option.key === active;
 
         return (
           <TouchableOpacity
             key={option.key}
-            style={[styles.option, isActive && styles.optionActive]}
+            style={[styles.option, { backgroundColor: colors.elevated }, isActive && styles.optionActive]}
             onPress={() => onChange(option.key)}
             activeOpacity={0.85}
           >
-            <Text style={[styles.optionText, isActive && styles.optionTextActive]}>{option.label}</Text>
+            <Text style={[styles.optionText, { color: isActive ? colors.text : colors.icon }, isActive && styles.optionTextActive]}>{option.label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -37,17 +40,14 @@ export default ChartToggle;
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#14141F',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
     padding: 4,
     gap: 4,
   },
   option: {
     flex: 1,
     borderRadius: 10,
-    backgroundColor: '#1A1A2B',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
@@ -56,12 +56,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#7C5CFC',
   },
   optionText: {
-    color: '#8888AA',
     fontSize: 13,
     fontFamily: 'DMSans_600SemiBold',
   },
   optionTextActive: {
-    color: '#F0F0FF',
     fontFamily: 'DMSans_700Bold',
   },
 });

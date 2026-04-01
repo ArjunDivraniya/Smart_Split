@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FriendSpending } from '@/src/types/analytics.types';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface FriendSpendingCardProps {
   friend: FriendSpending;
@@ -8,10 +10,12 @@ interface FriendSpendingCardProps {
 }
 
 export const FriendSpendingCard = ({ friend, maxTotal }: FriendSpendingCardProps) => {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = Colors.dark; // Force dark theme for consistency
   const progress = maxTotal > 0 ? (friend.totalShared / maxTotal) * 100 : 0;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
       <View style={styles.topRow}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -20,11 +24,11 @@ export const FriendSpendingCard = ({ friend, maxTotal }: FriendSpendingCardProps
         </View>
 
         <View style={styles.info}>
-          <Text style={styles.name}>{friend.friendName}</Text>
-          <Text style={styles.meta}>
+          <Text style={[styles.name, { color: colors.text }]}>{friend.friendName}</Text>
+          <Text style={[styles.meta, { color: colors.icon }]}>
             ₹{Math.round(friend.totalShared).toLocaleString('en-IN')} · {friend.expenseCount} expenses
           </Text>
-          <Text style={styles.groups} numberOfLines={1}>
+          <Text style={[styles.groups, { color: colors.icon }]} numberOfLines={1}>
             {friend.groups.join(' · ')}
           </Text>
         </View>
@@ -43,8 +47,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: '#14141F',
     padding: 12,
     gap: 10,
   },
@@ -62,7 +64,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#F0F0FF',
     fontSize: 14,
     fontFamily: 'Syne_700Bold',
   },
@@ -70,19 +71,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    color: '#F0F0FF',
     fontSize: 14,
     fontFamily: 'DMSans_600SemiBold',
   },
   meta: {
     marginTop: 2,
-    color: '#9A9AC2',
     fontSize: 12,
     fontFamily: 'DMSans_500Medium',
   },
   groups: {
     marginTop: 2,
-    color: '#6E6E92',
     fontSize: 11,
     fontFamily: 'DMSans_400Regular',
   },

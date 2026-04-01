@@ -26,7 +26,7 @@ export const MemberPicker: React.FC<MemberPickerProps> = ({
   onDeselectAll,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
 
   const allSelected = members.length > 0 && selectedMemberIds.length === members.length;
 

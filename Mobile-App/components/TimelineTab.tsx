@@ -46,7 +46,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   currentUserId,
 }) => {
   const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme];
+  const colors = Colors.dark; // Force dark theme for consistency
   const [timelineData, setTimelineData] = useState<TimelineDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -264,7 +264,6 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   loadingContainer: {
     flex: 1,
@@ -273,7 +272,6 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     margin: 16,
     padding: 20,
@@ -291,16 +289,16 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#6366f1',
+    color: Colors.dark.violet,
   },
   summaryLabel: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.dark.icon,
     marginTop: 4,
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: Colors.dark.elevated,
   },
   dayContainer: {
     marginBottom: 8,
@@ -309,7 +307,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
     borderWidth: 1,
     paddingVertical: 16,
     paddingHorizontal: 16,
@@ -330,7 +327,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#6366f1',
+    backgroundColor: Colors.dark.violet,
     marginRight: 12,
   },
   dayHeaderText: {
@@ -339,11 +336,11 @@ const styles = StyleSheet.create({
   dayName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e293b',
+    color: Colors.dark.text,
   },
   dateStr: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.dark.icon,
     marginTop: 2,
   },
   dayHeaderRight: {
@@ -361,7 +358,7 @@ const styles = StyleSheet.create({
   dayTotal: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6366f1',
+    color: Colors.dark.violet,
     marginTop: 2,
   },
   expensesContainer: {
@@ -380,12 +377,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
+    color: Colors.dark.text,
     marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: '#64748b',
+    color: Colors.dark.icon,
     marginTop: 8,
     textAlign: 'center',
   },
