@@ -2,6 +2,7 @@
   "expo": {
     "name": "Smartsplit",
     "slug": "smartsplit",
+    "scheme": "smartsplit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo/appstore.png",
@@ -44,7 +45,11 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-router",
+      "expo-linear-gradient",
+      "expo-auth-session",
+      "expo-secure-store"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,13 +31,25 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Google Auth
+  // Google Auth - Temporarily disabled for production stability debugging
+  /*
   const { request, response, promptAsync } = useGoogleAuth();
+  */
+  const request = null;
+  const response = null;
+  const promptAsync = async () => {};
   const [googleLoading, setGoogleLoading] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
 
   // Handle Auth state change
   useEffect(() => {
     if (isAuthenticated) {
+      console.log('✅ Auth success, navigating to tabs...');
+      // Use navigate for better stability in some environments
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, router]);
@@ -82,14 +94,23 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
+      console.log('📝 Registering:', email);
       await register(name.trim(), email.trim(), password);
-      // Navigation will be handled by the useEffect once isAuthenticated is true
+      console.log('✨ Register success');
     } catch (err: any) {
-      // AuthContext already maps the error, but we can double check here
+      console.error('❌ Register crash debug:', err);
+      if (!isMounted.current) return;
+      
       const message = err?.message || 'Registration failed.';
       setError(message);
+      
+      // Use Alert for critical production debugging
+      const { Alert } = require('react-native');
+      Alert.alert('Signup Problem', message);
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 

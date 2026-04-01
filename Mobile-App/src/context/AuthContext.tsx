@@ -97,7 +97,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await apiService.auth.login({ email, password });
-      const { token, refreshToken, user: userData } = response.data;
+      const responseData = response?.data;
+
+      if (!responseData || !responseData.token) {
+        const errorMsg = responseData?.message || 'Login was successful, but no security token was received from the server.';
+        throw new Error(errorMsg);
+      }
+      
+      const { token, refreshToken, user: userData } = responseData;
       
       // Store token and user data
       await setAuthToken(token);
@@ -119,6 +126,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (name: string, email: string, password: string) => {
     try {
       const response = await apiService.auth.register({ name, email, password });
+      
+      if (!response?.data?.success && !response?.data?.userId) {
+        throw new Error(response?.data?.message || 'The server rejected your registration. Please try again.');
+      }
+
       console.log('✅ Registration successful');
       
       // Auto-login after registration
