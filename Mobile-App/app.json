@@ -45,8 +45,7 @@
       }
     },
     "plugins": [
-      "expo-font",
-      "expo-auth-session"
+      "expo-font"
     ]
   }
 }
