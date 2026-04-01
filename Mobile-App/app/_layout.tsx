@@ -20,9 +20,11 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
+// Keep the splash screen visible while fonts are loading
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
-  const colorScheme = 'dark'; // Forced dark mode for premium production look
-  const [fontsLoaded] = useFonts({
+  const [loaded, error] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_600SemiBold,
@@ -34,16 +36,15 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    SplashScreen.preventAutoHideAsync();
-  }, []);
-
-  useEffect(() => {
-    if (fontsLoaded) {
+    if (loaded || error) {
+      // Hide the splash screen once fonts are ready or if an error occurs
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [loaded, error]);
 
-  if (!fontsLoaded) {
+  // CRITICAL: Do not render the Stack if fonts are not loaded.
+  // Rendering early will cause a native crash in production.
+  if (!loaded && !error) {
     return null;
   }
 
