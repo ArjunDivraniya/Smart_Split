@@ -23,6 +23,7 @@ import { getMonthlyData } from '@/src/services/analytics.service';
 import { apiService } from '@/src/services/api';
 import { STORAGE_KEYS } from '@/src/constants/categories';
 import { StatsRowSkeletonLoader } from '@/components/SkeletonLoader';
+import { useAuth } from '@/src/context/AuthContext';
 
 const COLORS = {
   void: '#080810',
@@ -118,6 +119,8 @@ export default function ProfileMainScreen() {
     }
   };
 
+  const { logout } = useAuth();
+
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -129,9 +132,8 @@ export default function ProfileMainScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-              await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
-              router.replace('/(auth)/login' as any);
+              await logout();
+              router.replace('/login' as any);
             } catch (error) {
               console.error('Logout error:', error);
             }

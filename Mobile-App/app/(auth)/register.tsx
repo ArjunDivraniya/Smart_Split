@@ -217,7 +217,7 @@ export default function RegisterScreen() {
 
         <View style={styles.loginRow}>
           <Text style={styles.helper}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
+          <TouchableOpacity onPress={() => router.replace('/login')}>
             <Text style={styles.loginLink}>Sign in</Text>
           </TouchableOpacity>
         </View>

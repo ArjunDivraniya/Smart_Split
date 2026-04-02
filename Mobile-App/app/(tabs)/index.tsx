@@ -57,7 +57,7 @@ interface FinancialSummary {
   monthlySpend: number;
 }
 
-export default function DashboardScreen() {
+function DashboardScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
@@ -845,4 +845,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+export default DashboardScreen;
 

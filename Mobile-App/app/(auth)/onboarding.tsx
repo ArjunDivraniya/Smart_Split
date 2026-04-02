@@ -130,8 +130,8 @@ export default function OnboardingScreen() {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // 3. Attempt navigation
-      console.log('➡️ Navigating to Login screen: /(auth)/login');
-      router.replace('/(auth)/login');
+      console.log('➡️ Navigating to Login screen: /login');
+      router.replace('/login');
       
     } catch (error: any) {
       console.error('❌ Onboarding completion failed:', error);

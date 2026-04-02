@@ -41,6 +41,10 @@ export default function AnalyticsScreen() {
         activeChart,
         monthlyData,
         categoryGrandTotal,
+        selectedMonthPersonal,
+        selectedMonthGroup,
+        personalCount,
+        groupCount,
         categoryData,
         insights,
         groupVsPersonalSummary,
@@ -144,18 +148,18 @@ export default function AnalyticsScreen() {
                 <View style={styles.monthlySnapshotRow}>
                     <View style={[styles.snapshotCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
                         <Text style={[styles.snapshotLabel, { color: colors.icon }]}>Selected Month</Text>
-                        <Text style={[styles.snapshotValue, { color: colors.text }]}>₹{Math.round(selectedMonthPoint?.total || 0).toLocaleString('en-IN')}</Text>
-                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>Total spend</Text>
+                        <Text style={[styles.snapshotValue, { color: colors.text }]}>₹{Math.round(categoryGrandTotal || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>{personalCount + groupCount} total items</Text>
                     </View>
                     <View style={[styles.snapshotCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
                         <Text style={[styles.snapshotLabel, { color: colors.icon }]}>Group</Text>
-                        <Text style={[styles.snapshotValue, { color: colors.violet }]}>₹{Math.round(selectedMonthPoint?.group || 0).toLocaleString('en-IN')}</Text>
-                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>Paid by you</Text>
+                        <Text style={[styles.snapshotValue, { color: colors.violet }]}>₹{Math.round(selectedMonthGroup || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>{groupCount} items paid by you</Text>
                     </View>
                     <View style={[styles.snapshotCard, { backgroundColor: colors.card, borderColor: colors.elevated }]}>
                         <Text style={[styles.snapshotLabel, { color: colors.icon }]}>Personal</Text>
-                        <Text style={[styles.snapshotValue, { color: colors.mint }]}>₹{Math.round(selectedMonthPoint?.personal || 0).toLocaleString('en-IN')}</Text>
-                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>Own expenses</Text>
+                        <Text style={[styles.snapshotValue, { color: colors.mint }]}>₹{Math.round(selectedMonthPersonal || 0).toLocaleString('en-IN')}</Text>
+                        <Text style={[styles.snapshotMeta, { color: colors.icon }]}>{personalCount} personal items</Text>
                     </View>
                 </View>
 

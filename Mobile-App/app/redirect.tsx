@@ -10,7 +10,7 @@ export default function OAuthRedirectScreen() {
     WebBrowser.maybeCompleteAuthSession();
 
     const timer = setTimeout(() => {
-      router.replace('/(auth)/login');
+      router.replace('/login');
     }, 600);
 
     return () => clearTimeout(timer);

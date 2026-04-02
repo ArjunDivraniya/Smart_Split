@@ -92,24 +92,30 @@ export const getMonthlyAnalytics = async (req: AuthRequest, res: Response) => {
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    const currentMonthStart = getIstNowStart();
+    const nowIst = new Date(new Date().getTime() + (IST_OFFSET * 60000));
+    const currentIstMonth = nowIst.getUTCMonth() + 1;
+    const currentIstYear = nowIst.getUTCFullYear();
 
     const months = Array.from({ length: 6 }, (_, index) => {
-      const monthStart = getIstMonthStart(currentMonthStart.getUTCFullYear(), currentMonthStart.getUTCMonth() + 1 - (5 - index));
+      // index 0-5. We want current month (index 5) and 5 months before.
+      // Offset = -(5 - index)
+      const monthStart = getIstMonthStart(currentIstYear, currentIstMonth - (5 - index));
       const nextMonthStart = new Date(monthStart.getTime());
       nextMonthStart.setUTCMonth(nextMonthStart.getUTCMonth() + 1);
 
       return {
         monthStart,
         nextMonthStart,
-        month: monthStart.getMonth() + 1,
-        year: monthStart.getFullYear(),
+        month: monthStart.getMonth() + 1, // This is UTC month, but for labeling we need IST month
+        // Actually let's just use the month we passed in
+        displayMonth: ((currentIstMonth - (5 - index) - 1 + 1200) % 12) + 1,
+        displayYear: currentIstYear + Math.floor((currentIstMonth - (5 - index) - 1) / 12),
         label: formatMonthLabel(monthStart),
       };
     });
 
     const data = await Promise.all(
-      months.map(async ({ monthStart, nextMonthStart, month, year, label }) => {
+      months.map(async ({ monthStart, nextMonthStart, displayMonth, displayYear, label }) => {
         const [personalAgg, groupAgg] = await Promise.all([
           PersonalExpense.aggregate<{ total: number }>([
             {
@@ -146,8 +152,8 @@ export const getMonthlyAnalytics = async (req: AuthRequest, res: Response) => {
 
         return {
           label,
-          month,
-          year,
+          month: displayMonth,
+          year: displayYear,
           personal,
           group,
           total: personal + group,
@@ -413,6 +419,11 @@ export const getCategoryAnalytics = async (req: AuthRequest, res: Response) => {
     mergeCategoryRows(personalAgg);
     mergeCategoryRows(groupAgg);
 
+    const personalTotal = personalAgg.reduce((sum, row) => sum + (row.total || 0), 0);
+    const groupTotal = groupAgg.reduce((sum, row) => sum + (row.total || 0), 0);
+    const personalCount = personalAgg.reduce((sum, row) => sum + (row.count || 0), 0);
+    const groupCount = groupAgg.reduce((sum, row) => sum + (row.count || 0), 0);
+
     const grandTotal = Array.from(categoryMap.values()).reduce((sum, item) => sum + item.total, 0);
 
     const categories = Array.from(categoryMap.entries())
@@ -426,7 +437,12 @@ export const getCategoryAnalytics = async (req: AuthRequest, res: Response) => {
       .sort((a, b) => b.total - a.total);
 
     return res.status(200).json({
+      success: true,
       grandTotal,
+      totalPersonal: personalTotal,
+      totalGroup: groupTotal,
+      personalCount,
+      groupCount,
       categories,
     });
   } catch (error: any) {

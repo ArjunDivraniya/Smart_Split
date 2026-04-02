@@ -21,6 +21,10 @@ export interface CategoryData {
 
 export interface CategoryBreakdownResponse {
   grandTotal: number;
+  totalPersonal: number;
+  totalGroup: number;
+  personalCount: number;
+  groupCount: number;
   categories: CategoryData[];
 }
 

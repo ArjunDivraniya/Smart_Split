@@ -25,6 +25,10 @@ interface UseAnalyticsResult {
   activeChart: AnalyticsChartType;
   monthlyData: MonthlyData[];
   categoryGrandTotal: number;
+  selectedMonthPersonal: number;
+  selectedMonthGroup: number;
+  personalCount: number;
+  groupCount: number;
   categoryData: CategoryData[];
   insights: InsightItem[];
   insightSummary: Omit<InsightsResponse, 'insights'>;
@@ -77,6 +81,10 @@ export const useAnalytics = (): UseAnalyticsResult => {
   const [groupVsPersonalSummary, setGroupVsPersonalSummary] = useState<GroupVsPersonalSummary>(
     emptyGroupVsPersonalSummary
   );
+  const [selectedMonthPersonal, setSelectedMonthPersonal] = useState<number>(0);
+  const [selectedMonthGroup, setSelectedMonthGroup] = useState<number>(0);
+  const [personalCount, setPersonalCount] = useState<number>(0);
+  const [groupCount, setGroupCount] = useState<number>(0);
   const [friendSpending, setFriendSpending] = useState<FriendSpending[]>([]);
 
   const refreshAnalytics = useCallback(async (monthOverride?: number, yearOverride?: number) => {
@@ -111,6 +119,10 @@ export const useAnalytics = (): UseAnalyticsResult => {
 
       setMonthlyData(normalizedMonthlyData);
       setCategoryGrandTotal(categoryResponse?.grandTotal || 0);
+      setSelectedMonthPersonal(categoryResponse?.totalPersonal || 0);
+      setSelectedMonthGroup(categoryResponse?.totalGroup || 0);
+      setPersonalCount(categoryResponse?.personalCount || 0);
+      setGroupCount(categoryResponse?.groupCount || 0);
       setCategoryData(Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []);
       setInsights(Array.isArray(insightResponse?.insights) ? insightResponse.insights : []);
       setInsightSummary({
@@ -153,6 +165,10 @@ export const useAnalytics = (): UseAnalyticsResult => {
     activeChart,
     monthlyData,
     categoryGrandTotal,
+    selectedMonthPersonal,
+    selectedMonthGroup,
+    personalCount,
+    groupCount,
     categoryData,
     insights,
     insightSummary,

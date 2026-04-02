@@ -71,10 +71,10 @@ export default function SplashScreen() {
             router.replace('/(tabs)');
           } else if (hasOnboarded) {
             console.log('➡️ Navigating to Login');
-            router.replace('/(auth)/login');
+            router.replace('/login');
           } else {
             console.log('➡️ Navigating to Onboarding');
-            router.replace('/(auth)/onboarding');
+            router.replace('/onboarding');
           }
         } catch (navErr) {
           console.error('❌ Navigation failed:', navErr);

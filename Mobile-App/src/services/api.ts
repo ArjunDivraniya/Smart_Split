@@ -7,43 +7,43 @@ import { STORAGE_KEYS } from '@/src/constants/categories';
 const getDevBaseUrl = (): string => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) {
-    console.log('✅ Using EXPO_PUBLIC_API_URL:', envUrl);
+    console.log('✅ Base URL from ENV:', envUrl);
     return envUrl;
   }
 
-  // Try to get host from Expo config (LAN IP auto-detected)
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.hostUri;
-  
-  // For development on Expo Go/Web: localhost works
-  if (hostUri?.includes('localhost') || Platform.OS === 'web') {
-    console.log('✅ Using localhost for web/local development');
+  console.log('🔍 Detected hostUri:', hostUri);
+
+  // If using local web or a direct localhost connection
+  if (Platform.OS === 'web' || hostUri?.includes('localhost') || hostUri?.includes('127.0.0.1')) {
     return 'http://localhost:5000/api';
   }
 
-  // For Android emulator
-  if (Platform.OS === 'android' && hostUri?.includes('localhost')) {
-    console.log('✅ Using Android Emulator: 10.0.2.2');
+  // If on Android Physical/Emulator
+  if (Platform.OS === 'android') {
+    if (hostUri && !hostUri.includes('localhost')) {
+      const host = hostUri.split(':')[0];
+      return `http://${host}:5000/api`;
+    }
+    // Fallback for Android emulator
     return 'http://10.0.2.2:5000/api';
   }
 
-  // For physical device: use the Expo hostUri (LAN IP)
-  if (hostUri && !hostUri.includes('localhost')) {
+  // Physical iOS/Android on LAN
+  if (hostUri) {
     const host = hostUri.split(':')[0];
-    console.log('✅ Using Expo hostUri (LAN IP):', host);
     return `http://${host}:5000/api`;
   }
 
-  // Final fallback: try localhost
-  console.log('⚠️ No detected host, using localhost fallback');
+  // Production fallback
   return 'http://localhost:5000/api';
 };
 
-// Backend API Base URL
-const BASE_URL = __DEV__
-  ? getDevBaseUrl()
-  : 'https://smart-split-oomn.onrender.com/api';
+// Base URL for API calls
+// Using Render backend URL exclusively as requested
+const BASE_URL = 'https://smart-split-oomn.onrender.com/api';
 
-console.log('🔗 API Base URL:', BASE_URL);
+console.log('🚀 API Base URL:', BASE_URL);
 
 const AUTH_TOKEN_KEY = STORAGE_KEYS.AUTH_TOKEN;
 const REFRESH_TOKEN_KEY = '@refresh_token';
