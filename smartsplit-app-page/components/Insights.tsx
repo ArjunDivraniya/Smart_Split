@@ -204,7 +204,6 @@ const InsightBar = ({ label, value, color, width, delay }: any) => {
                     transition={{ 
                         delay, 
                         duration: 1.5, 
-                        initial: { width: 0 },
                         ease: [0.33, 1, 0.68, 1] 
                     }}
                     className="h-full rounded-full relative"
