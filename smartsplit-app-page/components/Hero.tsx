@@ -91,8 +91,6 @@ const Hero = ({ onWatchDemo }: HeroProps) => {
             The all-in-one app to manage group expenses, track personal spending, and settle balances instantly with zero friction.
           </motion.p>
 
-import Magnetic from './Magnetic';
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
