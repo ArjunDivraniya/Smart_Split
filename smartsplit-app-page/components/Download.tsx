@@ -8,6 +8,10 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Magnetic from './Magnetic';
 
+import { QRCodeSVG } from 'qrcode.react';
+
+const DOWNLOAD_URL = 'https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/e12b1d22-148b-48ef-b768-f24408e25de2';
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -83,7 +87,7 @@ const DownloadCTA = () => {
                 <div className="flex flex-col sm:flex-row items-center gap-6 pt-4">
                     <Magnetic>
                       <motion.button
-                          onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/9357e0ec-b1a8-4fba-9d95-d50b460ba5ad', '_blank')}
+                          onClick={() => window.open(DOWNLOAD_URL, '_blank')}
                           whileHover={{ scale: 1.05, y: -5 }}
                           whileTap={{ scale: 0.95 }}
                           className="w-full sm:w-auto bg-[#00FF9D] text-black px-12 py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.15em] flex items-center justify-center gap-4 shadow-[0_0_50px_rgba(0,255,157,0.4)] transition-all group"
@@ -135,8 +139,15 @@ const DownloadCTA = () => {
                     transition={{ delay: 0.5 }}
                     className="p-8 rounded-[35px] bg-white/5 border border-white/10 flex flex-col items-center gap-6 group hover:border-[#00FF9D]/40 transition-all backdrop-blur-2xl"
                 >
-                    <div className="p-5 rounded-[25px] bg-[#00FF9D] flex items-center justify-center shadow-[0_0_30px_rgba(0,255,157,0.3)] transition-transform group-hover:scale-110">
-                        <QrCode size={80} className="text-black" />
+                    <div className="p-3 rounded-[20px] bg-white flex items-center justify-center shadow-[0_0_30px_rgba(0,255,157,0.3)] transition-transform group-hover:scale-110">
+                         <QRCodeSVG 
+                            value={DOWNLOAD_URL}
+                            size={100}
+                            bgColor={"#ffffff"}
+                            fgColor={"#000000"}
+                            level={"L"}
+                            includeMargin={false}
+                         />
                     </div>
                     <div className="text-center space-y-1">
                         <p className="text-white font-bold text-xs">Scan to Download</p>
