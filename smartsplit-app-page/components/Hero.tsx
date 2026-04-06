@@ -99,7 +99,7 @@ const Hero = ({ onWatchDemo }: HeroProps) => {
           >
             <Magnetic>
               <button 
-                onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/9357e0ec-b1a8-4fba-9d95-d50b460ba5ad', '_blank')}
+                onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/e12b1d22-148b-48ef-b768-f24408e25de2', '_blank')}
                 className="w-full sm:w-auto bg-white text-black px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#00FF9D] hover:shadow-[0_0_50px_rgba(0,255,157,0.4)] transition-all active:scale-95 group"
               >
                 Get Started <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />

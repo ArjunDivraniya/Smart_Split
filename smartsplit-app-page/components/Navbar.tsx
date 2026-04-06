@@ -83,7 +83,7 @@ const Navbar = () => {
           ))}
           <Magnetic>
             <button 
-              onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/9357e0ec-b1a8-4fba-9d95-d50b460ba5ad', '_blank')}
+              onClick={() => window.open('https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/e12b1d22-148b-48ef-b768-f24408e25de2', '_blank')}
               className="bg-white text-black px-6 py-2 rounded-full text-sm font-bold hover:bg-[#00FF9D] hover:shadow-[0_0_20px_rgba(0,255,157,0.4)] transition-all active:scale-95"
             >
               Download App
