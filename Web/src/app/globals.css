@@ -75,9 +75,31 @@
   --animate-scale-in: scale-in 0.3s ease-out;
 }
 
-/* 5. Define Your Base Variables (Copied from your old index.css) */
+/* 5. Define Your Base Variables - SYNCHRONIZED WITH MOBILE APP */
 @layer base {
   :root {
+    /* DARK MODE (Default) - Matches Mobile App */
+    color-scheme: dark;
+
+    /* Background & Surface */
+    --void: #080810;           /* Main background - Mobile match */
+    --surface: #0F0F1A;        /* Card background - Mobile match */
+    --elevated: #1A1A2B;       /* Elevated surface - Mobile match */
+    --card-bg: #14141F;        /* Card default - Mobile match */
+
+    /* Brand Colors - EXACT MOBILE MATCH */
+    --violet: #7C5CFC;         /* Primary action */
+    --mint: #00E5B0;           /* Success/positive */
+    --coral: #FF5F7E;          /* Alert/danger */
+    --amber: #FFB547;          /* Warning */
+    --sky: #38BDF8;            /* Info */
+
+    /* Text Colors - MOBILE MATCH */
+    --text-primary: #F0F0FF;   /* Main text */
+    --text-secondary: #8888AA; /* Secondary text */
+    --text-tertiary: #55556A;  /* Tertiary text */
+
+    /* Legacy Tailwind Variables (for compatibility) */
     --background: 220 14% 98%;
     --foreground: 217 33% 17%;
 
@@ -87,17 +109,17 @@
     --popover: 0 0% 100%;
     --popover-foreground: 217 33% 17%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --primary-dark: 221 83% 48%;
+    --primary: 124 58% 62%;     /* Violet */
+    --primary-foreground: 0 100% 96%;    /* Very light */
+    --primary-dark: 124 58% 52%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 217 33% 17%;
+    --secondary: 163 100% 47%;  /* Mint */
+    --secondary-foreground: 0 0% 0%;
 
     --muted: 220 13% 95%;
     --muted-foreground: 217 13% 47%;
 
-    --accent: 217 91% 60%;
+    --accent: 124 58% 62%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;

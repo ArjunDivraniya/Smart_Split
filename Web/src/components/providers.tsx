@@ -14,8 +14,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        {/* Wrap children with ThemeProvider */}
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        {/* Force dark theme to match mobile app */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} forcedTheme="dark">
           <TooltipProvider>
             {children}
             <Toaster />

@@ -7,7 +7,6 @@ import Image from 'next/image';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import Magnetic from './Magnetic';
-
 import { QRCodeSVG } from 'qrcode.react';
 
 const DOWNLOAD_URL = 'https://expo.dev/accounts/arjundivraniya/projects/smartsplit/builds/e12b1d22-148b-48ef-b768-f24408e25de2';

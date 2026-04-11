@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next"; // Import Viewport
-import { Inter } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
-const inter = Inter({ subsets: ["latin"] });
+const dmSans = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "700"] });
 
 // 1. Add Viewport export for mobile scaling
 export const viewport: Viewport = {
@@ -16,17 +16,18 @@ export const viewport: Viewport = {
 
 // 2. Add Apple-specific PWA metadata
 export const metadata: Metadata = {
-  title: "TripSplit - Split Trip Expenses Easily",
-  description: "Modern trip expense management app",
+  title: "SmartSplit - Split Expenses Easily",
+  description: "Modern expense splitting & settlement management app",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "TripSplit",
+    title: "SmartSplit",
   },
   formatDetection: {
     telephone: false,
   },
+  themeColor: "#080810",
 };
 
 export default function RootLayout({
@@ -35,10 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}
-      suppressHydrationWarning={true}
-      >
+    <html lang="en" suppressHydrationWarning className="dark">
+      <body className={`${dmSans.className} bg-[#080810] text-[#F0F0FF] antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>
