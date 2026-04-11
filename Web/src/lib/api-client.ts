@@ -8,6 +8,8 @@
  * All routes are constructed as: {BACKEND_URL}/api{endpoint}
  */
 
+import { getSession } from 'next-auth/react';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://smart-split-oomn.onrender.com';
 const API_URL = `${BACKEND_URL}/api`;
 
@@ -27,6 +29,19 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Get auth token from NextAuth session
+ */
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const session = await getSession();
+    return (session as any)?.backendToken || null;
+  } catch (error) {
+    console.error('Failed to get auth token from session:', error);
+    return null;
+  }
+}
+
+/**
  * Make API request to the Express backend
  */
 export async function apiCall<T = any>(
@@ -37,7 +52,7 @@ export async function apiCall<T = any>(
     method = 'GET',
     body,
     headers = {},
-    token,
+    token: providedToken,
   } = options;
 
   // Construct URL - endpoint might already have /api prefix
@@ -52,7 +67,10 @@ export async function apiCall<T = any>(
     ...headers,
   };
 
-  // Add authorization token if provided
+  // Get token - use provided token or fetch from session
+  const token = providedToken || await getAuthToken();
+
+  // Add authorization token if available
   if (token) {
     requestHeaders['Authorization'] = `Bearer ${token}`;
   }

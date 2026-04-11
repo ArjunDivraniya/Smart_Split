@@ -12,12 +12,25 @@ import {
   Printer,
   Check,
   AlertCircle,
+  Download,
+  ArrowRight,
+  UserPlus,
+  Settings,
+  Copy,
+  Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { apiCall } from '@/lib/api-client';
+import { toast } from '@/components/ui/use-toast';
 
 interface GroupMember {
   id: string;

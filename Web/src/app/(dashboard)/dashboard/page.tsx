@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { TrendingUp, Plus, Users, Wallet, ArrowUpRight, ArrowDownLeft, Zap } from 'lucide-react';
+import { TrendingUp, Plus, Users, Wallet, ArrowUpRight, ArrowDownLeft, Zap, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { apiCall } from '@/lib/api-client';
@@ -82,20 +82,35 @@ export default function Dashboard() {
   const netBalance = (dashboardData?.financial.totalGet || 0) - (dashboardData?.financial.totalOwe || 0);
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Section */}
-      <div className="mb-8 bg-gradient-to-br from-[#7C5CFC]/10 to-transparent rounded-2xl p-6 border border-[#7C5CFC]/10">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-[#F0F0FF] to-[#8888AA] bg-clip-text text-transparent mb-2">
-          {(() => {
-            const hour = new Date().getHours();
-            if (hour < 12) return 'Good morning 🌅';
-            if (hour < 18) return 'Good afternoon ☀️';
-            return 'Good evening 🌙';
-          })()}
-        </h1>
-        <p className="text-[#8888AA]">
-          {session?.user?.name ? `Welcome back, ${session.user.name.split(' ')[0]}!` : "Let's track your money smartly"}
-        </p>
+    <div className="space-y-6">
+      {/* Header with Quick Actions */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#F0F0FF] to-[#8888AA] bg-clip-text text-transparent">
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour < 12) return 'Good morning';
+              if (hour < 18) return 'Good afternoon';
+              return 'Good evening';
+            })()}
+            , {session?.user?.name?.split(' ')[0]}!
+          </h1>
+          <p className="text-[#8888AA] mt-1">Track and manage your finances</p>
+        </div>
+        <div className="flex gap-3">
+          <Link href="/groups/create">
+            <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] text-white">
+              <Plus size={16} className="mr-2" />
+              New Group
+            </Button>
+          </Link>
+          <Link href="/personal/add">
+            <Button variant="outline" className="border-[#2A2A3B] text-[#8888AA]">
+              <Plus size={16} className="mr-2" />
+              Add Expense
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -105,7 +120,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Quick Stats */}
+      {/* Quick Stats - 4 Column Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Spent */}
         <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border border-[#7C5CFC]/20 p-6 hover:border-[#7C5CFC]/50 transition-colors">
@@ -205,102 +220,129 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main Content Grid */}
+      {/* Main Content Grid - 2 Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Expenses */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-[#F0F0FF]">Recent Expenses</h2>
-            <Link href="/personal/add">
-              <Button size="sm" className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] text-white">
-                <Plus size={14} className="mr-1" />
-                Add
-              </Button>
-            </Link>
-          </div>
-          
-          <div className="space-y-3">
-            {loading ? (
-              <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6 text-center text-[#8888AA]">
-                Loading expenses...
-              </Card>
-            ) : dashboardData?.recentExpenses && dashboardData.recentExpenses.length > 0 ? (
-              dashboardData.recentExpenses.map((expense) => (
-                <Card key={expense.id} className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-4 hover:border-[#7C5CFC]/30 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
+        {/* LEFT: Recent Expenses (60%) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Recent Expenses Card */}
+          <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-[#F0F0FF]">Recent Activity</h2>
+                <p className="text-sm text-[#8888AA]">Last 5 transactions</p>
+              </div>
+              <Link href="/personal">
+                <Button variant="outline" size="sm" className="border-[#2A2A3B] text-[#8888AA]">
+                  View All
+                </Button>
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              {loading ? (
+                <div className="text-center py-8 text-[#8888AA]">Loading...</div>
+              ) : dashboardData?.recentExpenses && dashboardData.recentExpenses.length > 0 ? (
+                dashboardData.recentExpenses.slice(0, 5).map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="flex items-center justify-between p-4 bg-[#1A1A2B] rounded-lg hover:bg-[#1A1A2B]/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
                       <span className="text-2xl">💸</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-[#F0F0FF] truncate">{expense.description}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[#F0F0FF]">{expense.description}</p>
                         <p className="text-xs text-[#8888AA]">
-                          {new Date(expense.date).toLocaleDateString()} {expense.group ? ` • ${expense.group}` : ''}
+                          {new Date(expense.date).toLocaleDateString()} {expense.group ? `• ${expense.group}` : ''}
                         </p>
                       </div>
                     </div>
-                    <p className="text-right font-bold text-[#F0F0FF]">₹{expense.amount.toLocaleString('en-IN')}</p>
+                    <p className="font-bold text-[#F0F0FF] flex-shrink-0">₹{expense.amount.toLocaleString('en-IN')}</p>
                   </div>
-                </Card>
-              ))
-            ) : (
-              <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-8 text-center">
-                <p className="text-[#8888AA] mb-4">No expenses yet</p>
-                <Link href="/personal/add">
-                  <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] text-white">
-                    Add Your First Expense
-                  </Button>
-                </Link>
-              </Card>
-            )}
-          </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-[#8888AA]">No expenses yet</div>
+              )}
+            </div>
+          </Card>
+
+          {/* Top Categories Preview */}
+          <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
+            <h3 className="font-bold text-[#F0F0FF] mb-4">Top Categories This Month</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { name: 'Food', icon: '🍔', percent: 40 },
+                { name: 'Transport', icon: '🚕', percent: 25 },
+                { name: 'Entertainment', icon: '🎬', percent: 20 },
+                { name: 'Shopping', icon: '🛍️', percent: 15 },
+              ].map((cat) => (
+                <div key={cat.name} className="bg-[#1A1A2B] rounded-lg p-3 text-center">
+                  <p className="text-2xl mb-2">{cat.icon}</p>
+                  <p className="text-xs font-semibold text-[#F0F0FF]">{cat.name}</p>
+                  <p className="text-sm text-[#7C5CFC] font-bold">{cat.percent}%</p>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
 
-        {/* Quick Actions */}
+        {/* RIGHT: Quick Summary (40%) */}
         <div className="space-y-6">
-          {/* Groups Overview */}
-          <div>
-            <h3 className="font-bold text-[#F0F0FF] mb-4 flex items-center gap-2">
-              <Users size={18} /> Groups
-            </h3>
-            <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6 text-center">
-              <p className="text-3xl font-bold text-[#7C5CFC] mb-2">
-                {loading ? '...' : dashboardData?.tripCount || 0}
-              </p>
-              <p className="text-sm text-[#8888AA] mb-4">Active Groups</p>
-              <Link href="/groups" className="w-full">
-                <Button variant="outline" className="w-full border-[#2A2A3B] text-[#8888AA] hover:text-[#F0F0FF]">
-                  View Groups
-                </Button>
-              </Link>
-            </Card>
-          </div>
+          {/* Net Balance Card */}
+          <Card className="bg-gradient-to-br from-[#7C5CFC]/20 to-transparent border border-[#7C5CFC]/30 p-6 rounded-2xl">
+            <p className="text-[#8888AA] text-sm mb-2">Your Balance</p>
+            <p className={`text-4xl font-bold ${
+              netBalance >= 0 ? 'text-[#99FF99]' : 'text-[#FF9999]'
+            }`}>
+              {netBalance >= 0 ? '+' : '-'}₹{Math.abs(netBalance).toLocaleString('en-IN')}
+            </p>
+            <p className="text-[#8888AA] text-xs mt-3">
+              {netBalance >= 0 ? '✨ You\'re all set!' : '⚠️ Action needed'}
+            </p>
+          </Card>
 
           {/* Upcoming Settlements */}
-          <div>
-            <h3 className="font-bold text-[#F0F0FF] mb-4 flex items-center gap-2">
-              <Wallet size={18} /> Settlements
-            </h3>
-            {dashboardData?.upcomingSettlements && dashboardData.upcomingSettlements.length > 0 ? (
-              <div className="space-y-2">
-                {dashboardData.upcomingSettlements.slice(0, 3).map((settlement) => (
-                  <Card key={settlement.id} className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-[#F0F0FF] truncate">{settlement.description}</p>
-                      <p className="font-bold text-[#99FF99] text-sm">₹{settlement.amount.toLocaleString('en-IN')}</p>
-                    </div>
-                  </Card>
-                ))}
-                <Link href="/settlements" className="w-full">
-                  <Button variant="outline" className="w-full border-[#2A2A3B] text-[#8888AA] hover:text-[#F0F0FF] mt-2">
-                    View All
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-4 text-center">
-                <p className="text-sm text-[#8888AA]">All settled up! 🎉</p>
-              </Card>
-            )}
-          </div>
+          <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#F0F0FF]">Pending Settlements</h3>
+              <Wallet size={18} className="text-[#7C5CFC]" />
+            </div>
+            <div className="space-y-2">
+              {dashboardData?.upcomingSettlements && dashboardData.upcomingSettlements.length > 0 ? (
+                dashboardData.upcomingSettlements.slice(0, 3).map((settlement) => (
+                  <div key={settlement.id} className="flex items-center justify-between p-2 bg-[#1A1A2B] rounded">
+                    <p className="text-sm text-[#F0F0FF] truncate">{settlement.description}</p>
+                    <p className="text-sm font-bold text-[#99FF99] flex-shrink-0 ml-2">
+                      ₹{settlement.amount.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-[#8888AA] text-center py-3">All settled up! 🎉</p>
+              )}
+              <Link href="/settlements" className="w-full mt-3">
+                <Button variant="outline" size="sm" className="w-full border-[#2A2A3B] text-[#8888AA]">
+                  View All Settlements
+                </Button>
+              </Link>
+            </div>
+          </Card>
+
+          {/* Groups Overview */}
+          <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#F0F0FF]">Groups</h3>
+              <Users size={18} className="text-[#7C5CFC]" />
+            </div>
+            <p className="text-3xl font-bold text-[#7C5CFC] mb-4">
+              {loading ? '...' : dashboardData?.groupCount || 0}
+            </p>
+            <Link href="/groups" className="w-full">
+              <Button className="w-full bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] text-white">
+                <ChevronRight size={16} />
+                View Groups
+              </Button>
+            </Link>
+          </Card>
         </div>
       </div>
     </div>

@@ -11,12 +11,29 @@ import {
   Edit2,
   Filter,
   Calendar,
+  Search,
+  MoreVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { apiCall } from '@/lib/api-client';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from '@/components/ui/use-toast';
 
 interface PersonalExpense {
   id: string;
@@ -44,32 +61,24 @@ const CATEGORY_ICONS: Record<string, string> = {
   other: '📌',
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  food: 'from-[#FF6B6B] to-[#FF8E8E]',
-  transport: 'from-[#4ECDC4] to-[#6FE7D8]',
-  entertainment: 'from-[#FFE66D] to-[#FFD93D]',
-  shopping: 'from-[#95E5E5] to-[#80D8D8]',
-  utilities: 'from-[#A0C4FF] to-[#BFDBFE]',
-  health: 'from-[#FFB6C1] to-[#FFC9CC]',
-  other: 'from-[#D4A5A5] to-[#E8B8B8]',
-};
-
 export default function PersonalExpensesPage() {
   const { data: session } = useSession();
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [categoryTotals, setCategoryTotals] = useState<CategoryTotal[]>([]);
   const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingData, setEditingData] = useState<Partial<PersonalExpense>>({});
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<Set<string>>(new Set());
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Sort
-  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'category'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'category' | 'description'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
@@ -110,17 +119,25 @@ export default function PersonalExpensesPage() {
       }
     } catch (error) {
       console.error('Error fetching expenses:', error);
+      toast({ title: 'Error loading expenses', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredExpenses = expenses
-    .filter((e) =>
-      e.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (selectedCategories.size === 0 || selectedCategories.has(e.category)) &&
-      (selectedPaymentMethods.size === 0 || selectedPaymentMethods.has(e.paymentMethod))
-    )
+  const filteredAndSortedExpenses = expenses
+    .filter((e) => {
+      const inDateRange =
+        (!dateRange.from || new Date(e.date) >= new Date(dateRange.from)) &&
+        (!dateRange.to || new Date(e.date) <= new Date(dateRange.to));
+      
+      return (
+        e.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        (selectedCategories.size === 0 || selectedCategories.has(e.category)) &&
+        (selectedPaymentMethods.size === 0 || selectedPaymentMethods.has(e.paymentMethod)) &&
+        inDateRange
+      );
+    })
     .sort((a, b) => {
       let comparison = 0;
       if (sortBy === 'date') {
@@ -129,11 +146,13 @@ export default function PersonalExpensesPage() {
         comparison = a.amount - b.amount;
       } else if (sortBy === 'category') {
         comparison = a.category.localeCompare(b.category);
+      } else if (sortBy === 'description') {
+        comparison = a.description.localeCompare(b.description);
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-  const totalSpent = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalSpent = filteredAndSortedExpenses.reduce((sum, e) => sum + e.amount, 0);
   const thisMonth = expenses
     .filter((e) => {
       const now = new Date();
@@ -143,10 +162,10 @@ export default function PersonalExpensesPage() {
     .reduce((sum, e) => sum + e.amount, 0);
 
   const toggleSelectAll = () => {
-    if (selectedExpenses.size === filteredExpenses.length) {
+    if (selectedExpenses.size === filteredAndSortedExpenses.length) {
       setSelectedExpenses(new Set());
     } else {
-      setSelectedExpenses(new Set(filteredExpenses.map((e) => e.id)));
+      setSelectedExpenses(new Set(filteredAndSortedExpenses.map((e) => e.id)));
     }
   };
 
@@ -180,19 +199,100 @@ export default function PersonalExpensesPage() {
     setSelectedPaymentMethods(newSelected);
   };
 
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedExpenses);
+    try {
+      for (const id of ids) {
+        await apiCall(`/personal-expenses/${id}`, { method: 'DELETE' });
+      }
+      toast({ title: `Deleted ${ids.length} expense(s)` });
+      setSelectedExpenses(new Set());
+      fetchExpenses();
+    } catch (error) {
+      toast({ title: 'Error deleting expenses', variant: 'destructive' });
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Date', 'Description', 'Category', 'Payment Method', 'Amount'];
+    const rows = filteredAndSortedExpenses.map(e => [
+      new Date(e.date).toLocaleDateString(),
+      e.description,
+      e.category,
+      e.paymentMethod,
+      e.amount.toLocaleString('en-IN'),
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenses-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    toast({ title: 'Expenses exported successfully' });
+  };
+
+  const handleInlineEdit = async (id: string, field: keyof PersonalExpense, value: any) => {
+    try {
+      await apiCall(`/personal-expenses/${id}`, {
+        method: 'PUT',
+        body: { [field]: value },
+      });
+      setEditingId(null);
+      fetchExpenses();
+      toast({ title: 'Expense updated' });
+    } catch (error) {
+      toast({ title: 'Error updating expense', variant: 'destructive' });
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(amount / 100);
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getSortIcon = (key: typeof sortBy) => {
+    if (sortBy !== key) return '⇅';
+    return sortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-12 bg-[#171727] rounded" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#F0F0FF] to-[#8888AA] bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#F0F0FF] to-[#8888AA] bg-clip-text text-transparent">
             Personal Expenses
           </h1>
-          <p className="text-[#8888AA]">Track your individual spending</p>
+          <p className="text-[#8888AA] mt-1">Track and manage your spending</p>
         </div>
         <Link href="/personal/add">
-          <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] hover:from-[#8B6DFF] hover:to-[#7B5CE5] text-white">
-            <Plus size={20} className="mr-2" />
+          <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#5C3AFF] hover:from-[#6B4DEB] hover:to-[#4C2AEF] text-white gap-2">
+            <Plus size={18} />
             Add Expense
           </Button>
         </Link>
@@ -200,23 +300,23 @@ export default function PersonalExpensesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-4">
+        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
           <p className="text-sm text-[#8888AA] mb-2">This Month</p>
-          <p className="text-2xl font-bold text-[#F0F0FF]">₹{thisMonth.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-bold text-[#F0F0FF]">{formatCurrency(thisMonth)}</p>
         </Card>
-        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-4">
+        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
           <p className="text-sm text-[#8888AA] mb-2">Total Filtered</p>
-          <p className="text-2xl font-bold text-[#F0F0FF]">₹{totalSpent.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-bold text-[#F0F0FF]">{formatCurrency(totalSpent)}</p>
         </Card>
-        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-4">
+        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
           <p className="text-sm text-[#8888AA] mb-2">Avg Expense</p>
           <p className="text-2xl font-bold text-[#F0F0FF]">
-            ₹{(filteredExpenses.length > 0 ? totalSpent / filteredExpenses.length : 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            {formatCurrency(filteredAndSortedExpenses.length > 0 ? totalSpent / filteredAndSortedExpenses.length : 0)}
           </p>
         </Card>
-        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-4">
+        <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] p-6">
           <p className="text-sm text-[#8888AA] mb-2">Total Expenses</p>
-          <p className="text-2xl font-bold text-[#F0F0FF]">{filteredExpenses.length}</p>
+          <p className="text-2xl font-bold text-[#F0F0FF]">{filteredAndSortedExpenses.length}</p>
         </Card>
       </div>
 
@@ -237,34 +337,37 @@ export default function PersonalExpensesPage() {
             </button>
           </div>
 
-          <div className={`space-y-4 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+          <div className={`space-y-4 bg-[#1A1A2B] rounded-lg p-4 border border-[#2A2A3B] ${showFilters ? 'block' : 'hidden lg:block'}`}>
             {/* Search */}
-            <Input
-              placeholder="Search description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-[#1A1A2B] border-[#2A2A3B] text-[#F0F0FF] placeholder-[#8888AA]"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-3 text-[#8888AA]" size={16} />
+              <Input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-[#171727] border-[#2A2A3B] text-[#F0F0FF] placeholder-[#8888AA]"
+              />
+            </div>
 
             {/* Category Filter */}
             <div className="space-y-2">
               <p className="text-sm font-semibold text-[#8888AA]">Category</p>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-48 overflow-y-auto">
                 {categoryTotals.map((cat) => (
                   <label
                     key={cat.name}
-                    className="flex items-center gap-2 cursor-pointer p-2 hover:bg-[#1A1A2B] rounded transition-colors"
+                    className="flex items-center gap-2 cursor-pointer p-2 hover:bg-[#0F0F1A] rounded transition-colors"
                   >
                     <Checkbox
                       checked={selectedCategories.has(cat.name)}
                       onCheckedChange={() => toggleCategory(cat.name)}
                       className="border-[#2A2A3B]"
                     />
-                    <span className="text-sm text-[#F0F0FF] capitalize">
+                    <span className="text-sm text-[#F0F0FF] capitalize flex-1">
                       {cat.icon} {cat.name}
                     </span>
-                    <span className="text-xs text-[#8888AA] ml-auto">
-                      ₹{cat.amount.toLocaleString('en-IN')}
+                    <span className="text-xs text-[#8888AA]">
+                      {formatCurrency(cat.amount)}
                     </span>
                   </label>
                 ))}
@@ -272,13 +375,13 @@ export default function PersonalExpensesPage() {
             </div>
 
             {/* Payment Method Filter */}
-            <div className="space-y-2">
+            <div className="space-y-2 pt-2 border-t border-[#2A2A3B]">
               <p className="text-sm font-semibold text-[#8888AA]">Payment Method</p>
               <div className="space-y-2">
                 {['cash', 'upi', 'card'].map((method) => (
                   <label
                     key={method}
-                    className="flex items-center gap-2 cursor-pointer p-2 hover:bg-[#1A1A2B] rounded transition-colors"
+                    className="flex items-center gap-2 cursor-pointer p-2 hover:bg-[#0F0F1A] rounded transition-colors"
                   >
                     <Checkbox
                       checked={selectedPaymentMethods.has(method)}
@@ -292,7 +395,7 @@ export default function PersonalExpensesPage() {
             </div>
 
             {/* Date Range */}
-            <div className="space-y-2">
+            <div className="space-y-2 pt-2 border-t border-[#2A2A3B]">
               <p className="text-sm font-semibold text-[#8888AA] flex items-center gap-2">
                 <Calendar size={14} /> Date Range
               </p>
@@ -301,19 +404,19 @@ export default function PersonalExpensesPage() {
                   type="date"
                   value={dateRange.from}
                   onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#1A1A2B] border border-[#2A2A3B] text-[#F0F0FF] rounded text-sm"
+                  className="w-full px-3 py-2 bg-[#171727] border border-[#2A2A3B] text-[#F0F0FF] rounded text-sm"
                 />
                 <input
                   type="date"
                   value={dateRange.to}
                   onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#1A1A2B] border border-[#2A2A3B] text-[#F0F0FF] rounded text-sm"
+                  className="w-full px-3 py-2 bg-[#171727] border border-[#2A2A3B] text-[#F0F0FF] rounded text-sm"
                 />
               </div>
             </div>
 
             {/* Clear Filters */}
-            {(selectedCategories.size > 0 || selectedPaymentMethods.size > 0 || searchQuery) && (
+            {(selectedCategories.size > 0 || selectedPaymentMethods.size > 0 || searchQuery || dateRange.from || dateRange.to) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -334,128 +437,224 @@ export default function PersonalExpensesPage() {
         {/* Table - Right Side */}
         <div className="lg:col-span-3 space-y-4">
           {/* Controls */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="border-[#2A2A3B] text-[#8888AA] hover:text-[#F0F0FF]"
+                onClick={() => document.getElementById('csv-input')?.click()}
+                className="border-[#2A2A3B] text-[#8888AA] hover:text-[#F0F0FF] gap-2"
               >
-                <Upload size={16} className="mr-2" />
-                Import CSV
+                <Upload size={16} />
+                Import
               </Button>
+              <input
+                id="csv-input"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  // CSV import implementation
+                  toast({ title: 'Import feature coming soon' });
+                }}
+              />
               <Button
                 variant="outline"
                 size="sm"
-                className="border-[#2A2A3B] text-[#8888AA] hover:text-[#F0F0FF]"
+                onClick={handleExportCSV}
+                disabled={filteredAndSortedExpenses.length === 0}
+                className="border-[#2A2A3B] text-[#8888AA] hover:text-[#F0F0FF] gap-2"
               >
-                <Download size={16} className="mr-2" />
+                <Download size={16} />
                 Export
               </Button>
             </div>
 
-            <select
-              value={`${sortBy}-${sortOrder}`}
-              onChange={(e) => {
-                const [by, order] = e.target.value.split('-');
-                setSortBy(by as any);
-                setSortOrder(order as any);
-              }}
-              className="px-3 py-2 bg-[#1A1A2B] border border-[#2A2A3B] text-[#F0F0FF] rounded-lg text-sm"
-            >
-              <option value="date-desc">Newest First</option>
-              <option value="date-asc">Oldest First</option>
-              <option value="amount-desc">Highest Amount</option>
-              <option value="amount-asc">Lowest Amount</option>
-              <option value="category-asc">Category</option>
-            </select>
-          </div>
-
-          {/* Bulk Actions */}
-          {selectedExpenses.size > 0 && (
-            <div className="flex items-center gap-4 p-4 bg-[#1A1A2B]/50 rounded-lg border border-[#2A2A3B]">
-              <span className="text-sm text-[#8888AA]">{selectedExpenses.size} selected</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-[#FF9999]"
-              >
-                <Trash2 size={16} className="mr-2" />
-                Delete
-              </Button>
-            </div>
-          )}
-
-          {/* Expense Table */}
-          <div className="overflow-x-auto border border-[#1A1A2B] rounded-lg bg-[#14141F]">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#1A1A2B] bg-[#0F0F1A]">
-                  <th className="p-4 text-left">
-                    <Checkbox
-                      checked={selectedExpenses.size === filteredExpenses.length && filteredExpenses.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                      className="border-[#2A2A3B]"
-                    />
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-[#8888AA]">Description</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-[#8888AA]">Category</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-[#8888AA]">Payment</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-[#8888AA]">Date</th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-[#8888AA]">Amount</th>
-                  <th className="px-6 py-3 text-center text-sm font-semibold text-[#8888AA]">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExpenses.map((expense) => (
-                  <tr
-                    key={expense.id}
-                    className="border-b border-[#1A1A2B] hover:bg-[#1A1A2B]/50 transition-colors"
-                  >
-                    <td className="p-4">
-                      <Checkbox
-                        checked={selectedExpenses.has(expense.id)}
-                        onCheckedChange={() => toggleSelect(expense.id)}
-                        className="border-[#2A2A3B]"
-                      />
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className="text-[#F0F0FF] font-medium">{expense.description}</span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className="text-sm text-[#8888AA] capitalize">
-                        {expense.icon} {expense.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className="text-xs text-[#8888AA] capitalize">{expense.paymentMethod}</span>
-                    </td>
-                    <td className="px-6 py-3 text-[#8888AA] text-sm">
-                      {new Date(expense.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-3 text-right font-semibold text-[#F0F0FF]">
-                      ₹{expense.amount.toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-6 py-3 text-center">
-                      <button className="p-1 hover:bg-[#2A2A3B] rounded transition-colors text-[#8888AA] hover:text-[#F0F0FF]">
-                        <Edit2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Empty State */}
-          {filteredExpenses.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-[#8888AA] mb-4">No expenses found</p>
-              <Link href="/personal/add">
-                <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5]">
-                  Add your first expense
+            {/* Bulk Delete */}
+            {selectedExpenses.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-[#8888AA]">
+                  {selectedExpenses.size} selected
+                </span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete
                 </Button>
-              </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Bulk Select Header */}
+          <div className="flex items-center gap-2 p-3 bg-[#171727] rounded border border-[#2A2A3B]">
+            <Checkbox
+              checked={selectedExpenses.size === filteredAndSortedExpenses.length && filteredAndSortedExpenses.length > 0}
+              onCheckedChange={toggleSelectAll}
+            />
+            <span className="text-sm text-[#8888AA]">
+              {selectedExpenses.size === 0 ? 'Select all' : `${selectedExpenses.size} selected`}
+            </span>
+          </div>
+
+          {/* Table */}
+          {filteredAndSortedExpenses.length === 0 ? (
+            <div className="text-center py-12 bg-[#171727] rounded-lg border border-[#2A2A3B]">
+              <p className="text-[#8888AA]">No expenses found</p>
+            </div>
+          ) : (
+            <div className="border border-[#2A2A3B] rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader className="bg-[#1A1A2B] border-b border-[#2A2A3B]">
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedExpenses.size === filteredAndSortedExpenses.length && filteredAndSortedExpenses.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:text-white"
+                      onClick={() => {
+                        if (sortBy === 'date') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('date');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      Date {getSortIcon('date')}
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:text-white"
+                      onClick={() => {
+                        if (sortBy === 'description') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('description');
+                          setSortOrder('asc');
+                        }
+                      }}
+                    >
+                      Description {getSortIcon('description')}
+                    </TableHead>
+                    <TableHead className="text-center">Category</TableHead>
+                    <TableHead className="text-center">Method</TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:text-white text-right"
+                      onClick={() => {
+                        if (sortBy === 'amount') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('amount');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      Amount {getSortIcon('amount')}
+                    </TableHead>
+                    <TableHead className="w-10"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedExpenses.map((expense) => (
+                    <TableRow
+                      key={expense.id}
+                      className="border-b border-[#2A2A3B] hover:bg-[#171727]/50 cursor-pointer"
+                    >
+                      <TableCell
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(expense.id);
+                        }}
+                      >
+                        <Checkbox
+                          checked={selectedExpenses.has(expense.id)}
+                          onCheckedChange={() => toggleSelect(expense.id)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-[#8888AA]">
+                        {formatDate(expense.date)}
+                      </TableCell>
+                      <TableCell className="text-white">
+                        {editingId === expense.id ? (
+                          <Input
+                            value={editingData.description || expense.description}
+                            onChange={(e) =>
+                              setEditingData({ ...editingData, description: e.target.value })
+                            }
+                            onBlur={() => {
+                              if (editingData.description !== expense.description) {
+                                handleInlineEdit(expense.id, 'description', editingData.description);
+                              }
+                            }}
+                            className="border-[#2A2A3B]"
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span
+                            onDoubleClick={() => {
+                              setEditingId(expense.id);
+                              setEditingData(expense);
+                            }}
+                            className="cursor-default"
+                          >
+                            {expense.description}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-lg">{expense.icon}</span>
+                        <span className="text-xs text-[#8888AA] capitalize">
+                          {expense.category}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center text-[#8888AA] capitalize">
+                        {expense.paymentMethod}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-[#F0F0FF]">
+                        {formatCurrency(expense.amount)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="text-[#8888AA]">
+                              <MoreVertical size={16} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-[#171727] border-[#2A2A3B]">
+                            <DropdownMenuItem
+                              className="text-[#F0F0FF]"
+                              onClick={() => {
+                                setEditingId(expense.id);
+                                setEditingData(expense);
+                              }}
+                            >
+                              <Edit2 size={14} className="mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-[#FF5F7E]"
+                              onClick={async () => {
+                                await apiCall(`/personal-expenses/${expense.id}`, { method: 'DELETE' });
+                                fetchExpenses();
+                              }}
+                            >
+                              <Trash2 size={14} className="mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>

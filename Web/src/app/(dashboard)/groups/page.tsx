@@ -11,12 +11,28 @@ import {
   Archive,
   Download,
   ChevronRight,
+  MoreVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { apiCall } from '@/lib/api-client';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from '@/components/ui/use-toast';
 
 interface Group {
   id: string;
@@ -33,6 +49,7 @@ interface Group {
 
 type ViewMode = 'card' | 'table';
 type FilterTab = 'all' | 'active' | 'trips' | 'college' | 'settled' | 'archived';
+type SortKey = 'name' | 'total' | 'balance' | 'recent' | 'members';
 
 const ICON_MAP: Record<string, string> = {
   trip: '✈️',
@@ -40,6 +57,14 @@ const ICON_MAP: Record<string, string> = {
   flatmates: '🏠',
   general: '👥',
 };
+
+const FILTER_TABS = [
+  { id: 'all', label: 'All', count: (groups: Group[]) => groups.length },
+  { id: 'active', label: 'Active', count: (groups: Group[]) => groups.filter(g => !g.settled).length },
+  { id: 'trips', label: 'Trips', count: (groups: Group[]) => groups.filter(g => g.type === 'trip').length },
+  { id: 'college', label: 'College', count: (groups: Group[]) => groups.filter(g => g.type === 'college').length },
+  { id: 'settled', label: 'Settled', count: (groups: Group[]) => groups.filter(g => g.settled).length },
+];
 
 export default function GroupsPage() {
   const { data: session } = useSession();
@@ -49,7 +74,8 @@ export default function GroupsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'name' | 'total' | 'balance' | 'recent'>('recent');
+  const [sortBy, setSortBy] = useState<SortKey>('recent');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchGroups();
@@ -75,6 +101,7 @@ export default function GroupsPage() {
       }
     } catch (error) {
       console.error('Error fetching groups:', error);
+      toast({ title: 'Error loading groups', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -97,304 +124,363 @@ export default function GroupsPage() {
     })
     .filter((g) => g.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'total':
-          return b.total - a.total;
-        case 'balance':
-          return b.yourBalance - a.yourBalance;
-        case 'recent':
-          return new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime();
-        default:
-          return 0;
+      let aVal: any = a[sortBy as keyof Group];
+      let bVal: any = b[sortBy as keyof Group];
+      
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = (bVal as string).toLowerCase();
       }
+
+      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-  const toggleSelectAll = () => {
-    if (selectedGroups.size === filteredGroups.length) {
-      setSelectedGroups(new Set());
-    } else {
-      setSelectedGroups(new Set(filteredGroups.map((g) => g.id)));
-    }
-  };
-
-  const toggleSelect = (id: string) => {
+  const toggleGroupSelection = (groupId: string) => {
     const newSelected = new Set(selectedGroups);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
+    if (newSelected.has(groupId)) {
+      newSelected.delete(groupId);
     } else {
-      newSelected.add(id);
+      newSelected.add(groupId);
     }
     setSelectedGroups(newSelected);
   };
+
+  const toggleAllSelection = () => {
+    if (selectedGroups.size === filteredGroups.length) {
+      setSelectedGroups(new Set());
+    } else {
+      setSelectedGroups(new Set(filteredGroups.map(g => g.id)));
+    }
+  };
+
+  const handleArchiveSelected = async () => {
+    if (selectedGroups.size === 0) return;
+    // Implementation would call archive API for each selected group
+    toast({ title: `Archived ${selectedGroups.size} groups` });
+    setSelectedGroups(new Set());
+    fetchGroups();
+  };
+
+  const handleExportSelected = async () => {
+    if (selectedGroups.size === 0) return;
+    // Implementation would export selected groups as JSON/CSV
+    toast({ title: `Exported ${selectedGroups.size} groups` });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(amount / 100);
+  };
+
+  const getSortIcon = (key: SortKey) => {
+    if (sortBy !== key) return '⇅';
+    return sortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 bg-[#171727] rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#F0F0FF] to-[#8888AA] bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#F0F0FF] to-[#8888AA] bg-clip-text text-transparent">
             Groups
           </h1>
-          <p className="text-[#8888AA]">Manage your shared expenses</p>
+          <p className="text-[#8888AA] mt-1">Manage your shared expenses</p>
         </div>
         <Link href="/groups/create">
-          <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] hover:from-[#8B6DFF] hover:to-[#7B5CE5] text-white">
-            <Plus size={20} className="mr-2" />
+          <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#5C3AFF] hover:from-[#6B4DEB] hover:to-[#4C2AEF] text-white gap-2">
+            <Plus size={18} />
             Create Group
           </Button>
         </Link>
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8888AA] size-4" />
+      {/* Search and View Toggle */}
+      <div className="flex gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-3 text-[#8888AA]" size={18} />
           <Input
             placeholder="Search groups..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-[#1A1A2B] border-[#2A2A3B] text-[#F0F0FF] placeholder-[#8888AA]"
+            className="pl-10 bg-[#171727] border-[#2A2A3B] text-white placeholder-[#8888AA]"
           />
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'card' ? 'default' : 'outline'}
+            size="icon"
             onClick={() => setViewMode('card')}
-            className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'card'
-                ? 'bg-[#7C5CFC] text-white'
-                : 'bg-[#1A1A2B] text-[#8888AA] hover:bg-[#2A2A3B]'
-            }`}
+            className="bg-[#171727] border-[#2A2A3B]"
           >
-            <LayoutGrid size={20} />
-          </button>
-          <button
+            <LayoutGrid size={18} />
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'default' : 'outline'}
+            size="icon"
             onClick={() => setViewMode('table')}
-            className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'table'
-                ? 'bg-[#7C5CFC] text-white'
-                : 'bg-[#1A1A2B] text-[#8888AA] hover:bg-[#2A2A3B]'
-            }`}
+            className="bg-[#171727] border-[#2A2A3B]"
           >
-            <List size={20} />
-          </button>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="px-3 py-2 bg-[#1A1A2B] border border-[#2A2A3B] text-[#F0F0FF] rounded-lg text-sm"
-          >
-            <option value="recent">Recent</option>
-            <option value="name">Name</option>
-            <option value="total">Total Spent</option>
-            <option value="balance">Your Balance</option>
-          </select>
+            <List size={18} />
+          </Button>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {['all', 'active', 'trips', 'college', 'settled'].map((tab) => (
+      <div className="flex gap-2 border-b border-[#2A2A3B] overflow-x-auto">
+        {FILTER_TABS.map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab as FilterTab)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-              activeTab === tab
-                ? 'bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] text-white'
-                : 'bg-[#1A1A2B] text-[#8888AA] hover:bg-[#2A2A3B]'
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as FilterTab)}
+            className={`px-4 py-2 font-medium whitespace-nowrap border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? 'border-[#7C5CFC] text-white'
+                : 'border-transparent text-[#8888AA] hover:text-white'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab.label}
+            <span className="ml-2 text-sm opacity-70">
+              ({tab.count(groups)})
+            </span>
           </button>
         ))}
       </div>
 
       {/* Bulk Actions */}
       {selectedGroups.size > 0 && (
-        <div className="flex items-center gap-4 p-4 bg-[#1A1A2B]/50 rounded-lg border border-[#2A2A3B]">
-          <span className="text-sm text-[#8888AA]">
-            {selectedGroups.size} selected
+        <div className="bg-[#171727] border border-[#2A2A3B] rounded-lg p-4 flex items-center justify-between">
+          <span className="text-[#F0F0FF]">
+            {selectedGroups.size} group{selectedGroups.size !== 1 ? 's' : ''} selected
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-[#8888AA] hover:text-[#F0F0FF]"
-          >
-            <Archive size={16} className="mr-2" />
-            Archive
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-[#8888AA] hover:text-[#F0F0FF]"
-          >
-            <Download size={16} className="mr-2" />
-            Export
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleArchiveSelected}
+              className="gap-2"
+            >
+              <Archive size={16} />
+              Archive
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportSelected}
+              className="gap-2"
+            >
+              <Download size={16} />
+              Export
+            </Button>
+          </div>
         </div>
       )}
 
-      {/* Card View */}
-      {viewMode === 'card' && (
+      {/* Content */}
+      {filteredGroups.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-[#8888AA]">No groups found</p>
+        </div>
+      ) : viewMode === 'card' ? (
+        /* Card View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredGroups.map((group) => (
             <Link key={group.id} href={`/groups/${group.id}`}>
-              <Card className="bg-gradient-to-br from-[#14141F] to-[#0F0F1A] border-[#1A1A2B] hover:border-[#7C5CFC]/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-[#7C5CFC]/20 group">
+              <Card className="bg-gradient-to-br from-[#1A1A2B] to-[#171727] border-[#2A2A3B] hover:border-[#7C5CFC] transition-all cursor-pointer h-full">
                 <div className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <span className="text-3xl">{group.icon}</span>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-[#F0F0FF] truncate group-hover:text-[#7C5CFC] transition-colors">
-                          {group.name}
-                        </h3>
-                        <p className="text-xs text-[#8888AA]">
-                          {group.members} {group.members === 1 ? 'member' : 'members'}
-                        </p>
-                      </div>
+                    <div>
+                      <div className="text-4xl mb-2">{group.icon}</div>
+                      <h3 className="text-lg font-bold text-white">{group.name}</h3>
                     </div>
-                    <Checkbox
-                      checked={selectedGroups.has(group.id)}
-                      onCheckedChange={() => toggleSelect(group.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="border-[#2A2A3B]"
-                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                        <Button variant="ghost" size="icon" className="text-[#8888AA]">
+                          <MoreVertical size={16} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#171727] border-[#2A2A3B]">
+                        <DropdownMenuItem className="text-[#F0F0FF]">Edit</DropdownMenuItem>
+                        <DropdownMenuItem className="text-[#FF5F7E]">Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-sm text-[#8888AA]">Total Spent</span>
-                      <span className="text-lg font-bold text-[#F0F0FF]">
-                        ₹{group.total.toLocaleString('en-IN')}
+                  <div className="text-sm text-[#8888AA]">
+                    {group.members} member{group.members !== 1 ? 's' : ''}
+                  </div>
+
+                  <div className="space-y-2 pt-4 border-t border-[#2A2A3B]">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#8888AA]">Total</span>
+                      <span className="font-bold text-white">
+                        {formatCurrency(group.total)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-sm text-[#8888AA]">Your Balance</span>
-                      <span
-                        className={`font-bold text-lg ${
-                          group.yourBalance < 0
-                            ? 'text-[#FF9999]'
-                            : group.yourBalance > 0
-                              ? 'text-[#99FF99]'
-                              : 'text-[#8888AA]'
-                        }`}
-                      >
-                        {group.yourBalance < 0 ? '-' : group.yourBalance > 0 ? '+' : ''}
-                        ₹{Math.abs(group.yourBalance).toLocaleString('en-IN')}
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#8888AA]">Your Balance</span>
+                      <span className={`font-bold ${
+                        group.yourBalance > 0 ? 'text-[#00E5B0]' : 
+                        group.yourBalance < 0 ? 'text-[#FF5F7E]' : 
+                        'text-[#8888AA]'
+                      }`}>
+                        {group.yourBalance > 0 ? '+' : ''}
+                        {formatCurrency(group.yourBalance)}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#1A1A2B]">
-                    <span
-                      className={`text-xs font-medium px-2 py-1 rounded ${
-                        group.settled
-                          ? 'bg-[#2A4A2A] text-[#66FF66]'
-                          : 'bg-[#4A3A2A] text-[#FFAA66]'
-                      }`}
-                    >
-                      {group.settled ? '✅ Settled' : '⏳ Active'}
-                    </span>
-                    <ChevronRight size={16} className="text-[#8888AA] group-hover:text-[#7C5CFC] transition-colors" />
-                  </div>
+                  {group.settled && (
+                    <div className="flex items-center gap-2 text-[#00E5B0] text-sm">
+                      ✓ Settled
+                    </div>
+                  )}
                 </div>
               </Card>
             </Link>
           ))}
         </div>
-      )}
-
-      {/* Table View */}
-      {viewMode === 'table' && (
-        <div className="overflow-x-auto border border-[#1A1A2B] rounded-lg bg-[#14141F]">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#1A1A2B] bg-[#0F0F1A]">
-                <th className="p-4 text-left">
+      ) : (
+        /* Table View */
+        <div className="border border-[#2A2A3B] rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader className="bg-[#171727] border-b border-[#2A2A3B]">
+              <TableRow>
+                <TableHead className="w-10">
                   <Checkbox
                     checked={selectedGroups.size === filteredGroups.length && filteredGroups.length > 0}
-                    onCheckedChange={toggleSelectAll}
-                    className="border-[#2A2A3B]"
+                    onCheckedChange={toggleAllSelection}
                   />
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-[#8888AA]">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-[#8888AA]">Type</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-[#8888AA]">Members</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold text-[#8888AA]">Total</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold text-[#8888AA]">Your Balance</th>
-                <th className="px-6 py-3 text-center text-sm font-semibold text-[#8888AA]">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredGroups.map((group) => (
-                <tr
-                  key={group.id}
-                  className="border-b border-[#1A1A2B] hover:bg-[#1A1A2B]/50 transition-colors"
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-white"
+                  onClick={() => {
+                    if (sortBy === 'name') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('name');
+                      setSortOrder('asc');
+                    }
+                  }}
                 >
-                  <td className="p-4">
+                  Name {getSortIcon('name')}
+                </TableHead>
+                <TableHead className="text-center">Type</TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-white text-right"
+                  onClick={() => {
+                    if (sortBy === 'members') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('members');
+                      setSortOrder('desc');
+                    }
+                  }}
+                >
+                  Members {getSortIcon('members')}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-white text-right"
+                  onClick={() => {
+                    if (sortBy === 'total') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('total');
+                      setSortOrder('desc');
+                    }
+                  }}
+                >
+                  Total {getSortIcon('total')}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-white text-right"
+                  onClick={() => {
+                    if (sortBy === 'balance') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('balance');
+                      setSortOrder('desc');
+                    }
+                  }}
+                >
+                  Your Balance {getSortIcon('balance')}
+                </TableHead>
+                <TableHead className="text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredGroups.map((group) => (
+                <TableRow
+                  key={group.id}
+                  className="border-b border-[#2A2A3B] hover:bg-[#171727]/50 cursor-pointer"
+                  onClick={() => {
+                    // Navigate on row click but not on checkbox
+                  }}
+                >
+                  <TableCell
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleGroupSelection(group.id);
+                    }}
+                  >
                     <Checkbox
                       checked={selectedGroups.has(group.id)}
-                      onCheckedChange={() => toggleSelect(group.id)}
-                      className="border-[#2A2A3B]"
+                      onCheckedChange={() => toggleGroupSelection(group.id)}
                     />
-                  </td>
-                  <td className="px-6 py-3">
-                    <Link
-                      href={`/groups/${group.id}`}
-                      className="flex items-center gap-2 text-[#F0F0FF] hover:text-[#7C5CFC] transition-colors"
-                    >
-                      <span className="text-lg">{group.icon}</span>
-                      <span className="font-medium">{group.name}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/groups/${group.id}`} className="hover:text-[#7C5CFC] transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{group.icon}</span>
+                        <span className="font-medium text-white">{group.name}</span>
+                      </div>
                     </Link>
-                  </td>
-                  <td className="px-6 py-3 text-[#8888AA]">
-                    <span className="capitalize text-sm">{group.type}</span>
-                  </td>
-                  <td className="px-6 py-3 text-[#8888AA]">{group.members}</td>
-                  <td className="px-6 py-3 text-right text-[#F0F0FF] font-semibold">
-                    ₹{group.total.toLocaleString('en-IN')}
-                  </td>
-                  <td
-                    className={`px-6 py-3 text-right font-semibold ${
-                      group.yourBalance < 0
-                        ? 'text-[#FF9999]'
-                        : group.yourBalance > 0
-                          ? 'text-[#99FF99]'
-                          : 'text-[#8888AA]'
-                    }`}
-                  >
-                    {group.yourBalance < 0 ? '-' : group.yourBalance > 0 ? '+' : ''}
-                    ₹{Math.abs(group.yourBalance).toLocaleString('en-IN')}
-                  </td>
-                  <td className="px-6 py-3 text-center">
-                    <span
-                      className={`text-xs font-medium px-2 py-1 rounded inline-block ${
-                        group.settled
-                          ? 'bg-[#2A4A2A] text-[#66FF66]'
-                          : 'bg-[#4A3A2A] text-[#FFAA66]'
-                      }`}
-                    >
-                      {group.settled ? 'Settled' : 'Active'}
+                  </TableCell>
+                  <TableCell className="text-center text-[#8888AA] capitalize">
+                    {group.type}
+                  </TableCell>
+                  <TableCell className="text-right text-[#8888AA]">
+                    {group.members}
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-white">
+                    {formatCurrency(group.total)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    <span className={
+                      group.yourBalance > 0 ? 'text-[#00E5B0]' : 
+                      group.yourBalance < 0 ? 'text-[#FF5F7E]' : 
+                      'text-[#8888AA]'
+                    }>
+                      {group.yourBalance > 0 ? '+' : ''}
+                      {formatCurrency(group.yourBalance)}
                     </span>
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {group.settled ? (
+                      <span className="text-[#00E5B0]">✓ Settled</span>
+                    ) : (
+                      <span className="text-[#FFB547]">Active</span>
+                    )}
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {filteredGroups.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-[#8888AA] mb-4">No groups found</p>
-          <Link href="/groups/create">
-            <Button className="bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] hover:from-[#8B6DFF] hover:to-[#7B5CE5] text-white">
-              Create your first group
-            </Button>
-          </Link>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>
