@@ -1,82 +1,139 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
-  LayoutGrid,
+  Home,
   Users,
   Wallet,
   TrendingUp,
   Settings,
+  Bell,
   LogOut,
-  BarChart3,
-  Home,
-  PieChart,
-  Clock,
+  Menu,
+  X,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
-import { Button } from '@/components/ui/button';
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+}
 
 export function Sidebar() {
-  const menuItems = [
-    { icon: LayoutGrid, label: 'Dashboard', href: '/dashboard', section: 'main' },
-    { icon: Home, label: 'Personal', href: '/personal', section: 'main' },
-    { icon: Users, label: 'Groups', href: '/groups', section: 'main' },
-    { icon: Users, label: 'Friends', href: '/friends', section: 'main' },
-    { icon: Wallet, label: 'Settlements', href: '/settlements', section: 'main' },
-    { type: 'divider' },
-    { icon: TrendingUp, label: 'Analytics', href: '/analytics', section: 'insights' },
-    { icon: PieChart, label: 'Budget', href: '/budget', section: 'insights' },
-    { type: 'divider' },
-    { icon: Clock, label: 'Notifications', href: '/notifications', section: 'other' },
-    { icon: Settings, label: 'Profile', href: '/profile', section: 'other' },
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const navItems: NavItem[] = [
+    { label: 'Dashboard', href: '/dashboard', icon: <Home size={20} /> },
+    { label: 'Groups', href: '/groups', icon: <Users size={20} /> },
+    { label: 'Personal', href: '/personal', icon: <Wallet size={20} /> },
+    { label: 'Friends', href: '/friends', icon: <Users size={20} /> },
+    { label: 'Settlements', href: '/settlements', icon: <TrendingUp size={20} /> },
+    { label: 'Analytics', href: '/analytics', icon: <TrendingUp size={20} /> },
+    { label: 'Budget', href: '/budget', icon: <Wallet size={20} /> },
   ];
 
+  const bottomItems: NavItem[] = [
+    { label: 'Notifications', href: '/notifications', icon: <Bell size={20} /> },
+    { label: 'Settings', href: '/profile/preferences', icon: <Settings size={20} /> },
+  ];
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href);
+
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-slate-900 to-slate-950 border-r border-slate-800">
-      {/* Logo */}
-      <div className="p-6 border-b border-slate-800">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-2xl">💸</span>
-          <span className="font-bold text-lg bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-            SmartSplit
-          </span>
-        </Link>
+    <div
+      className={`h-full bg-gradient-to-b from-[#14141F] to-[#0F0F1A] border-r border-[#1A1A2B]/50 transition-all duration-300 flex flex-col ${
+        collapsed ? 'w-20' : 'w-64'
+      } shadow-2xl shadow-black/50`}
+    >
+      {/* Logo Section */}
+      <div className="p-4 border-b border-[#1A1A2B] flex items-center justify-between gap-3">
+        <div className={`flex items-center gap-2 ${collapsed ? 'justify-center w-full' : ''}`}>
+          <div className="text-2xl">💸</div>
+          {!collapsed && <span className="font-bold text-[#F0F0FF] text-lg">SmartSplit</span>}
+        </div>
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed(true)}
+            className="p-1 hover:bg-[#1A1A2B] rounded transition-colors"
+          >
+            <Menu size={16} className="text-[#8888AA]" />
+          </button>
+        )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="space-y-1">
-          {menuItems.map((item, idx) => {
-            if (item.type === 'divider') {
-              return <div key={idx} className="my-4 border-t border-slate-800" />;
-            }
-
-            const Icon = item.icon;
-            return (
-              <Link key={idx} href={item.href}>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg"
-                >
-                  <Icon size={20} className="mr-3" />
-                  {item.label}
-                </Button>
-              </Link>
-            );
-          })}
+      {/* User Profile Section */}
+      {!collapsed && (
+        <div className="p-4 border-b border-[#1A1A2B] bg-gradient-to-r from-[#7C5CFC]/10 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C5CFC] to-[#9B7FFF] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-[#F0F0FF] text-sm truncate">{session?.user?.name || 'User'}</p>
+              <p className="text-xs text-[#8888AA] truncate">{session?.user?.email}</p>
+              <p className="text-xs text-[#7C5CFC] font-semibold">₹2,260 net</p>
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* Navigation Items */}
+      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto scrollbar-hide">
+        {navItems.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link key={item.href} href={item.href}>
+              <div
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all cursor-pointer ${
+                  active
+                    ? 'bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] text-white shadow-lg shadow-[#7C5CFC]/30'
+                    : 'text-[#8888AA] hover:bg-[#1A1A2B] hover:text-[#F0F0FF]'
+                } ${collapsed ? 'justify-center' : ''}`}
+              >
+                <div className="flex-shrink-0">{item.icon}</div>
+                {!collapsed && (
+                  <span className="flex-1 font-medium text-sm">{item.label}</span>
+                )}
+              </div>
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-slate-800">
-        <Button
-          onClick={() => signOut()}
-          variant="ghost"
-          className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-slate-800 rounded-lg"
+      {/* Bottom Items */}
+      <div className="border-t border-[#1A1A2B] p-3 space-y-2">
+        {bottomItems.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link key={item.href} href={item.href}>
+              <div
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all cursor-pointer ${
+                  active
+                    ? 'bg-gradient-to-r from-[#7C5CFC] to-[#6B4CE5] text-white shadow-lg shadow-[#7C5CFC]/30'
+                    : 'text-[#8888AA] hover:bg-[#1A1A2B] hover:text-[#F0F0FF]'
+                } ${collapsed ? 'justify-center' : ''}`}
+              >
+                <div className="flex-shrink-0">{item.icon}</div>
+                {!collapsed && <span className="flex-1 font-medium text-sm">{item.label}</span>}
+              </div>
+            </Link>
+          );
+        })}
+
+        {/* Logout Button */}
+        <button
+          onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all text-[#8888AA] hover:bg-[#1A1A2B] hover:text-[#FF5F7E] ${collapsed ? 'justify-center' : ''}`}
         >
-          <LogOut size={20} className="mr-3" />
-          Logout
-        </Button>
+          <LogOut size={20} />
+          {!collapsed && <span className="flex-1 font-medium text-sm">Logout</span>}
+        </button>
       </div>
     </div>
   );
